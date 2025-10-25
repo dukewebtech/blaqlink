@@ -42,7 +42,7 @@ type Product = {
   stock_quantity: number | null
   status: string
   created_at: string
-  image_url?: string | null
+  images?: string[] | null
 }
 
 const categories = [
@@ -74,18 +74,36 @@ export default function ProductListPage() {
     try {
       setLoading(true)
       setError(null)
+      console.log("[v0] Fetching products...")
       const url = selectedType ? `/api/products?type=${selectedType}` : "/api/products"
+      console.log("[v0] Fetch URL:", url)
+
       const response = await fetch(url)
+      console.log("[v0] Response status:", response.status)
 
       if (!response.ok) {
-        throw new Error("Failed to fetch products")
+        const errorData = await response.json().catch(() => ({ error: "Failed to fetch products" }))
+        console.error("[v0] API error:", errorData)
+
+        if (response.status === 401) {
+          console.error("[v0] Unauthorized - redirecting to login")
+          window.location.href = "/login"
+          return
+        }
+
+        throw new Error(errorData.details || errorData.error || "Failed to fetch products")
       }
 
       const data = await response.json()
+      console.log("[v0] Fetched products:", data.products?.length, "products")
+      if (data.products?.length > 0) {
+        console.log("[v0] First product images:", data.products[0].images)
+      }
       setProducts(data.products || [])
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to load products")
-      console.error("[v0] Error fetching products:", err)
+      const errorMessage = err instanceof Error ? err.message : "Failed to load products"
+      setError(errorMessage)
+      console.error("[v0] Error fetching products:", errorMessage)
     } finally {
       setLoading(false)
     }
@@ -359,7 +377,10 @@ export default function ProductListPage() {
                       <TableCell>
                         <div className="flex items-center gap-3">
                           <img
-                            src={product.image_url || "/placeholder.svg?height=48&width=48"}
+                            src={
+                              (product.images && product.images.length > 0 ? product.images[0] : null) ||
+                              "/placeholder.svg?height=48&width=48"
+                            }
                             alt={product.title}
                             className="w-12 h-12 rounded-lg object-cover ring-2 ring-border transition-all duration-300 group-hover:ring-primary"
                           />
@@ -406,7 +427,7 @@ export default function ProductListPage() {
                             size="icon"
                             variant="ghost"
                             className="h-8 w-8 transition-all duration-300 hover:scale-110"
-                            onClick={() => router.push(`/products/${product.id}`)}
+                            onClick={() => router.push(`/products/view/${product.id}`)}
                           >
                             <Eye className="h-4 w-4" />
                           </Button>

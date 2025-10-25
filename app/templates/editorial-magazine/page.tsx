@@ -1,89 +1,123 @@
 "use client"
 
+import type React from "react"
+
+import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Card } from "@/components/ui/card"
-import { Input } from "@/components/ui/input"
-import { Search, ShoppingBag, User, Heart, ArrowRight, ArrowLeft } from "lucide-react"
+import { Search, ShoppingBag, User, Heart, ArrowRight, ArrowLeft, AlertCircle } from "lucide-react"
 import Link from "next/link"
+import { cartStore } from "@/lib/cart-store"
+import { ProductDetailModal } from "@/components/store/product-detail-modal"
+import { useRouter } from "next/navigation"
 
-const featuredCollections = [
-  {
-    id: 1,
-    title: "Summer Essentials",
-    subtitle: "Light & Breezy",
-    description: "Discover our curated selection of summer must-haves",
-    image: "/placeholder.svg?height=600&width=800",
-    cta: "Shop Collection",
-  },
-  {
-    id: 2,
-    title: "Urban Edge",
-    subtitle: "Street Style",
-    description: "Bold pieces for the modern city dweller",
-    image: "/placeholder.svg?height=600&width=800",
-    cta: "Explore Now",
-  },
-]
+interface Product {
+  id: string
+  name: string
+  price: number
+  images: string[]
+  product_type: string
+}
 
-const journalPosts = [
-  {
-    id: 1,
-    title: "The Art of Layering",
-    category: "Style Guide",
-    excerpt: "Master the perfect layered look for any season with our expert styling tips",
-    image: "/placeholder.svg?height=400&width=600",
-    readTime: "5 min read",
-  },
-  {
-    id: 2,
-    title: "Sustainable Fashion",
-    category: "Conscious Living",
-    excerpt: "How we're making fashion more sustainable, one piece at a time",
-    image: "/placeholder.svg?height=400&width=600",
-    readTime: "7 min read",
-  },
-  {
-    id: 3,
-    title: "Color Theory 2024",
-    category: "Trends",
-    excerpt: "This season's color palette and how to wear it with confidence",
-    image: "/placeholder.svg?height=400&width=600",
-    readTime: "4 min read",
-  },
-]
-
-const products = [
-  {
-    id: 1,
-    name: "Silk Blend Midi Dress",
-    price: 189.0,
-    image: "/placeholder.svg?height=500&width=400",
-    badge: "New Arrival",
-  },
-  {
-    id: 2,
-    name: "Tailored Linen Blazer",
-    price: 245.0,
-    image: "/placeholder.svg?height=500&width=400",
-    badge: "Editor's Pick",
-  },
-  {
-    id: 3,
-    name: "Wide Leg Trousers",
-    price: 129.0,
-    image: "/placeholder.svg?height=500&width=400",
-  },
-  {
-    id: 4,
-    name: "Cashmere Knit Sweater",
-    price: 298.0,
-    image: "/placeholder.svg?height=500&width=400",
-    badge: "Bestseller",
-  },
-]
+interface StoreInfo {
+  business_name: string
+}
 
 export default function EditorialMagazineTemplate() {
+  const [products, setProducts] = useState<Product[]>([])
+  const [storeInfo, setStoreInfo] = useState<StoreInfo | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [selectedProduct, setSelectedProduct] = useState<any>(null)
+  const [modalOpen, setModalOpen] = useState(false)
+  const [cartCount, setCartCount] = useState(0)
+  const router = useRouter()
+
+  useEffect(() => {
+    async function fetchData() {
+      try {
+        const [productsRes, storeRes] = await Promise.all([
+          fetch("/api/public/products"),
+          fetch("/api/public/store-info"),
+        ])
+
+        const productsData = await productsRes.json()
+        const storeData = await storeRes.json()
+
+        setProducts(productsData.products || [])
+        setStoreInfo(storeData)
+        setLoading(false)
+      } catch (err) {
+        console.error("[v0] Error fetching template data:", err)
+        setLoading(false)
+      }
+    }
+
+    fetchData()
+  }, [])
+
+  useEffect(() => {
+    const updateCartCount = () => {
+      setCartCount(cartStore.getItemCount())
+    }
+    updateCartCount()
+    const interval = setInterval(updateCartCount, 500)
+    return () => clearInterval(interval)
+  }, [])
+
+  const handleProductClick = (product: Product) => {
+    setSelectedProduct({
+      id: product.id,
+      title: product.name,
+      price: product.price,
+      images: product.images,
+      product_type: product.product_type,
+      category: "",
+      description: "",
+    })
+    setModalOpen(true)
+  }
+
+  const handleAddToCart = (product: Product, e: React.MouseEvent) => {
+    e.stopPropagation()
+    console.log("[v0] Adding to cart:", product.name)
+    cartStore.addItem({
+      id: product.id,
+      title: product.name,
+      price: product.price,
+      product_type: product.product_type,
+      images: product.images,
+    })
+  }
+
+  if (!loading && products.length === 0) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center p-4">
+        <Card className="max-w-md w-full p-8 text-center space-y-4">
+          <AlertCircle className="h-12 w-12 text-muted-foreground mx-auto" />
+          <h2 className="text-2xl font-bold">No Products Available</h2>
+          <p className="text-muted-foreground">
+            You need to add products to your store before this template can display properly.
+          </p>
+          <Link href="/products/create">
+            <Button className="mt-4">Add Your First Product</Button>
+          </Link>
+        </Card>
+      </div>
+    )
+  }
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="text-center space-y-4">
+          <div className="animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full mx-auto" />
+          <p className="text-muted-foreground">Loading template...</p>
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className="min-h-screen bg-background">
       {/* Header */}
@@ -104,7 +138,7 @@ export default function EditorialMagazineTemplate() {
               <a href="#" className="text-sm font-medium hover:text-primary transition-colors">
                 Collections
               </a>
-              <h1 className="text-3xl font-serif font-bold">ATELIER</h1>
+              <h1 className="text-3xl font-serif font-bold">{storeInfo?.business_name || "ATELIER"}</h1>
               <a href="#" className="text-sm font-medium hover:text-primary transition-colors">
                 Journal
               </a>
@@ -119,8 +153,13 @@ export default function EditorialMagazineTemplate() {
               <Button variant="ghost" size="icon">
                 <Heart className="h-5 w-5" />
               </Button>
-              <Button variant="ghost" size="icon">
+              <Button variant="ghost" size="icon" onClick={() => router.push("/store/cart")}>
                 <ShoppingBag className="h-5 w-5" />
+                {cartCount > 0 && (
+                  <Badge className="absolute -top-1 -right-1 h-5 w-5 flex items-center justify-center p-0 text-xs">
+                    {cartCount}
+                  </Badge>
+                )}
               </Button>
               <Button variant="ghost" size="icon">
                 <User className="h-5 w-5" />
@@ -134,15 +173,15 @@ export default function EditorialMagazineTemplate() {
       <section className="relative h-[70vh] md:h-[85vh] overflow-hidden">
         <div className="absolute inset-0 bg-gradient-to-b from-transparent to-background/80 z-10" />
         <img
-          src="/placeholder.svg?height=1200&width=1920"
+          src={products[0]?.images?.[0] || "/placeholder.svg?height=1200&width=1920"}
           alt="Hero"
-          className="w-full h-full object-cover animate-in fade-in zoom-in duration-1000"
+          className="w-full h-full object-cover animate-in fade-in zoom-in-95 duration-1000"
         />
         <div className="absolute inset-0 z-20 flex items-end">
           <div className="container mx-auto px-4 pb-16 md:pb-24">
             <div className="max-w-2xl space-y-6 animate-in fade-in slide-in-from-bottom duration-700 delay-300">
               <Badge className="bg-background/80 backdrop-blur-sm text-foreground hover:bg-background/90">
-                Spring/Summer 2024
+                New Collection
               </Badge>
               <h2 className="text-4xl md:text-6xl lg:text-7xl font-serif font-bold text-balance">
                 Timeless Elegance Redefined
@@ -159,41 +198,6 @@ export default function EditorialMagazineTemplate() {
         </div>
       </section>
 
-      {/* Featured Collections */}
-      <section className="py-24">
-        <div className="container mx-auto px-4">
-          <div className="grid md:grid-cols-2 gap-8">
-            {featuredCollections.map((collection, index) => (
-              <Card
-                key={collection.id}
-                className="group overflow-hidden hover:shadow-2xl transition-all duration-500 animate-in fade-in slide-in-from-bottom"
-                style={{ animationDelay: `${index * 200}ms` }}
-              >
-                <div className="relative aspect-[4/5] overflow-hidden">
-                  <img
-                    src={collection.image || "/placeholder.svg"}
-                    alt={collection.title}
-                    className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700"
-                  />
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
-                  <div className="absolute bottom-0 left-0 right-0 p-8 text-white space-y-4">
-                    <Badge className="bg-white/20 backdrop-blur-sm text-white hover:bg-white/30">
-                      {collection.subtitle}
-                    </Badge>
-                    <h3 className="text-3xl md:text-4xl font-serif font-bold">{collection.title}</h3>
-                    <p className="text-white/90">{collection.description}</p>
-                    <Button variant="secondary" className="gap-2 group/btn bg-white text-black hover:bg-white/90">
-                      {collection.cta}
-                      <ArrowRight className="h-4 w-4 group-hover/btn:translate-x-1 transition-transform" />
-                    </Button>
-                  </div>
-                </div>
-              </Card>
-            ))}
-          </div>
-        </div>
-      </section>
-
       {/* Products Grid */}
       <section className="py-24 bg-muted/30">
         <div className="container mx-auto px-4">
@@ -204,31 +208,36 @@ export default function EditorialMagazineTemplate() {
             </p>
           </div>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
-            {products.map((product, index) => (
+            {products.slice(0, 8).map((product, index) => (
               <Card
                 key={product.id}
-                className="group overflow-hidden hover:shadow-xl transition-all duration-300 animate-in fade-in zoom-in"
+                onClick={() => handleProductClick(product)}
+                className="group overflow-hidden hover:shadow-xl transition-all duration-300 animate-in fade-in zoom-in-95 cursor-pointer"
                 style={{ animationDelay: `${index * 100}ms` }}
               >
                 <div className="relative aspect-[3/4] overflow-hidden bg-muted">
-                  {product.badge && <Badge className="absolute top-4 left-4 z-10">{product.badge}</Badge>}
                   <Button
                     size="icon"
                     variant="secondary"
                     className="absolute top-4 right-4 opacity-0 group-hover:opacity-100 transition-opacity z-10"
+                    onClick={(e) => e.stopPropagation()}
                   >
                     <Heart className="h-4 w-4" />
                   </Button>
                   <img
-                    src={product.image || "/placeholder.svg"}
+                    src={product.images?.[0] || "/placeholder.svg?height=500&width=400"}
                     alt={product.name}
                     className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700"
                   />
                 </div>
                 <div className="p-6 space-y-3">
-                  <h3 className="font-medium text-lg">{product.name}</h3>
-                  <p className="text-xl font-semibold">${product.price.toFixed(2)}</p>
-                  <Button variant="outline" className="w-full group/btn bg-transparent">
+                  <h3 className="font-medium text-lg line-clamp-2">{product.name}</h3>
+                  <p className="text-xl font-semibold">NGN {product.price.toLocaleString()}</p>
+                  <Button
+                    variant="outline"
+                    className="w-full group/btn bg-transparent"
+                    onClick={(e) => handleAddToCart(product, e)}
+                  >
                     Add to Cart
                     <ShoppingBag className="h-4 w-4 ml-2 group-hover/btn:scale-110 transition-transform" />
                   </Button>
@@ -239,69 +248,12 @@ export default function EditorialMagazineTemplate() {
         </div>
       </section>
 
-      {/* Journal Section */}
-      <section className="py-24">
-        <div className="container mx-auto px-4">
-          <div className="flex items-center justify-between mb-12">
-            <div>
-              <h2 className="text-4xl font-serif font-bold mb-2">The Journal</h2>
-              <p className="text-muted-foreground">Stories, inspiration, and style insights</p>
-            </div>
-            <Button variant="outline" className="gap-2 hidden md:flex bg-transparent">
-              View All Articles
-              <ArrowRight className="h-4 w-4" />
-            </Button>
-          </div>
-          <div className="grid md:grid-cols-3 gap-8">
-            {journalPosts.map((post, index) => (
-              <Card
-                key={post.id}
-                className="group overflow-hidden hover:shadow-xl transition-all duration-300 animate-in fade-in slide-in-from-bottom"
-                style={{ animationDelay: `${index * 150}ms` }}
-              >
-                <div className="aspect-[3/2] overflow-hidden bg-muted">
-                  <img
-                    src={post.image || "/placeholder.svg"}
-                    alt={post.title}
-                    className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700"
-                  />
-                </div>
-                <div className="p-6 space-y-4">
-                  <div className="flex items-center justify-between text-sm">
-                    <Badge variant="secondary">{post.category}</Badge>
-                    <span className="text-muted-foreground">{post.readTime}</span>
-                  </div>
-                  <h3 className="text-xl font-semibold group-hover:text-primary transition-colors">{post.title}</h3>
-                  <p className="text-muted-foreground line-clamp-2">{post.excerpt}</p>
-                  <Button variant="link" className="p-0 gap-2 group/btn">
-                    Read More
-                    <ArrowRight className="h-4 w-4 group-hover/btn:translate-x-1 transition-transform" />
-                  </Button>
-                </div>
-              </Card>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* Newsletter */}
-      <section className="py-24 bg-muted/30">
-        <div className="container mx-auto px-4">
-          <Card className="p-12 text-center space-y-6 max-w-2xl mx-auto">
-            <h2 className="text-3xl md:text-4xl font-serif font-bold">Stay Inspired</h2>
-            <p className="text-muted-foreground text-lg">
-              Subscribe to receive exclusive access to new collections, style guides, and special offers
-            </p>
-            <div className="flex gap-2 max-w-md mx-auto">
-              <Input placeholder="Enter your email" className="flex-1" />
-              <Button className="gap-2">
-                Subscribe
-                <ArrowRight className="h-4 w-4" />
-              </Button>
-            </div>
-          </Card>
-        </div>
-      </section>
+      <ProductDetailModal
+        product={selectedProduct}
+        open={modalOpen}
+        onOpenChange={setModalOpen}
+        storeName={storeInfo?.business_name}
+      />
     </div>
   )
 }

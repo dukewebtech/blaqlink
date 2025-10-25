@@ -1,6 +1,8 @@
 "use client"
 
-import { useState } from "react"
+import type React from "react"
+
+import { useState, useEffect } from "react"
 import { DashboardLayout } from "@/components/dashboard/dashboard-layout"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -9,19 +11,154 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Separator } from "@/components/ui/separator"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
-import { User, Mail, Phone, MapPin, Lock, Key, CheckCircle2, Upload, Chrome } from "lucide-react"
+import { User, Mail, Phone, MapPin, Lock, Key, CheckCircle2, Upload, Chrome, Loader2 } from "lucide-react"
+import { useRouter } from "next/navigation"
+
+interface UserProfile {
+  id: string
+  auth_id: string
+  email: string
+  full_name: string
+  phone?: string
+  location?: string
+  business_name?: string
+  profile_image?: string
+  role: string
+  created_at: string
+  updated_at: string
+}
 
 export default function AccountSettingsPage() {
+  const router = useRouter()
   const [isSaving, setIsSaving] = useState(false)
   const [saved, setSaved] = useState(false)
+  const [isLoading, setIsLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+  const [isUploadingImage, setIsUploadingImage] = useState(false)
+
+  const [formData, setFormData] = useState<Partial<UserProfile>>({
+    full_name: "",
+    email: "",
+    phone: "",
+    location: "",
+    business_name: "",
+    profile_image: "",
+  })
+
+  useEffect(() => {
+    fetchUserProfile()
+  }, [])
+
+  const fetchUserProfile = async () => {
+    try {
+      setIsLoading(true)
+      setError(null)
+
+      const response = await fetch("/api/users/me")
+      const data = await response.json()
+
+      if (!response.ok) {
+        throw new Error(data.error || "Failed to fetch user profile")
+      }
+
+      console.log("[v0] User profile loaded:", data.data.user)
+      setFormData(data.data.user)
+    } catch (err) {
+      console.error("[v0] Error fetching user profile:", err)
+      setError(err instanceof Error ? err.message : "Failed to load profile")
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+
+    // Validate file type
+    if (!file.type.startsWith("image/")) {
+      setError("Please upload an image file")
+      return
+    }
+
+    // Validate file size (max 4MB)
+    if (file.size > 4 * 1024 * 1024) {
+      setError("Image size must be less than 4MB")
+      return
+    }
+
+    try {
+      setIsUploadingImage(true)
+      setError(null)
+
+      const formData = new FormData()
+      formData.append("file", file)
+
+      const response = await fetch("/api/upload", {
+        method: "POST",
+        body: formData,
+      })
+
+      const data = await response.json()
+
+      if (!response.ok) {
+        throw new Error(data.error || "Failed to upload image")
+      }
+
+      console.log("[v0] Profile image uploaded:", data.url)
+      setFormData((prev) => ({ ...prev, profile_image: data.url }))
+    } catch (err) {
+      console.error("[v0] Error uploading image:", err)
+      setError(err instanceof Error ? err.message : "Failed to upload image")
+    } finally {
+      setIsUploadingImage(false)
+    }
+  }
+
+  const handleInputChange = (field: keyof UserProfile, value: string) => {
+    setFormData((prev) => ({ ...prev, [field]: value }))
+  }
 
   const handleSave = async () => {
-    setIsSaving(true)
-    // Simulate API call
-    await new Promise((resolve) => setTimeout(resolve, 1000))
-    setIsSaving(false)
-    setSaved(true)
-    setTimeout(() => setSaved(false), 3000)
+    try {
+      setIsSaving(true)
+      setError(null)
+
+      console.log("[v0] Saving user profile:", formData)
+
+      const response = await fetch("/api/users/me", {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(formData),
+      })
+
+      const data = await response.json()
+
+      if (!response.ok) {
+        throw new Error(data.error || "Failed to save profile")
+      }
+
+      console.log("[v0] Profile saved successfully")
+      setSaved(true)
+      setTimeout(() => setSaved(false), 3000)
+    } catch (err) {
+      console.error("[v0] Error saving profile:", err)
+      setError(err instanceof Error ? err.message : "Failed to save profile")
+    } finally {
+      setIsSaving(false)
+    }
+  }
+
+  if (isLoading) {
+    return (
+      <DashboardLayout>
+        <div className="flex items-center justify-center min-h-[400px]">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        </div>
+      </DashboardLayout>
+    )
   }
 
   return (
@@ -32,6 +169,10 @@ export default function AccountSettingsPage() {
           <h1 className="text-3xl font-bold tracking-tight">Account Settings</h1>
           <p className="text-muted-foreground mt-2">Manage your account information and preferences</p>
         </div>
+
+        {error && (
+          <div className="p-4 rounded-lg bg-destructive/10 border border-destructive/20 text-destructive">{error}</div>
+        )}
 
         {/* Profile Card */}
         <Card className="border-border/50 shadow-sm hover:shadow-md transition-shadow duration-300">
@@ -44,21 +185,40 @@ export default function AccountSettingsPage() {
             <div className="flex items-start gap-6 p-6 rounded-lg bg-muted/30 border border-border">
               <div className="relative group">
                 <Avatar className="h-24 w-24 ring-4 ring-primary/10 transition-all duration-200 group-hover:ring-primary/30">
-                  <AvatarImage src="/placeholder.svg?height=96&width=96" />
-                  <AvatarFallback className="text-2xl">GH</AvatarFallback>
+                  <AvatarImage src={formData.profile_image || "/placeholder.svg?height=96&width=96"} />
+                  <AvatarFallback className="text-2xl">
+                    {formData.full_name
+                      ?.split(" ")
+                      .map((n) => n[0])
+                      .join("")
+                      .toUpperCase() || "U"}
+                  </AvatarFallback>
                 </Avatar>
-                <Button
-                  size="icon"
-                  variant="secondary"
-                  className="absolute bottom-0 right-0 h-8 w-8 rounded-full shadow-lg opacity-0 group-hover:opacity-100 transition-opacity duration-200"
-                >
-                  <Upload className="h-4 w-4" />
-                </Button>
+                <label htmlFor="profile-image-upload">
+                  <Button
+                    size="icon"
+                    variant="secondary"
+                    className="absolute bottom-0 right-0 h-8 w-8 rounded-full shadow-lg opacity-0 group-hover:opacity-100 transition-opacity duration-200 cursor-pointer"
+                    asChild
+                    disabled={isUploadingImage}
+                  >
+                    <span>
+                      {isUploadingImage ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
+                    </span>
+                  </Button>
+                </label>
+                <input
+                  id="profile-image-upload"
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={handleImageUpload}
+                />
               </div>
               <div className="flex-1 space-y-3">
                 <div>
-                  <h3 className="text-xl font-semibold">Guy Hawkins</h3>
-                  <p className="text-sm text-muted-foreground">Store Owner</p>
+                  <h3 className="text-xl font-semibold">{formData.full_name || "User"}</h3>
+                  <p className="text-sm text-muted-foreground">{formData.role || "Store Owner"}</p>
                 </div>
                 <div className="flex items-center gap-2">
                   <Badge variant="secondary" className="bg-primary/10 text-primary hover:bg-primary/20">
@@ -80,7 +240,8 @@ export default function AccountSettingsPage() {
                 id="businessName"
                 placeholder="Your business name"
                 className="transition-all duration-200 focus:ring-2 focus:ring-primary/20"
-                defaultValue="Kanky Store"
+                value={formData.business_name || ""}
+                onChange={(e) => handleInputChange("business_name", e.target.value)}
               />
             </div>
           </CardContent>
@@ -107,7 +268,8 @@ export default function AccountSettingsPage() {
                   id="fullName"
                   placeholder="Your full name"
                   className="transition-all duration-200 focus:ring-2 focus:ring-primary/20"
-                  defaultValue="Guy Hawkins"
+                  value={formData.full_name || ""}
+                  onChange={(e) => handleInputChange("full_name", e.target.value)}
                 />
               </div>
 
@@ -122,7 +284,8 @@ export default function AccountSettingsPage() {
                   type="email"
                   placeholder="your@email.com"
                   className="transition-all duration-200 focus:ring-2 focus:ring-primary/20"
-                  defaultValue="guy.hawkins@example.com"
+                  value={formData.email || ""}
+                  onChange={(e) => handleInputChange("email", e.target.value)}
                 />
               </div>
 
@@ -137,7 +300,8 @@ export default function AccountSettingsPage() {
                   type="tel"
                   placeholder="+1 (555) 000-0000"
                   className="transition-all duration-200 focus:ring-2 focus:ring-primary/20"
-                  defaultValue="+1 (555) 123-4567"
+                  value={formData.phone || ""}
+                  onChange={(e) => handleInputChange("phone", e.target.value)}
                 />
               </div>
 
@@ -151,7 +315,8 @@ export default function AccountSettingsPage() {
                   id="location"
                   placeholder="City, Country"
                   className="transition-all duration-200 focus:ring-2 focus:ring-primary/20"
-                  defaultValue="New York, USA"
+                  value={formData.location || ""}
+                  onChange={(e) => handleInputChange("location", e.target.value)}
                 />
               </div>
             </div>
@@ -262,7 +427,7 @@ export default function AccountSettingsPage() {
           >
             {isSaving ? (
               <>
-                <div className="h-4 w-4 border-2 border-white/30 border-t-white rounded-full animate-spin mr-2" />
+                <Loader2 className="h-4 w-4 animate-spin mr-2" />
                 Saving...
               </>
             ) : saved ? (

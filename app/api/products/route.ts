@@ -3,17 +3,45 @@ import { type NextRequest, NextResponse } from "next/server"
 
 export async function GET(request: NextRequest) {
   try {
+    console.log("[v0] GET /api/products - Starting request")
     const supabase = await createServerClient()
 
     // Get authenticated user
+    console.log("[v0] Attempting to get authenticated user...")
     const {
       data: { user },
       error: authError,
     } = await supabase.auth.getUser()
 
-    if (authError || !user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+    console.log("[v0] Auth result:", {
+      hasUser: !!user,
+      userId: user?.id,
+      authError: authError?.message,
+    })
+
+    if (authError) {
+      console.error("[v0] Authentication error:", authError)
+      return NextResponse.json(
+        {
+          error: "Authentication failed",
+          details: authError.message,
+        },
+        { status: 401 },
+      )
     }
+
+    if (!user) {
+      console.error("[v0] No user found in session")
+      return NextResponse.json(
+        {
+          error: "Unauthorized - Please log in again",
+          details: "No active session found",
+        },
+        { status: 401 },
+      )
+    }
+
+    console.log("[v0] User authenticated successfully:", user.id)
 
     // Get query parameters
     const searchParams = request.nextUrl.searchParams
@@ -21,6 +49,8 @@ export async function GET(request: NextRequest) {
     const status = searchParams.get("status")
     const limit = Number.parseInt(searchParams.get("limit") || "50")
     const offset = Number.parseInt(searchParams.get("offset") || "0")
+
+    console.log("[v0] Query params:", { productType, status, limit, offset })
 
     // Build query
     let query = supabase
@@ -38,6 +68,7 @@ export async function GET(request: NextRequest) {
       query = query.eq("status", status)
     }
 
+    console.log("[v0] Executing products query...")
     const { data: products, error } = await query
 
     if (error) {
@@ -45,10 +76,17 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: error.message }, { status: 500 })
     }
 
+    console.log("[v0] Products fetched successfully:", products?.length || 0)
     return NextResponse.json({ products, count: products?.length || 0 })
   } catch (error) {
     console.error("[v0] Unexpected error in GET /api/products:", error)
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 })
+    return NextResponse.json(
+      {
+        error: "Internal server error",
+        details: error instanceof Error ? error.message : "Unknown error",
+      },
+      { status: 500 },
+    )
   }
 }
 
@@ -131,6 +169,12 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ product }, { status: 201 })
   } catch (error) {
     console.error("[v0] Unexpected error in POST /api/products:", error)
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 })
+    return NextResponse.json(
+      {
+        error: "Internal server error",
+        details: error instanceof Error ? error.message : "Unknown error",
+      },
+      { status: 500 },
+    )
   }
 }

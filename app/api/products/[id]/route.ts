@@ -3,6 +3,11 @@ import { type NextRequest, NextResponse } from "next/server"
 
 export async function GET(request: NextRequest, { params }: { params: { id: string } }) {
   try {
+    const staticRoutes = ["list", "choose-type", "create", "edit"]
+    if (staticRoutes.includes(params.id)) {
+      return NextResponse.json({ error: "Invalid product ID" }, { status: 400 })
+    }
+
     const supabase = await createServerClient()
 
     const {
@@ -37,6 +42,11 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
 
 export async function PUT(request: NextRequest, { params }: { params: { id: string } }) {
   try {
+    const staticRoutes = ["list", "choose-type", "create", "edit"]
+    if (staticRoutes.includes(params.id)) {
+      return NextResponse.json({ error: "Invalid product ID" }, { status: 400 })
+    }
+
     const supabase = await createServerClient()
 
     const {
@@ -49,6 +59,8 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
     }
 
     const body = await request.json()
+
+    console.log("[v0] Updating product with images:", body.images)
 
     // Remove fields that shouldn't be updated
     delete body.id
@@ -71,7 +83,7 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
       return NextResponse.json({ error: error.message }, { status: 500 })
     }
 
-    console.log("[v0] Product updated successfully:", product.id)
+    console.log("[v0] Product updated successfully:", product.id, "Images:", product.images)
     return NextResponse.json({ product })
   } catch (error) {
     console.error("[v0] Error in PUT /api/products/[id]:", error)
@@ -81,6 +93,11 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
 
 export async function DELETE(request: NextRequest, { params }: { params: { id: string } }) {
   try {
+    const staticRoutes = ["list", "choose-type", "create", "edit"]
+    if (staticRoutes.includes(params.id)) {
+      return NextResponse.json({ error: "Invalid product ID" }, { status: 400 })
+    }
+
     const supabase = await createServerClient()
 
     const {

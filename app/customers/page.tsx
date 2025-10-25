@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { DashboardLayout } from "@/components/dashboard/dashboard-layout"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -20,91 +20,45 @@ import {
   ChevronDown,
 } from "lucide-react"
 
-const customers = [
-  {
-    id: "ID12451",
-    name: "Leslie Alexander",
-    email: "georgia@example.com",
-    phone: "+62 819 1314 1435",
-    purchases: "$21.78",
-    orders: "30 Order",
-    address: "2972 Westheimer Rd. Santa Ana, Illinois 85486",
-  },
-  {
-    id: "ID12452",
-    name: "Guy Hawkins",
-    email: "guys@example.com",
-    phone: "+62 819 1314 1435",
-    purchases: "$21.78",
-    orders: "30 Order",
-    address: "4517 Washington Ave. Manchester, Kentucky 39495",
-  },
-  {
-    id: "ID12453",
-    name: "Kristin Watson",
-    email: "kristin@example.com",
-    phone: "+62 819 1314 1435",
-    purchases: "$21.78",
-    orders: "30 Order",
-    address: "2118 Thornridge Cir. Syracuse, Connecticut 35624",
-  },
-  {
-    id: "ID12453",
-    name: "Kristin Watson",
-    email: "kristin@example.com",
-    phone: "+62 819 1314 1435",
-    purchases: "$21.78",
-    orders: "30 Order",
-    address: "2118 Thornridge Cir. Syracuse, Connecticut 35624",
-  },
-  {
-    id: "ID12452",
-    name: "Guy Hawkins",
-    email: "guys@example.com",
-    phone: "+62 819 1314 1435",
-    purchases: "$21.78",
-    orders: "30 Order",
-    address: "4517 Washington Ave. Manchester, Kentucky 39495",
-  },
-  {
-    id: "ID12451",
-    name: "Leslie Alexander",
-    email: "georgia@example.com",
-    phone: "+62 819 1314 1435",
-    purchases: "$21.78",
-    orders: "30 Order",
-    address: "2972 Westheimer Rd. Santa Ana, Illinois 85486",
-  },
-  {
-    id: "ID12453",
-    name: "Kristin Watson",
-    email: "kristin@example.com",
-    phone: "+62 819 1314 1435",
-    purchases: "$21.78",
-    orders: "30 Order",
-    address: "2118 Thornridge Cir. Syracuse, Connecticut 35624",
-  },
-  {
-    id: "ID12451",
-    name: "Leslie Alexander",
-    email: "georgia@example.com",
-    phone: "+62 819 1314 1435",
-    purchases: "$21.78",
-    orders: "30 Order",
-    address: "2972 Westheimer Rd. Santa Ana, Illinois 85486",
-  },
-]
+interface Customer {
+  email: string
+  name: string
+  phone: string
+  address: any
+  totalPurchases: number
+  orderCount: number
+  firstOrderDate: string
+}
 
 export default function CustomersPage() {
   const [selectedCustomers, setSelectedCustomers] = useState<string[]>([])
   const [searchQuery, setSearchQuery] = useState("")
+  const [customers, setCustomers] = useState<Customer[]>([])
+  const [loading, setLoading] = useState(true)
 
-  const toggleCustomer = (id: string) => {
-    setSelectedCustomers((prev) => (prev.includes(id) ? prev.filter((cid) => cid !== id) : [...prev, id]))
+  useEffect(() => {
+    fetchCustomers()
+  }, [])
+
+  const fetchCustomers = async () => {
+    try {
+      setLoading(true)
+      const response = await fetch("/api/customers")
+      const data = await response.json()
+      setCustomers(data.customers || [])
+    } catch (error) {
+      console.error("[v0] Error fetching customers:", error)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const toggleCustomer = (email: string) => {
+    setSelectedCustomers((prev) => (prev.includes(email) ? prev.filter((e) => e !== email) : [...prev, email]))
   }
 
   const toggleAll = () => {
-    setSelectedCustomers((prev) => (prev.length === customers.length ? [] : customers.map((c) => c.id)))
+    setSelectedCustomers((prev) => (prev.length === customers.length ? [] : customers.map((c) => c.email)))
   }
 
   return (
@@ -149,95 +103,109 @@ export default function CustomersPage() {
 
         {/* Table */}
         <div className="bg-card rounded-xl border border-border overflow-hidden">
-          <Table>
-            <TableHeader>
-              <TableRow className="hover:bg-transparent border-b border-border">
-                <TableHead className="w-12">
-                  <Checkbox checked={selectedCustomers.length === customers.length} onCheckedChange={toggleAll} />
-                </TableHead>
-                <TableHead className="font-semibold">
-                  <div className="flex items-center gap-1">
-                    Name Customer
-                    <ChevronDown className="size-4 text-muted-foreground" />
-                  </div>
-                </TableHead>
-                <TableHead className="font-semibold">
-                  <div className="flex items-center gap-1">
-                    Contact
-                    <ChevronDown className="size-4 text-muted-foreground" />
-                  </div>
-                </TableHead>
-                <TableHead className="font-semibold">
-                  <div className="flex items-center gap-1">
-                    Purchases
-                    <ChevronDown className="size-4 text-muted-foreground" />
-                  </div>
-                </TableHead>
-                <TableHead className="font-semibold">
-                  <div className="flex items-center gap-1">
-                    Order QTY
-                    <ChevronDown className="size-4 text-muted-foreground" />
-                  </div>
-                </TableHead>
-                <TableHead className="font-semibold">
-                  <div className="flex items-center gap-1">
-                    Address
-                    <ChevronDown className="size-4 text-muted-foreground" />
-                  </div>
-                </TableHead>
-                <TableHead className="font-semibold text-right">
-                  <div className="flex items-center justify-end gap-1">
-                    Action
-                    <ChevronDown className="size-4 text-muted-foreground" />
-                  </div>
-                </TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {customers.map((customer, index) => (
-                <TableRow key={`${customer.id}-${index}`} className="group hover:bg-muted/50 transition-colors">
-                  <TableCell>
-                    <Checkbox
-                      checked={selectedCustomers.includes(customer.id)}
-                      onCheckedChange={() => toggleCustomer(customer.id)}
-                    />
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex flex-col">
-                      <span className="text-xs text-primary font-medium">{customer.id}</span>
-                      <span className="font-medium text-foreground">{customer.name}</span>
+          {loading ? (
+            <div className="flex items-center justify-center py-12">
+              <div className="text-muted-foreground">Loading customers...</div>
+            </div>
+          ) : customers.length === 0 ? (
+            <div className="flex items-center justify-center py-12">
+              <div className="text-muted-foreground">No customers found</div>
+            </div>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow className="hover:bg-transparent border-b border-border">
+                  <TableHead className="w-12">
+                    <Checkbox checked={selectedCustomers.length === customers.length} onCheckedChange={toggleAll} />
+                  </TableHead>
+                  <TableHead className="font-semibold">
+                    <div className="flex items-center gap-1">
+                      Name Customer
+                      <ChevronDown className="size-4 text-muted-foreground" />
                     </div>
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex flex-col text-sm">
-                      <span className="text-foreground">{customer.email}</span>
-                      <span className="text-muted-foreground">{customer.phone}</span>
+                  </TableHead>
+                  <TableHead className="font-semibold">
+                    <div className="flex items-center gap-1">
+                      Contact
+                      <ChevronDown className="size-4 text-muted-foreground" />
                     </div>
-                  </TableCell>
-                  <TableCell className="text-foreground">{customer.purchases}</TableCell>
-                  <TableCell className="text-foreground">{customer.orders}</TableCell>
-                  <TableCell className="text-foreground max-w-xs">{customer.address}</TableCell>
-                  <TableCell>
-                    <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                      <Button variant="ghost" size="icon" className="size-8 hover:bg-muted">
-                        <Eye className="size-4" />
-                      </Button>
-                      <Button variant="ghost" size="icon" className="size-8 hover:bg-muted">
-                        <Pencil className="size-4" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="size-8 hover:bg-destructive/10 hover:text-destructive"
-                      >
-                        <Trash2 className="size-4" />
-                      </Button>
+                  </TableHead>
+                  <TableHead className="font-semibold">
+                    <div className="flex items-center gap-1">
+                      Purchases
+                      <ChevronDown className="size-4 text-muted-foreground" />
                     </div>
-                  </TableCell>
+                  </TableHead>
+                  <TableHead className="font-semibold">
+                    <div className="flex items-center gap-1">
+                      Order QTY
+                      <ChevronDown className="size-4 text-muted-foreground" />
+                    </div>
+                  </TableHead>
+                  <TableHead className="font-semibold">
+                    <div className="flex items-center gap-1">
+                      Address
+                      <ChevronDown className="size-4 text-muted-foreground" />
+                    </div>
+                  </TableHead>
+                  <TableHead className="font-semibold text-right">
+                    <div className="flex items-center justify-end gap-1">
+                      Action
+                      <ChevronDown className="size-4 text-muted-foreground" />
+                    </div>
+                  </TableHead>
                 </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+              </TableHeader>
+              <TableBody>
+                {customers.map((customer, index) => (
+                  <TableRow key={`${customer.email}-${index}`} className="group hover:bg-muted/50 transition-colors">
+                    <TableCell>
+                      <Checkbox
+                        checked={selectedCustomers.includes(customer.email)}
+                        onCheckedChange={() => toggleCustomer(customer.email)}
+                      />
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex flex-col">
+                        <span className="text-xs text-primary font-medium">
+                          {customer.email.split("@")[0].toUpperCase()}
+                        </span>
+                        <span className="font-medium text-foreground">{customer.name}</span>
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex flex-col text-sm">
+                        <span className="text-foreground">{customer.email}</span>
+                        <span className="text-muted-foreground">{customer.phone || "N/A"}</span>
+                      </div>
+                    </TableCell>
+                    <TableCell className="text-foreground">NGN {customer.totalPurchases.toLocaleString()}</TableCell>
+                    <TableCell className="text-foreground">{customer.orderCount} Orders</TableCell>
+                    <TableCell className="text-foreground max-w-xs">
+                      {customer.address?.address || "No address provided"}
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <Button variant="ghost" size="icon" className="size-8 hover:bg-muted">
+                          <Eye className="size-4" />
+                        </Button>
+                        <Button variant="ghost" size="icon" className="size-8 hover:bg-muted">
+                          <Pencil className="size-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="size-8 hover:bg-destructive/10 hover:text-destructive"
+                        >
+                          <Trash2 className="size-4" />
+                        </Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          )}
 
           {/* Pagination */}
           <div className="flex items-center justify-between px-6 py-4 border-t border-border">

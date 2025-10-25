@@ -50,22 +50,24 @@ export default function ProductSuccessPage() {
   return (
     <DashboardLayout>
       <div className="min-h-[calc(100vh-200px)] flex items-center justify-center">
-        <div className="max-w-2xl w-full text-center space-y-8 animate-in fade-in zoom-in duration-1000">
+        <div className="max-w-2xl w-full text-center space-y-8 animate-in fade-in zoom-in-95 duration-1000">
           {/* Success Icon */}
           <div className="relative inline-flex">
             <div className="absolute inset-0 bg-success/20 rounded-full blur-3xl animate-pulse" />
-            <div className="relative bg-gradient-to-br from-success to-success/80 rounded-full p-8 animate-in zoom-in duration-700 delay-200">
+            <div className="relative bg-gradient-to-br from-success to-success/80 rounded-full p-8 animate-in zoom-in-95 duration-700 delay-200">
               <CheckCircle2 className="h-24 w-24 text-white" strokeWidth={2.5} />
             </div>
-            <Sparkles className="absolute -top-4 -right-4 h-8 w-8 text-success animate-in zoom-in spin-in duration-700 delay-500" />
-            <Sparkles className="absolute -bottom-4 -left-4 h-6 w-6 text-success animate-in zoom-in spin-in duration-700 delay-700" />
+            <Sparkles className="absolute -top-4 -right-4 h-8 w-8 text-success animate-in zoom-in-95 spin-in duration-700 delay-500" />
+            <Sparkles className="absolute -bottom-4 -left-4 h-6 w-6 text-success animate-in zoom-in-95 spin-in duration-700 delay-700" />
           </div>
 
           {/* Success Message */}
           <div className="space-y-4 animate-in fade-in slide-in-from-bottom-4 duration-700 delay-300">
-            <div className="inline-flex items-center gap-2 text-6xl animate-in zoom-in duration-700 delay-400">🎉</div>
+            <div className="inline-flex items-center gap-2 text-6xl animate-in zoom-in-95 duration-700 delay-400">
+              🎉
+            </div>
             <h1 className="text-4xl md:text-5xl font-bold tracking-tight bg-gradient-to-r from-foreground to-foreground/70 bg-clip-text text-transparent">
-              Your first product has been created and is now live!
+              Your product has been created and is now live!
             </h1>
             <p className="text-lg text-muted-foreground max-w-md mx-auto">
               Congratulations! Your product is now available for customers to purchase. Start promoting it to drive
@@ -90,22 +92,6 @@ export default function ProductSuccessPage() {
             >
               Create Another Product
             </Button>
-          </div>
-
-          {/* Stats Preview */}
-          <div className="grid grid-cols-3 gap-4 max-w-md mx-auto pt-8 animate-in fade-in slide-in-from-bottom-4 duration-700 delay-700">
-            <div className="p-4 rounded-lg bg-muted/50 backdrop-blur transition-all duration-300 hover:scale-105">
-              <p className="text-2xl font-bold text-primary">1</p>
-              <p className="text-xs text-muted-foreground">Product Created</p>
-            </div>
-            <div className="p-4 rounded-lg bg-muted/50 backdrop-blur transition-all duration-300 hover:scale-105">
-              <p className="text-2xl font-bold text-success">Live</p>
-              <p className="text-xs text-muted-foreground">Status</p>
-            </div>
-            <div className="p-4 rounded-lg bg-muted/50 backdrop-blur transition-all duration-300 hover:scale-105">
-              <p className="text-2xl font-bold">0</p>
-              <p className="text-xs text-muted-foreground">Sales</p>
-            </div>
           </div>
         </div>
       </div>

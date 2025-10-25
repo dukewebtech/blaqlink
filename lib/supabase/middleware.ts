@@ -1,18 +1,22 @@
 import { createServerClient } from "@supabase/ssr"
 import { NextResponse, type NextRequest } from "next/server"
 
-function withTimeout<T>(promise: Promise<T>, timeoutMs: number): Promise<T> {
-  return Promise.race([
-    promise,
-    new Promise<T>((_, reject) => setTimeout(() => reject(new Error("Timeout")), timeoutMs)),
-  ])
-}
-
 export async function updateSession(request: NextRequest) {
+  // Create response that will be returned
   let supabaseResponse = NextResponse.next({
     request,
   })
 
+  // Skip auth check for public routes
+  const publicPaths = ["/signup", "/login", "/auth", "/templates", "/_next", "/api", "/api-test", "/"]
+
+  const isPublicPath = publicPaths.some((path) => request.nextUrl.pathname.startsWith(path))
+
+  if (isPublicPath) {
+    return supabaseResponse
+  }
+
+  // Try to check auth, but don't block if it fails
   try {
     const supabase = createServerClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -33,26 +37,25 @@ export async function updateSession(request: NextRequest) {
       },
     )
 
+    // Add timeout to prevent hanging
+    const timeoutPromise = new Promise((_, reject) => {
+      setTimeout(() => reject(new Error("Auth timeout")), 1000)
+    })
+
+    const authPromise = supabase.auth.getUser()
+
     const {
       data: { user },
-    } = await withTimeout(supabase.auth.getUser(), 2000)
+    } = await Promise.race([authPromise, timeoutPromise]).catch(() => ({ data: { user: null } }))
 
-    if (
-      !user &&
-      !request.nextUrl.pathname.startsWith("/signup") &&
-      !request.nextUrl.pathname.startsWith("/login") &&
-      !request.nextUrl.pathname.startsWith("/auth") &&
-      !request.nextUrl.pathname.startsWith("/templates") &&
-      !request.nextUrl.pathname.startsWith("/_next") &&
-      !request.nextUrl.pathname.startsWith("/api") &&
-      !request.nextUrl.pathname.startsWith("/api-test") &&
-      request.nextUrl.pathname !== "/"
-    ) {
+    // If no user, redirect to login (but don't block if auth check failed)
+    if (!user) {
       const url = request.nextUrl.clone()
       url.pathname = "/login"
       return NextResponse.redirect(url)
     }
 
+    // If user is logged in and trying to access login/signup, redirect to dashboard
     if (user && (request.nextUrl.pathname.startsWith("/signup") || request.nextUrl.pathname.startsWith("/login"))) {
       const url = request.nextUrl.clone()
       url.pathname = "/dashboard"
@@ -61,7 +64,8 @@ export async function updateSession(request: NextRequest) {
 
     return supabaseResponse
   } catch (error) {
-    console.log("[v0] Supabase middleware error (continuing without auth):", error)
+    // On any error, just continue without auth check
+    console.log("[v0] Middleware error (continuing):", error instanceof Error ? error.message : "Unknown error")
     return supabaseResponse
   }
 }

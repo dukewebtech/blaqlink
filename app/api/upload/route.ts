@@ -66,11 +66,11 @@ export async function POST(request: NextRequest) {
     console.log("[v0] Uploading file:", fileName)
 
     const arrayBuffer = await file.arrayBuffer()
-    const uint8Array = new Uint8Array(arrayBuffer)
+    const blob = new Blob([arrayBuffer], { type: file.type })
 
-    console.log("[v0] File converted to Uint8Array, size:", uint8Array.length)
+    console.log("[v0] File converted to Blob, size:", blob.size)
 
-    const { data, error } = await supabase.storage.from("product-images").upload(fileName, uint8Array, {
+    const { data, error } = await supabase.storage.from("product-images").upload(fileName, blob, {
       contentType: file.type,
       upsert: false,
     })

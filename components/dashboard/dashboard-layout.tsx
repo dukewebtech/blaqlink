@@ -1,8 +1,7 @@
 "use client"
 
 import type React from "react"
-
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { cn } from "@/lib/utils"
@@ -35,6 +34,7 @@ import {
   X,
   Wallet,
   Palette,
+  FolderTree,
 } from "lucide-react"
 import { Logo } from "@/components/logo"
 
@@ -42,18 +42,19 @@ const navigation = [
   { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
   {
     name: "Product",
-    href: "/products/list",
+    href: "/products-list",
     icon: Package,
     count: 119,
     children: [
-      { name: "All Products", href: "/products/list" },
+      { name: "All Products", href: "/products-list" },
       { name: "Create Product", href: "/products/choose-type" },
     ],
   },
+  { name: "Categories", href: "/categories", icon: FolderTree },
   { name: "Transaction", href: "/transactions", icon: Receipt, count: 441 },
   { name: "Payouts", href: "/payouts", icon: Wallet },
   { name: "Customers", href: "/customers", icon: Users },
-  { name: "Sales Report", href: "/sales", icon: BarChart3 },
+  { name: "Sales Report", href: "/sales-report", icon: BarChart3 },
 ]
 
 const tools = [
@@ -77,14 +78,50 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
   const [settingsOpen, setSettingsOpen] = useState(false)
   const pathname = usePathname()
 
+  const [userData, setUserData] = useState<{
+    full_name: string
+    business_name: string
+    role: string
+    email: string
+    profile_image?: string
+  } | null>(null)
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    const fetchUserData = async () => {
+      try {
+        const response = await fetch("/api/users/me")
+        const result = await response.json()
+
+        if (result.ok && result.data?.user) {
+          setUserData(result.data.user)
+          console.log("[v0] User data loaded:", result.data.user.full_name)
+        }
+      } catch (error) {
+        console.error("[v0] Error fetching user data:", error)
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    fetchUserData()
+  }, [])
+
+  const getUserInitials = () => {
+    if (!userData?.full_name) return "U"
+    const names = userData.full_name.split(" ")
+    if (names.length >= 2) {
+      return `${names[0][0]}${names[1][0]}`.toUpperCase()
+    }
+    return userData.full_name.substring(0, 2).toUpperCase()
+  }
+
   return (
     <div className="min-h-screen bg-background">
-      {/* Mobile Sidebar Overlay */}
       {sidebarOpen && (
         <div className="fixed inset-0 bg-black/50 z-40 lg:hidden" onClick={() => setSidebarOpen(false)} />
       )}
 
-      {/* Sidebar */}
       <aside
         className={cn(
           "fixed top-0 left-0 z-50 h-screen w-64 bg-sidebar border-r border-sidebar-border transition-transform duration-300 ease-in-out lg:translate-x-0",
@@ -92,7 +129,6 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
         )}
       >
         <div className="flex flex-col h-full">
-          {/* Logo & Close Button */}
           <div className="flex items-center justify-between p-6 border-b border-sidebar-border">
             <Logo />
             <Button variant="ghost" size="icon" className="lg:hidden" onClick={() => setSidebarOpen(false)}>
@@ -100,7 +136,6 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
             </Button>
           </div>
 
-          {/* Store Selector */}
           <div className="p-4 border-b border-sidebar-border">
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
@@ -111,7 +146,9 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
                     </div>
                     <div className="text-left">
                       <p className="text-xs text-muted-foreground">Company</p>
-                      <p className="text-sm font-semibold">Kanky Store</p>
+                      <p className="text-sm font-semibold">
+                        {loading ? "Loading..." : userData?.business_name || "My Store"}
+                      </p>
                     </div>
                   </div>
                   <ChevronDown className="h-4 w-4 text-muted-foreground" />
@@ -120,14 +157,11 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
               <DropdownMenuContent align="start" className="w-56">
                 <DropdownMenuLabel>Switch Store</DropdownMenuLabel>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem>Kanky Store</DropdownMenuItem>
-                <DropdownMenuItem>Fashion Hub</DropdownMenuItem>
-                <DropdownMenuItem>Tech Store</DropdownMenuItem>
+                <DropdownMenuItem>{userData?.business_name || "My Store"}</DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
           </div>
 
-          {/* Navigation */}
           <nav className="flex-1 overflow-y-auto p-4 space-y-1">
             <div className="space-y-1">
               <p className="px-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">General</p>
@@ -274,19 +308,18 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
             </div>
           </nav>
 
-          {/* User Profile */}
           <div className="p-4 border-t border-sidebar-border">
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="ghost" className="w-full justify-between hover:bg-sidebar-accent">
                   <div className="flex items-center gap-3">
-                    <Avatar className="h-9 w-9">
-                      <AvatarImage src="/placeholder.svg?height=36&width=36" />
-                      <AvatarFallback>GH</AvatarFallback>
+                    <Avatar className="h-9 w-9 ring-2 ring-primary/10">
+                      <AvatarImage src={userData?.profile_image || "/placeholder.svg?height=36&width=36"} />
+                      <AvatarFallback>{getUserInitials()}</AvatarFallback>
                     </Avatar>
                     <div className="text-left">
-                      <p className="text-sm font-semibold">Guy Hawkins</p>
-                      <p className="text-xs text-muted-foreground">Admin</p>
+                      <p className="text-sm font-semibold">{loading ? "Loading..." : userData?.full_name || "User"}</p>
+                      <p className="text-xs text-muted-foreground">{loading ? "..." : userData?.role || "User"}</p>
                     </div>
                   </div>
                   <ChevronDown className="h-4 w-4 text-muted-foreground" />
@@ -305,16 +338,13 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
         </div>
       </aside>
 
-      {/* Main Content */}
       <div className="lg:pl-64">
-        {/* Top Bar */}
         <header className="sticky top-0 z-30 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 border-b border-border">
           <div className="flex items-center gap-4 px-6 py-4">
             <Button variant="ghost" size="icon" className="lg:hidden" onClick={() => setSidebarOpen(true)}>
               <Menu className="h-5 w-5" />
             </Button>
 
-            {/* Search */}
             <div className="flex-1 max-w-md">
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -322,7 +352,6 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
               </div>
             </div>
 
-            {/* Right Actions */}
             <div className="flex items-center gap-2">
               <Button variant="ghost" size="icon" className="relative">
                 <ShoppingCart className="h-5 w-5" />
@@ -338,19 +367,18 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
               </Button>
               <div className="hidden md:flex items-center gap-3 ml-2">
                 <Avatar className="h-9 w-9 ring-2 ring-primary/10">
-                  <AvatarImage src="/placeholder.svg?height=36&width=36" />
-                  <AvatarFallback>GH</AvatarFallback>
+                  <AvatarImage src={userData?.profile_image || "/placeholder.svg?height=36&width=36"} />
+                  <AvatarFallback>{getUserInitials()}</AvatarFallback>
                 </Avatar>
                 <div>
-                  <p className="text-sm font-semibold">Guy Hawkins</p>
-                  <p className="text-xs text-muted-foreground">Admin</p>
+                  <p className="text-sm font-semibold">{loading ? "Loading..." : userData?.full_name || "User"}</p>
+                  <p className="text-xs text-muted-foreground">{loading ? "..." : userData?.role || "User"}</p>
                 </div>
               </div>
             </div>
           </div>
         </header>
 
-        {/* Page Content */}
         <main className="p-6 lg:p-8">{children}</main>
       </div>
     </div>

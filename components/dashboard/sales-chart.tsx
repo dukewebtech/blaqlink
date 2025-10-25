@@ -4,22 +4,49 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { ArrowUpRight } from "lucide-react"
 import { Area, AreaChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts"
+import { useEffect, useState } from "react"
 
-const data = [
-  { month: "Jan", avgSale: 211411223, avgItem: 339091888 },
-  { month: "Feb", avgSale: 180000000, avgItem: 280000000 },
-  { month: "Mar", avgSale: 220000000, avgItem: 350000000 },
-  { month: "Apr", avgSale: 195000000, avgItem: 310000000 },
-  { month: "Jun", avgSale: 240000000, avgItem: 380000000 },
-  { month: "Jul", avgSale: 211411223, avgItem: 339091888 },
-  { month: "Aug", avgSale: 190000000, avgItem: 300000000 },
-  { month: "Sep", avgSale: 230000000, avgItem: 360000000 },
-  { month: "Oct", avgSale: 250000000, avgItem: 390000000 },
-  { month: "Nov", avgSale: 270000000, avgItem: 420000000 },
-  { month: "Des", avgSale: 290000000, avgItem: 450000000 },
-]
+interface ChartData {
+  month: string
+  avgSale: number
+  avgItem: number
+}
+
+interface SalesData {
+  chartData: ChartData[]
+  totalRevenue: number
+  totalItems: number
+  avgOrderValue: number
+}
 
 export function SalesChart() {
+  const [salesData, setSalesData] = useState<SalesData | null>(null)
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    async function fetchSalesData() {
+      try {
+        const response = await fetch("/api/dashboard/sales-chart")
+        const data = await response.json()
+        setSalesData(data)
+      } catch (error) {
+        console.error("[v0] Failed to fetch sales data:", error)
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    fetchSalesData()
+  }, [])
+
+  const formatCurrency = (amount: number) => {
+    return new Intl.NumberFormat("en-NG", {
+      style: "currency",
+      currency: "NGN",
+      minimumFractionDigits: 0,
+    }).format(amount)
+  }
+
   return (
     <Card className="animate-in fade-in slide-in-from-bottom-4 duration-700 delay-400">
       <CardHeader>
@@ -44,57 +71,63 @@ export function SalesChart() {
         </div>
       </CardHeader>
       <CardContent>
-        <div className="h-[300px] w-full">
-          <ResponsiveContainer width="100%" height="100%">
-            <AreaChart data={data}>
-              <defs>
-                <linearGradient id="avgSale" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="hsl(var(--chart-3))" stopOpacity={0.3} />
-                  <stop offset="95%" stopColor="hsl(var(--chart-3))" stopOpacity={0} />
-                </linearGradient>
-                <linearGradient id="avgItem" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="hsl(var(--chart-1))" stopOpacity={0.3} />
-                  <stop offset="95%" stopColor="hsl(var(--chart-1))" stopOpacity={0} />
-                </linearGradient>
-              </defs>
-              <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
-              <XAxis dataKey="month" className="text-xs" tick={{ fill: "hsl(var(--muted-foreground))" }} />
-              <YAxis className="text-xs" tick={{ fill: "hsl(var(--muted-foreground))" }} />
-              <Tooltip
-                contentStyle={{
-                  backgroundColor: "hsl(var(--popover))",
-                  border: "1px solid hsl(var(--border))",
-                  borderRadius: "8px",
-                }}
-              />
-              <Area
-                type="monotone"
-                dataKey="avgSale"
-                stroke="hsl(var(--chart-3))"
-                strokeWidth={2}
-                fill="url(#avgSale)"
-              />
-              <Area
-                type="monotone"
-                dataKey="avgItem"
-                stroke="hsl(var(--chart-1))"
-                strokeWidth={2}
-                fill="url(#avgItem)"
-                strokeDasharray="5 5"
-              />
-            </AreaChart>
-          </ResponsiveContainer>
-        </div>
-        <div className="flex items-center justify-center gap-8 mt-4">
-          <div className="text-center">
-            <p className="text-sm text-muted-foreground mb-1">Average item per sale</p>
-            <p className="text-2xl font-bold">$211,411,223</p>
-          </div>
-          <div className="text-center">
-            <p className="text-sm text-muted-foreground mb-1">Average year value</p>
-            <p className="text-2xl font-bold text-chart-3">$339,091,888</p>
-          </div>
-        </div>
+        {loading ? (
+          <div className="h-[300px] flex items-center justify-center text-muted-foreground">Loading sales data...</div>
+        ) : (
+          <>
+            <div className="h-[300px] w-full">
+              <ResponsiveContainer width="100%" height="100%">
+                <AreaChart data={salesData?.chartData || []}>
+                  <defs>
+                    <linearGradient id="avgSale" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="hsl(var(--chart-3))" stopOpacity={0.3} />
+                      <stop offset="95%" stopColor="hsl(var(--chart-3))" stopOpacity={0} />
+                    </linearGradient>
+                    <linearGradient id="avgItem" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="hsl(var(--chart-1))" stopOpacity={0.3} />
+                      <stop offset="95%" stopColor="hsl(var(--chart-1))" stopOpacity={0} />
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+                  <XAxis dataKey="month" className="text-xs" tick={{ fill: "hsl(var(--muted-foreground))" }} />
+                  <YAxis className="text-xs" tick={{ fill: "hsl(var(--muted-foreground))" }} />
+                  <Tooltip
+                    contentStyle={{
+                      backgroundColor: "hsl(var(--popover))",
+                      border: "1px solid hsl(var(--border))",
+                      borderRadius: "8px",
+                    }}
+                  />
+                  <Area
+                    type="monotone"
+                    dataKey="avgSale"
+                    stroke="hsl(var(--chart-3))"
+                    strokeWidth={2}
+                    fill="url(#avgSale)"
+                  />
+                  <Area
+                    type="monotone"
+                    dataKey="avgItem"
+                    stroke="hsl(var(--chart-1))"
+                    strokeWidth={2}
+                    fill="url(#avgItem)"
+                    strokeDasharray="5 5"
+                  />
+                </AreaChart>
+              </ResponsiveContainer>
+            </div>
+            <div className="flex items-center justify-center gap-8 mt-4">
+              <div className="text-center">
+                <p className="text-sm text-muted-foreground mb-1">Average order value</p>
+                <p className="text-2xl font-bold">{formatCurrency(salesData?.avgOrderValue || 0)}</p>
+              </div>
+              <div className="text-center">
+                <p className="text-sm text-muted-foreground mb-1">Total revenue this year</p>
+                <p className="text-2xl font-bold text-chart-3">{formatCurrency(salesData?.totalRevenue || 0)}</p>
+              </div>
+            </div>
+          </>
+        )}
       </CardContent>
     </Card>
   )

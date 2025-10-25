@@ -1,7 +1,7 @@
 "use client"
 
 import type React from "react"
-import { useState, useRef } from "react"
+import { useState, useRef, useEffect } from "react"
 import { DashboardLayout } from "@/components/dashboard/dashboard-layout"
 import { Card } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -10,11 +10,20 @@ import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Switch } from "@/components/ui/switch"
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog"
 import { ImagePlus, ArrowLeft, Plus, Trash2, Loader2 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { useRouter, useSearchParams } from "next/navigation"
 
 type ProductType = "digital" | "event" | "physical" | "appointment"
+
+interface Category {
+  id: string
+  name: string
+  product_type: string
+  description?: string
+  image_url?: string
+}
 
 export default function CreateProductPage() {
   const router = useRouter()
@@ -34,6 +43,17 @@ export default function CreateProductPage() {
   const [uploadError, setUploadError] = useState<string | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [currentUploadIndex, setCurrentUploadIndex] = useState<number>(0)
+
+  const [categories, setCategories] = useState<Category[]>([])
+  const [loadingCategories, setLoadingCategories] = useState(true)
+  const [showCreateCategoryDialog, setShowCreateCategoryDialog] = useState(false)
+  const [newCategoryName, setNewCategoryName] = useState("")
+  const [newCategoryDescription, setNewCategoryDescription] = useState("")
+  const [newCategoryImage, setNewCategoryImage] = useState("")
+  const [uploadingCategoryImage, setUploadingCategoryImage] = useState(false)
+  const categoryImageInputRef = useRef<HTMLInputElement>(null)
+  const [creatingCategory, setCreatingCategory] = useState(false)
+  const [categoryError, setCategoryError] = useState<string | null>(null)
 
   const [formData, setFormData] = useState({
     title: "",
@@ -56,6 +76,133 @@ export default function CreateProductPage() {
     downloadLimit: "",
   })
 
+  const fetchCategories = async () => {
+    console.log("[v0] Fetching categories for product type:", productType)
+    setLoadingCategories(true)
+    setCategoryError(null)
+
+    try {
+      const response = await fetch(`/api/categories?type=${productType}`)
+      const data = await response.json()
+
+      console.log("[v0] Categories API response:", { ok: response.ok, data })
+
+      if (response.ok) {
+        setCategories(data.categories || [])
+        console.log("[v0] Categories loaded:", data.categories?.length || 0)
+
+        // User can manually click "New" button to create a category
+      } else {
+        console.error("[v0] Error fetching categories:", data.error)
+        setCategoryError(data.error || "Failed to load categories")
+      }
+    } catch (error) {
+      console.error("[v0] Error fetching categories:", error)
+      setCategoryError("Failed to load categories. Please try again.")
+      setCategories([])
+    } finally {
+      setLoadingCategories(false)
+      console.log("[v0] Categories loading complete")
+    }
+  }
+
+  useEffect(() => {
+    console.log("[v0] Product type changed to:", productType)
+    fetchCategories()
+  }, [productType])
+
+  const handleCategoryImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+
+    // Validate file type
+    const validTypes = ["image/jpeg", "image/jpg", "image/png", "image/svg+xml", "image/webp"]
+    if (!validTypes.includes(file.type)) {
+      alert("Please upload a valid image file (JPG, PNG, SVG, or WebP)")
+      return
+    }
+
+    // Validate file size (4MB max)
+    if (file.size > 4 * 1024 * 1024) {
+      alert("Image size must be less than 4MB")
+      return
+    }
+
+    setUploadingCategoryImage(true)
+
+    try {
+      const formData = new FormData()
+      formData.append("file", file)
+
+      const response = await fetch("/api/upload", {
+        method: "POST",
+        body: formData,
+      })
+
+      const result = await response.json()
+
+      if (!response.ok) {
+        throw new Error(result.error || "Failed to upload image")
+      }
+
+      setNewCategoryImage(result.url)
+      console.log("[v0] Category image uploaded successfully:", result.url)
+    } catch (err: any) {
+      console.error("[v0] Category image upload error:", err)
+      alert(err.message || "Failed to upload image")
+    } finally {
+      setUploadingCategoryImage(false)
+      if (categoryImageInputRef.current) {
+        categoryImageInputRef.current.value = ""
+      }
+    }
+  }
+
+  const handleCreateCategory = async () => {
+    if (!newCategoryName.trim()) return
+
+    console.log("[v0] Creating category:", newCategoryName)
+    setCreatingCategory(true)
+
+    try {
+      const response = await fetch("/api/categories", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: newCategoryName,
+          product_type: productType,
+          description: newCategoryDescription,
+          image_url: newCategoryImage || null,
+          status: "active",
+        }),
+      })
+
+      const data = await response.json()
+      console.log("[v0] Create category response:", { ok: response.ok, data })
+
+      if (response.ok) {
+        // Add new category to list
+        setCategories([...categories, data.category])
+        // Select the newly created category
+        handleInputChange("category", data.category.id)
+        // Close dialog and reset form
+        setShowCreateCategoryDialog(false)
+        setNewCategoryName("")
+        setNewCategoryDescription("")
+        setNewCategoryImage("")
+        console.log("[v0] Category created successfully:", data.category.id)
+      } else {
+        console.error("[v0] Error creating category:", data.error)
+        alert("Failed to create category: " + data.error)
+      }
+    } catch (error) {
+      console.error("[v0] Error creating category:", error)
+      alert("Failed to create category")
+    } finally {
+      setCreatingCategory(false)
+    }
+  }
+
   const handleInputChange = (field: string, value: string) => {
     setFormData((prev) => ({ ...prev, [field]: value }))
   }
@@ -67,6 +214,7 @@ export default function CreateProductPage() {
 
     try {
       console.log("[v0] Submitting product creation form...")
+      console.log("[v0] Images to be saved:", images.filter(Boolean))
 
       // Prepare product data based on type
       const productData: any = {
@@ -119,6 +267,7 @@ export default function CreateProductPage() {
       }
 
       console.log("[v0] Product created successfully:", result.product)
+      console.log("[v0] Product images saved:", result.product.images)
       router.push("/products/success")
     } catch (err: any) {
       console.error("[v0] Error creating product:", err)
@@ -265,6 +414,127 @@ export default function CreateProductPage() {
           </div>
         )}
 
+        {categoryError && (
+          <div className="p-4 bg-destructive/10 border border-destructive/20 rounded-lg text-destructive text-sm animate-in fade-in slide-in-from-top-2">
+            {categoryError}
+            <Button
+              variant="link"
+              size="sm"
+              onClick={fetchCategories}
+              className="ml-2 h-auto p-0 text-destructive underline"
+            >
+              Retry
+            </Button>
+          </div>
+        )}
+
+        <Dialog open={showCreateCategoryDialog} onOpenChange={setShowCreateCategoryDialog}>
+          <DialogContent className="max-w-md">
+            <DialogHeader>
+              <DialogTitle>Create New Category</DialogTitle>
+              <DialogDescription>
+                Create a category for your {getProductTypeTitle().toLowerCase()} to organize your products better.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4 py-4">
+              <div className="space-y-2">
+                <Label htmlFor="categoryName">Category Name</Label>
+                <Input
+                  id="categoryName"
+                  placeholder="Enter category name"
+                  value={newCategoryName}
+                  onChange={(e) => setNewCategoryName(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" && !creatingCategory) {
+                      handleCreateCategory()
+                    }
+                  }}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="categoryDescription">Description (Optional)</Label>
+                <Textarea
+                  id="categoryDescription"
+                  placeholder="Enter category description"
+                  value={newCategoryDescription}
+                  onChange={(e) => setNewCategoryDescription(e.target.value)}
+                  rows={3}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="categoryImage">Category Image (Optional)</Label>
+                <input
+                  ref={categoryImageInputRef}
+                  type="file"
+                  accept="image/jpeg,image/jpg,image/png,image/svg+xml,image/webp"
+                  onChange={handleCategoryImageUpload}
+                  className="hidden"
+                />
+                {newCategoryImage ? (
+                  <div className="relative group">
+                    <img
+                      src={newCategoryImage || "/placeholder.svg"}
+                      alt="Category preview"
+                      className="w-full h-32 object-cover rounded-lg border"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setNewCategoryImage("")}
+                      className="absolute top-2 right-2 p-1.5 bg-destructive text-destructive-foreground rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-200 hover:scale-110"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </button>
+                  </div>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => categoryImageInputRef.current?.click()}
+                    disabled={uploadingCategoryImage}
+                    className="w-full h-32 border-2 border-dashed rounded-lg flex flex-col items-center justify-center gap-2 transition-all duration-300 hover:border-primary hover:bg-primary/5 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {uploadingCategoryImage ? (
+                      <>
+                        <Loader2 className="h-6 w-6 text-primary animate-spin" />
+                        <span className="text-xs text-muted-foreground">Uploading...</span>
+                      </>
+                    ) : (
+                      <>
+                        <ImagePlus className="h-6 w-6 text-muted-foreground" />
+                        <span className="text-xs text-muted-foreground">Click to upload image</span>
+                        <span className="text-xs text-muted-foreground">SVG, PNG, JPG (Max 4MB)</span>
+                      </>
+                    )}
+                  </button>
+                )}
+              </div>
+            </div>
+            <div className="flex gap-2 justify-end">
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setShowCreateCategoryDialog(false)
+                  setNewCategoryName("")
+                  setNewCategoryDescription("")
+                  setNewCategoryImage("")
+                }}
+                disabled={creatingCategory}
+              >
+                Cancel
+              </Button>
+              <Button onClick={handleCreateCategory} disabled={creatingCategory || !newCategoryName.trim()}>
+                {creatingCategory ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    Creating...
+                  </>
+                ) : (
+                  "Create Category"
+                )}
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
+
         <form onSubmit={handleSubmit} className="grid lg:grid-cols-3 gap-8" key={productType}>
           {/* Product Information */}
           <Card className="lg:col-span-2 p-8 space-y-6 animate-in fade-in slide-in-from-left-4 duration-700">
@@ -332,16 +602,46 @@ export default function CreateProductPage() {
                     </div>
 
                     <div className="space-y-2">
-                      <Label htmlFor="category">Category</Label>
-                      <Select value={formData.category} onValueChange={(value) => handleInputChange("category", value)}>
+                      <div className="flex items-center justify-between">
+                        <Label htmlFor="category">Category</Label>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => setShowCreateCategoryDialog(true)}
+                          className="h-auto p-1 text-xs"
+                        >
+                          <Plus className="h-3 w-3 mr-1" />
+                          New
+                        </Button>
+                      </div>
+                      <Select
+                        value={formData.category}
+                        onValueChange={(value) => handleInputChange("category", value)}
+                        disabled={loadingCategories}
+                      >
                         <SelectTrigger className="transition-all duration-200 focus:scale-[1.01]">
-                          <SelectValue placeholder="Select category" />
+                          <SelectValue placeholder={loadingCategories ? "Loading..." : "Select category"} />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="ebooks">E-books</SelectItem>
-                          <SelectItem value="courses">Courses</SelectItem>
-                          <SelectItem value="templates">Templates</SelectItem>
-                          <SelectItem value="software">Software</SelectItem>
+                          {categories.length === 0 ? (
+                            <div className="p-2 text-sm text-muted-foreground text-center">
+                              No categories yet.{" "}
+                              <button
+                                type="button"
+                                onClick={() => setShowCreateCategoryDialog(true)}
+                                className="text-primary underline"
+                              >
+                                Create one
+                              </button>
+                            </div>
+                          ) : (
+                            categories.map((category) => (
+                              <SelectItem key={category.id} value={category.id}>
+                                {category.name}
+                              </SelectItem>
+                            ))
+                          )}
                         </SelectContent>
                       </Select>
                     </div>
@@ -532,16 +832,46 @@ export default function CreateProductPage() {
 
                   <div className="grid md:grid-cols-2 gap-4">
                     <div className="space-y-2">
-                      <Label htmlFor="category">Product Category</Label>
-                      <Select value={formData.category} onValueChange={(value) => handleInputChange("category", value)}>
+                      <div className="flex items-center justify-between">
+                        <Label htmlFor="category">Product Category</Label>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => setShowCreateCategoryDialog(true)}
+                          className="h-auto p-1 text-xs"
+                        >
+                          <Plus className="h-3 w-3 mr-1" />
+                          New
+                        </Button>
+                      </div>
+                      <Select
+                        value={formData.category}
+                        onValueChange={(value) => handleInputChange("category", value)}
+                        disabled={loadingCategories}
+                      >
                         <SelectTrigger className="transition-all duration-200 focus:scale-[1.01]">
-                          <SelectValue placeholder="Select product category" />
+                          <SelectValue placeholder={loadingCategories ? "Loading..." : "Select product category"} />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="sneakers">Sneakers</SelectItem>
-                          <SelectItem value="jacket">Jacket</SelectItem>
-                          <SelectItem value="tshirt">T-Shirt</SelectItem>
-                          <SelectItem value="bag">Bag</SelectItem>
+                          {categories.length === 0 ? (
+                            <div className="p-2 text-sm text-muted-foreground text-center">
+                              No categories yet.{" "}
+                              <button
+                                type="button"
+                                onClick={() => setShowCreateCategoryDialog(true)}
+                                className="text-primary underline"
+                              >
+                                Create one
+                              </button>
+                            </div>
+                          ) : (
+                            categories.map((category) => (
+                              <SelectItem key={category.id} value={category.id}>
+                                {category.name}
+                              </SelectItem>
+                            ))
+                          )}
                         </SelectContent>
                       </Select>
                     </div>

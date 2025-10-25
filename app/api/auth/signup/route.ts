@@ -33,6 +33,8 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: error.message }, { status: 400 })
     }
 
+    // No need to manually insert into public.users anymore
+
     return NextResponse.json(
       {
         message: "Signup successful. Please check your email to verify your account.",

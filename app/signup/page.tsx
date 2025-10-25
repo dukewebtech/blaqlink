@@ -75,11 +75,20 @@ export default function SignupPage() {
 
       if (signUpError) throw signUpError
 
-      setSuccess(true)
-
-      setTimeout(() => {
-        router.push("/auth/signup-success")
-      }, 2000)
+      if (data.session) {
+        console.log("[v0] Session created, redirecting to dashboard...")
+        setSuccess(true)
+        setTimeout(() => {
+          router.push("/dashboard")
+        }, 1500)
+      } else {
+        // Email verification required
+        console.log("[v0] Email verification required, redirecting to success page...")
+        setSuccess(true)
+        setTimeout(() => {
+          router.push("/auth/signup-success")
+        }, 2000)
+      }
     } catch (error: unknown) {
       console.error("[v0] Signup error:", error)
       if (error instanceof Error) {
@@ -101,7 +110,7 @@ export default function SignupPage() {
   if (success) {
     return (
       <div className="min-h-screen flex items-center justify-center p-8 bg-background">
-        <div className="w-full max-w-md space-y-6 text-center animate-in fade-in zoom-in duration-500">
+        <div className="w-full max-w-md space-y-6 text-center animate-in fade-in zoom-in-95 duration-500">
           <div className="mx-auto w-16 h-16 bg-success/10 rounded-full flex items-center justify-center">
             <CheckCircle2 className="w-8 h-8 text-success" />
           </div>
@@ -190,7 +199,7 @@ export default function SignupPage() {
                   required
                 />
                 {isValidEmail && (
-                  <CheckCircle2 className="absolute right-3 top-1/2 -translate-y-1/2 h-5 w-5 text-success animate-in zoom-in duration-300" />
+                  <CheckCircle2 className="absolute right-3 top-1/2 -translate-y-1/2 h-5 w-5 text-success animate-in zoom-in-95 duration-300" />
                 )}
               </div>
             </div>

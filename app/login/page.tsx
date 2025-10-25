@@ -7,7 +7,6 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import Link from "next/link"
-import { useRouter } from "next/navigation"
 import { useState } from "react"
 import { Eye, EyeOff } from "lucide-react"
 
@@ -17,24 +16,41 @@ export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(false)
-  const router = useRouter()
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()
-    const supabase = createClient()
     setIsLoading(true)
     setError(null)
 
     try {
-      const { error } = await supabase.auth.signInWithPassword({
+      console.log("[v0] Attempting login...")
+      const supabase = createClient()
+
+      console.log("[v0] Supabase client created successfully")
+      console.log("[v0] Calling signInWithPassword...")
+
+      const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password,
       })
-      if (error) throw error
-      router.push("/dashboard")
-      router.refresh()
+
+      if (error) {
+        console.log("[v0] Login error:", error.message)
+        console.log("[v0] Error details:", error)
+        throw error
+      }
+
+      console.log("[v0] Login successful, user:", data.user?.email)
+      console.log("[v0] Redirecting to dashboard...")
+
+      window.location.href = "/dashboard"
     } catch (error: unknown) {
-      setError(error instanceof Error ? error.message : "An error occurred")
+      console.error("[v0] Login failed:", error)
+      if (error instanceof Error && error.message === "Failed to fetch") {
+        setError("Unable to connect to authentication service. Please check your internet connection and try again.")
+      } else {
+        setError(error instanceof Error ? error.message : "An error occurred during login")
+      }
     } finally {
       setIsLoading(false)
     }

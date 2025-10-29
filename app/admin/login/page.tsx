@@ -1,7 +1,6 @@
 "use client"
 
 import type React from "react"
-import { createClient } from "@/lib/supabase/client"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -22,48 +21,27 @@ export default function AdminLoginPage() {
     setError(null)
 
     try {
-      const supabase = createClient()
-
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email,
-        password,
+      const response = await fetch("/api/auth/admin-login", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ email, password }),
       })
 
-      if (error) {
-        setError(error.message)
-        setIsLoading(false)
-        return
-      }
+      const data = await response.json()
 
-      // Check if user is admin
-      const profileResponse = await fetch("/api/users/me")
-      const profileData = await profileResponse.json()
-
-      if (!profileResponse.ok || !profileData.data?.user) {
-        setError("Unable to fetch user profile")
-        setIsLoading(false)
-        return
-      }
-
-      const user = profileData.data.user
-
-      // Verify admin access
-      if (!user.is_admin && user.role !== "admin") {
-        setError("Access denied. Admin privileges required.")
-        await supabase.auth.signOut()
+      if (!response.ok) {
+        setError(data.error || "Login failed")
         setIsLoading(false)
         return
       }
 
       // Redirect to admin dashboard
-      window.location.href = "/admin/dashboard"
+      window.location.href = "/admin"
     } catch (error: unknown) {
       console.error("[v0] Admin login failed:", error)
-      if (error instanceof Error && error.message === "Failed to fetch") {
-        setError("Unable to connect to authentication service. Please check your internet connection and try again.")
-      } else {
-        setError(error instanceof Error ? error.message : "An error occurred during login")
-      }
+      setError(error instanceof Error ? error.message : "An error occurred during login")
     } finally {
       setIsLoading(false)
     }

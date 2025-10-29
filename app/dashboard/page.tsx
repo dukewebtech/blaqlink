@@ -3,7 +3,7 @@ import { DashboardLayout } from "@/components/dashboard/dashboard-layout"
 import { StatsCard } from "@/components/dashboard/stats-card"
 import { SalesChart } from "@/components/dashboard/sales-chart"
 import { RecentOrders } from "@/components/dashboard/recent-orders"
-import { TrendingUp, Users, ShoppingCart, Package } from "lucide-react"
+import { TrendingUp, Users, ShoppingCart, Package, Copy, Check } from "lucide-react"
 import { useEffect, useState } from "react"
 import { Button } from "@/components/ui/button"
 
@@ -20,6 +20,8 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [userStoreId, setUserStoreId] = useState<string | null>(null)
+  const [copied, setCopied] = useState(false)
+  const [storeUrl, setStoreUrl] = useState<string>("")
 
   useEffect(() => {
     async function fetchStats() {
@@ -48,6 +50,9 @@ export default function DashboardPage() {
           const userId = result.data?.user?.id || result.user?.id || result.id
           console.log("[v0] Dashboard - User store ID:", userId)
           setUserStoreId(userId)
+          if (typeof window !== "undefined") {
+            setStoreUrl(`${window.location.origin}/store/${userId}`)
+          }
         }
       } catch (error) {
         console.error("[v0] Failed to fetch user profile:", error)
@@ -57,6 +62,16 @@ export default function DashboardPage() {
     fetchStats()
     fetchUserProfile()
   }, [])
+
+  const copyToClipboard = async () => {
+    try {
+      await navigator.clipboard.writeText(storeUrl)
+      setCopied(true)
+      setTimeout(() => setCopied(false), 2000)
+    } catch (error) {
+      console.error("[v0] Failed to copy to clipboard:", error)
+    }
+  }
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat("en-NG", {
@@ -88,25 +103,21 @@ export default function DashboardPage() {
             <h1 className="text-3xl font-bold tracking-tight">Dashboard</h1>
             <p className="text-muted-foreground mt-1">Dashboard</p>
           </div>
-          {userStoreId && (
-            <Button onClick={() => window.open(`/store/${userStoreId}`, "_blank")} variant="outline" className="gap-2">
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                width="16"
-                height="16"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
+          {userStoreId && storeUrl && (
+            <div className="flex items-center gap-2">
+              <a
+                href={storeUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-sm text-primary hover:underline font-medium"
               >
-                <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
-                <polyline points="15 3 21 3 21 9" />
-                <line x1="10" x2="21" y1="14" y2="3" />
-              </svg>
-              View Storefront
-            </Button>
+                {storeUrl}
+              </a>
+              <Button onClick={copyToClipboard} variant="outline" size="sm" className="gap-2 bg-transparent">
+                {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+                {copied ? "Copied!" : "Copy"}
+              </Button>
+            </div>
           )}
         </div>
 

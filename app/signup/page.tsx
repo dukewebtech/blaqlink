@@ -11,7 +11,6 @@ import { Label } from "@/components/ui/label"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Eye, EyeOff, CheckCircle2 } from "lucide-react"
 import { Logo } from "@/components/logo"
-import { createClient } from "@/lib/supabase/client"
 
 export default function SignupPage() {
   const [showPassword, setShowPassword] = useState(false)
@@ -56,34 +55,33 @@ export default function SignupPage() {
 
     try {
       console.log("[v0] Starting signup process...")
-      const supabase = createClient()
-      console.log("[v0] Supabase client created")
 
-      const { data, error: signUpError } = await supabase.auth.signUp({
-        email,
-        password,
-        options: {
-          emailRedirectTo: process.env.NEXT_PUBLIC_DEV_SUPABASE_REDIRECT_URL || `${window.location.origin}/dashboard`,
-          data: {
-            full_name: fullName,
-            role: "vendor",
-          },
+      const response = await fetch("/api/auth/signup", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
         },
+        body: JSON.stringify({
+          email,
+          password,
+          fullName,
+          role: "vendor",
+        }),
       })
 
-      console.log("[v0] Signup response:", { data, error: signUpError })
+      const data = await response.json()
+      console.log("[v0] Signup response:", data)
 
-      if (signUpError) throw signUpError
-
-      if (data.user) {
-        console.log("[v0] User created successfully, showing success message...")
-        setSuccess(true)
-        setTimeout(() => {
-          router.push("/settings/account?complete=true")
-        }, 1500)
-      } else {
-        throw new Error("Failed to create user account")
+      if (!response.ok) {
+        throw new Error(data.error || "Failed to create account")
       }
+
+      console.log("[v0] User created successfully, redirecting to login...")
+      setSuccess(true)
+
+      setTimeout(() => {
+        router.push("/login?signup=success")
+      }, 1500)
     } catch (error: unknown) {
       console.error("[v0] Signup error:", error)
       if (error instanceof Error) {
@@ -113,7 +111,7 @@ export default function SignupPage() {
           </div>
           <div className="space-y-2">
             <h2 className="text-2xl font-bold">Account Created!</h2>
-            <p className="text-muted-foreground">You can now complete your profile.</p>
+            <p className="text-muted-foreground">Redirecting you to login page...</p>
           </div>
         </div>
       </div>
@@ -143,7 +141,7 @@ export default function SignupPage() {
                 />
                 <path
                   fill="currentColor"
-                  d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
+                  d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"
                 />
                 <path
                   fill="currentColor"

@@ -1,14 +1,19 @@
 import { NextResponse } from "next/server"
-import { createClient } from "@/lib/supabase/server"
+import { createPublicClient } from "@/lib/supabase/public"
 
 export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url)
+    const storeId = searchParams.get("storeId")
     const type = searchParams.get("type")
     const category = searchParams.get("category")
     const search = searchParams.get("search")
 
-    const supabase = await createClient()
+    const supabase = createPublicClient()
+
+    if (!storeId) {
+      return NextResponse.json({ error: "Store ID is required" }, { status: 400 })
+    }
 
     let query = supabase
       .from("products")
@@ -21,6 +26,8 @@ export async function GET(request: Request) {
           image_url
         )
       `)
+      .eq("user_id", storeId)
+      .eq("status", "published")
       .order("created_at", { ascending: false })
 
     if (type) {
@@ -42,7 +49,7 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: "Failed to fetch products" }, { status: 500 })
     }
 
-    console.log("[v0] Public products fetched:", products?.length || 0)
+    console.log("[v0] Public products fetched for store:", storeId, "count:", products?.length || 0)
     return NextResponse.json({ products: products || [] })
   } catch (error) {
     console.error("[v0] Error in public products API:", error)

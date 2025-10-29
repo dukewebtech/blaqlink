@@ -3,45 +3,28 @@ import { type NextRequest, NextResponse } from "next/server"
 
 export async function GET(request: NextRequest) {
   try {
-    console.log("[v0] GET /api/products - Starting request")
     const supabase = await createServerClient()
 
     // Get authenticated user
-    console.log("[v0] Attempting to get authenticated user...")
     const {
       data: { user },
       error: authError,
     } = await supabase.auth.getUser()
 
-    console.log("[v0] Auth result:", {
-      hasUser: !!user,
-      userId: user?.id,
-      authError: authError?.message,
-    })
-
-    if (authError) {
-      console.error("[v0] Authentication error:", authError)
-      return NextResponse.json(
-        {
-          error: "Authentication failed",
-          details: authError.message,
-        },
-        { status: 401 },
-      )
+    if (authError || !user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
-    if (!user) {
-      console.error("[v0] No user found in session")
-      return NextResponse.json(
-        {
-          error: "Unauthorized - Please log in again",
-          details: "No active session found",
-        },
-        { status: 401 },
-      )
-    }
+    const { data: userProfile, error: profileError } = await supabase
+      .from("users")
+      .select("id")
+      .eq("auth_id", user.id)
+      .single()
 
-    console.log("[v0] User authenticated successfully:", user.id)
+    if (profileError || !userProfile) {
+      console.error("[v0] Error fetching user profile:", profileError)
+      return NextResponse.json({ error: "User profile not found" }, { status: 404 })
+    }
 
     // Get query parameters
     const searchParams = request.nextUrl.searchParams
@@ -50,13 +33,11 @@ export async function GET(request: NextRequest) {
     const limit = Number.parseInt(searchParams.get("limit") || "50")
     const offset = Number.parseInt(searchParams.get("offset") || "0")
 
-    console.log("[v0] Query params:", { productType, status, limit, offset })
-
     // Build query
     let query = supabase
       .from("products")
-      .select("*")
-      .eq("user_id", user.id)
+      .select("*", { count: "exact" })
+      .eq("user_id", userProfile.id)
       .order("created_at", { ascending: false })
       .range(offset, offset + limit - 1)
 
@@ -68,25 +49,20 @@ export async function GET(request: NextRequest) {
       query = query.eq("status", status)
     }
 
-    console.log("[v0] Executing products query...")
-    const { data: products, error } = await query
+    const { data: products, error, count } = await query
 
     if (error) {
       console.error("[v0] Error fetching products:", error)
       return NextResponse.json({ error: error.message }, { status: 500 })
     }
 
-    console.log("[v0] Products fetched successfully:", products?.length || 0)
-    return NextResponse.json({ products, count: products?.length || 0 })
+    return NextResponse.json({
+      products: products || [],
+      count: count || 0,
+    })
   } catch (error) {
     console.error("[v0] Unexpected error in GET /api/products:", error)
-    return NextResponse.json(
-      {
-        error: "Internal server error",
-        details: error instanceof Error ? error.message : "Unknown error",
-      },
-      { status: 500 },
-    )
+    return NextResponse.json({ error: "Internal server error" }, { status: 500 })
   }
 }
 
@@ -102,6 +78,17 @@ export async function POST(request: NextRequest) {
 
     if (authError || !user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+    }
+
+    const { data: userProfile, error: profileError } = await supabase
+      .from("users")
+      .select("id")
+      .eq("auth_id", user.id)
+      .single()
+
+    if (profileError || !userProfile) {
+      console.error("[v0] Error fetching user profile:", profileError)
+      return NextResponse.json({ error: "User profile not found" }, { status: 404 })
     }
 
     const body = await request.json()
@@ -122,7 +109,7 @@ export async function POST(request: NextRequest) {
 
     // Prepare product data
     const productData = {
-      user_id: user.id,
+      user_id: userProfile.id,
       product_type: body.product_type,
       title: body.title,
       description: body.description || null,
@@ -169,12 +156,6 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ product }, { status: 201 })
   } catch (error) {
     console.error("[v0] Unexpected error in POST /api/products:", error)
-    return NextResponse.json(
-      {
-        error: "Internal server error",
-        details: error instanceof Error ? error.message : "Unknown error",
-      },
-      { status: 500 },
-    )
+    return NextResponse.json({ error: "Internal server error" }, { status: 500 })
   }
 }

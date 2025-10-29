@@ -49,18 +49,12 @@ export const cartStore = {
     },
     quantity = 1,
   ): void {
-    console.log("[v0] cartStore.addItem called:", { productId: product.id, title: product.title, quantity })
-
     const cart = this.getCart()
-    console.log("[v0] Current cart before adding:", { itemCount: cart.items.length, total: cart.total })
-
     const existingItem = cart.items.find((item) => item.product_id === product.id)
 
     if (existingItem) {
-      console.log("[v0] Product already in cart, updating quantity")
       existingItem.quantity += quantity
     } else {
-      console.log("[v0] Adding new product to cart")
       cart.items.push({
         id: crypto.randomUUID(),
         product_id: product.id,
@@ -73,10 +67,7 @@ export const cartStore = {
     }
 
     cart.total = cart.items.reduce((sum, item) => sum + item.price * item.quantity, 0)
-    console.log("[v0] Cart after adding:", { itemCount: cart.items.length, total: cart.total })
-
     this.saveCart(cart)
-    console.log("[v0] Cart saved to localStorage")
   },
 
   updateQuantity(itemId: string, quantity: number): void {

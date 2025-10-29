@@ -5,6 +5,21 @@ export async function GET() {
   try {
     const supabase = await createServerClient()
 
+    const {
+      data: { user },
+      error: authError,
+    } = await supabase.auth.getUser()
+
+    if (authError || !user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+    }
+
+    const { data: userProfile } = await supabase.from("users").select("id").eq("auth_id", user.id).single()
+
+    if (!userProfile) {
+      return NextResponse.json({ error: "User profile not found" }, { status: 404 })
+    }
+
     const { data: orders, error } = await supabase
       .from("orders")
       .select(
@@ -23,6 +38,7 @@ export async function GET() {
         )
       `,
       )
+      .eq("user_id", userProfile.id)
       .order("created_at", { ascending: false })
       .limit(5)
 
@@ -39,7 +55,8 @@ export async function GET() {
             .from("products")
             .select("images")
             .eq("id", firstItem.product_id)
-            .maybeSingle()
+            .eq("user_id", user.id)
+            .single()
 
           productImage = product?.images?.[0] || null
         }

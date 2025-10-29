@@ -23,11 +23,7 @@ export default function LoginPage() {
     setError(null)
 
     try {
-      console.log("[v0] Attempting login...")
       const supabase = createClient()
-
-      console.log("[v0] Supabase client created successfully")
-      console.log("[v0] Calling signInWithPassword...")
 
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
@@ -35,15 +31,21 @@ export default function LoginPage() {
       })
 
       if (error) {
-        console.log("[v0] Login error:", error.message)
-        console.log("[v0] Error details:", error)
-        throw error
+        setError(error.message)
+        setIsLoading(false)
+        return
       }
 
-      console.log("[v0] Login successful, user:", data.user?.email)
-      console.log("[v0] Redirecting to dashboard...")
+      const profileResponse = await fetch("/api/users/me")
+      const profileData = await profileResponse.json()
 
-      window.location.href = "/dashboard"
+      if (!profileResponse.ok || !profileData.data?.user) {
+        // No profile exists, redirect to complete profile
+        window.location.href = "/settings/account?complete=true"
+      } else {
+        // Profile exists, go to dashboard
+        window.location.href = "/dashboard"
+      }
     } catch (error: unknown) {
       console.error("[v0] Login failed:", error)
       if (error instanceof Error && error.message === "Failed to fetch") {

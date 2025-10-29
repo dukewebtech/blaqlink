@@ -5,7 +5,21 @@ export async function GET(request: NextRequest) {
   try {
     const supabase = await createServerClient()
 
-    // Get all orders with order items
+    const {
+      data: { user },
+      error: authError,
+    } = await supabase.auth.getUser()
+
+    if (authError || !user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+    }
+
+    const { data: userProfile } = await supabase.from("users").select("id").eq("auth_id", user.id).single()
+
+    if (!userProfile) {
+      return NextResponse.json({ error: "User profile not found" }, { status: 404 })
+    }
+
     const { data: orders, error } = await supabase
       .from("orders")
       .select(
@@ -22,20 +36,13 @@ export async function GET(request: NextRequest) {
         )
       `,
       )
+      .eq("user_id", userProfile.id)
       .order("created_at", { ascending: false })
 
     if (error) {
       console.error("[v0] Orders fetch error:", error)
       return NextResponse.json({ error: error.message }, { status: 500 })
     }
-
-    console.log("[v0] Fetched orders count:", orders?.length || 0)
-    orders?.forEach((order) => {
-      console.log(`[v0] Order ${order.id.slice(0, 8)} has ${order.order_items?.length || 0} items`)
-      if (order.order_items && order.order_items.length > 0) {
-        console.log(`[v0] Order items:`, order.order_items)
-      }
-    })
 
     return NextResponse.json({ orders })
   } catch (error) {
@@ -55,16 +62,36 @@ export async function PATCH(request: NextRequest) {
 
     const supabase = await createServerClient()
 
+    const {
+      data: { user },
+      error: authError,
+    } = await supabase.auth.getUser()
+
+    if (authError || !user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+    }
+
+    const { data: userProfile } = await supabase.from("users").select("id").eq("auth_id", user.id).single()
+
+    if (!userProfile) {
+      return NextResponse.json({ error: "User profile not found" }, { status: 404 })
+    }
+
     const { data, error } = await supabase
       .from("orders")
       .update({ status, updated_at: new Date().toISOString() })
       .eq("id", order_id)
+      .eq("user_id", userProfile.id)
       .select()
       .single()
 
     if (error) {
       console.error("[v0] Order update error:", error)
       return NextResponse.json({ error: error.message }, { status: 500 })
+    }
+
+    if (!data) {
+      return NextResponse.json({ error: "Order not found or access denied" }, { status: 404 })
     }
 
     return NextResponse.json({ order: data })

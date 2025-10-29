@@ -109,8 +109,6 @@ export default function StorePage() {
   }
 
   const handleAddToCart = (product: Product, quantity: number) => {
-    console.log("[v0] Adding to cart:", { product: product.title, quantity })
-
     cartStore.addItem(
       {
         id: product.id,
@@ -121,10 +119,6 @@ export default function StorePage() {
       },
       quantity,
     )
-
-    console.log("[v0] Item added to cart successfully")
-    console.log("[v0] Current cart count:", cartStore.getItemCount())
-
     toast({
       title: "Added to cart",
       description: `${quantity}x ${product.title} added to your cart`,

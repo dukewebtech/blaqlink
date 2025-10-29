@@ -75,27 +75,24 @@ export default function SignupPage() {
 
       if (signUpError) throw signUpError
 
-      if (data.session) {
-        console.log("[v0] Session created, redirecting to dashboard...")
+      if (data.user) {
+        console.log("[v0] User created successfully, showing success message...")
         setSuccess(true)
         setTimeout(() => {
-          router.push("/dashboard")
+          router.push("/settings/account?complete=true")
         }, 1500)
       } else {
-        // Email verification required
-        console.log("[v0] Email verification required, redirecting to success page...")
-        setSuccess(true)
-        setTimeout(() => {
-          router.push("/auth/signup-success")
-        }, 2000)
+        throw new Error("Failed to create user account")
       }
     } catch (error: unknown) {
       console.error("[v0] Signup error:", error)
       if (error instanceof Error) {
         if (error.message.includes("fetch")) {
           setError("Unable to connect to authentication service. Please check your internet connection.")
-        } else if (error.message.includes("already registered")) {
+        } else if (error.message.includes("already registered") || error.message.includes("already been registered")) {
           setError("This email is already registered. Please try logging in instead.")
+        } else if (error.message.includes("Database error")) {
+          setError("Unable to create account. Please try again or contact support if the issue persists.")
         } else {
           setError(error.message)
         }
@@ -116,7 +113,7 @@ export default function SignupPage() {
           </div>
           <div className="space-y-2">
             <h2 className="text-2xl font-bold">Account Created!</h2>
-            <p className="text-muted-foreground">Please check your email to verify your account before signing in.</p>
+            <p className="text-muted-foreground">You can now complete your profile.</p>
           </div>
         </div>
       </div>

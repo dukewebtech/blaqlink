@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Sparkles, ArrowRight, Store, Palette, Zap } from "lucide-react"
 import Link from "next/link"
+import { useState, useEffect } from "react"
 
 const templates = [
   {
@@ -50,6 +51,32 @@ const templates = [
 ]
 
 export default function TemplatesPage() {
+  const [userStoreId, setUserStoreId] = useState<string | null>(null)
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    const fetchUserStoreId = async () => {
+      try {
+        console.log("[v0] Fetching user store ID...")
+        const res = await fetch("/api/users/me")
+        console.log("[v0] Response status:", res.status)
+        if (res.ok) {
+          const data = await res.json()
+          console.log("[v0] User data received:", data)
+          console.log("[v0] User ID:", data.id)
+          setUserStoreId(data.id)
+        } else {
+          console.error("[v0] Failed to fetch user data:", res.status)
+        }
+      } catch (error) {
+        console.error("[v0] Error fetching user store ID:", error)
+      } finally {
+        setLoading(false)
+      }
+    }
+    fetchUserStoreId()
+  }, [])
+
   return (
     <DashboardLayout>
       <div className="space-y-8">
@@ -111,12 +138,30 @@ export default function TemplatesPage() {
                 </div>
                 <div className="flex gap-2 pt-2">
                   <Link href={template.href} className="flex-1">
-                    <Button className="w-full gap-2 group/btn">
+                    <Button variant="outline" className="w-full gap-2 group/btn bg-transparent">
                       <Store className="h-4 w-4" />
-                      View Template
-                      <ArrowRight className="h-4 w-4 group-hover/btn:translate-x-1 transition-transform" />
+                      Default Preview
                     </Button>
                   </Link>
+                  {loading ? (
+                    <Button className="flex-1 gap-2" disabled>
+                      <Sparkles className="h-4 w-4" />
+                      Loading...
+                    </Button>
+                  ) : userStoreId ? (
+                    <Link href={`/store/${userStoreId}`} target="_blank" className="flex-1">
+                      <Button className="w-full gap-2 group/btn">
+                        <Sparkles className="h-4 w-4" />
+                        My Store
+                        <ArrowRight className="h-4 w-4 group-hover/btn:translate-x-1 transition-transform" />
+                      </Button>
+                    </Link>
+                  ) : (
+                    <Button className="flex-1 gap-2" disabled>
+                      <Sparkles className="h-4 w-4" />
+                      My Store
+                    </Button>
+                  )}
                 </div>
               </div>
             </Card>

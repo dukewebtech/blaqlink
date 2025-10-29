@@ -268,7 +268,7 @@ export default function CreateProductPage() {
 
       console.log("[v0] Product created successfully:", result.product)
       console.log("[v0] Product images saved:", result.product.images)
-      router.push("/products/success")
+      router.push("/products-list")
     } catch (err: any) {
       console.error("[v0] Error creating product:", err)
       setError(err.message || "Failed to create product. Please try again.")

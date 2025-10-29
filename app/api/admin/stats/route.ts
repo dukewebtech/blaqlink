@@ -1,70 +1,55 @@
+import { createClient } from "@/lib/supabase/server"
 import { NextResponse } from "next/server"
-import { createServerClient } from "@/lib/supabase/server"
 
 export async function GET() {
   try {
-    const supabase = await createServerClient()
+    const supabase = await createClient()
 
-    // Check authentication
+    // Verify admin access
     const {
-      data: { user },
+      data: { user: authUser },
       error: authError,
     } = await supabase.auth.getUser()
 
-    if (authError || !user) {
-      console.log("[v0] Admin stats: User not authenticated")
+    if (authError || !authUser) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
-    // Check if user is admin
+    // Get user profile to check admin status
     const { data: userData, error: userError } = await supabase
       .from("users")
-      .select("is_admin")
-      .eq("auth_id", user.id)
-      .single()
+      .select("is_admin, role")
+      .eq("auth_id", authUser.id)
+      .maybeSingle()
 
-    if (userError || !userData?.is_admin) {
-      console.log("[v0] Admin stats: User is not admin")
-      return NextResponse.json({ error: "Forbidden - Admin access required" }, { status: 403 })
+    if (userError || !userData || (!userData.is_admin && userData.role !== "admin")) {
+      return NextResponse.json({ error: "Admin access required" }, { status: 403 })
     }
 
-    // Fetch platform-wide statistics
-    const [usersResult, ordersResult, productsResult, withdrawalsResult] = await Promise.all([
+    // Fetch admin stats
+    const [vendorsResult, ordersResult, withdrawalsResult] = await Promise.all([
       supabase.from("users").select("id", { count: "exact", head: true }),
-      supabase.from("orders").select("total_amount, payment_status"),
-      supabase.from("products").select("id", { count: "exact", head: true }),
-      supabase.from("withdrawal_requests").select("amount, status"),
+      supabase.from("orders").select("total_amount", { count: "exact" }),
+      supabase.from("withdrawal_requests").select("amount, status").eq("status", "pending"),
     ])
 
-    const totalUsers = usersResult.count || 0
-    const totalProducts = productsResult.count || 0
-
-    // Calculate revenue from successful orders
-    const successfulOrders =
-      ordersResult.data?.filter((order) => order.payment_status === "success" || order.payment_status === "paid") || []
-    const totalRevenue = successfulOrders.reduce((sum, order) => sum + Number(order.total_amount || 0), 0)
-    const totalOrders = successfulOrders.length
-
-    // Calculate withdrawal statistics
-    const pendingWithdrawals = withdrawalsResult.data?.filter((w) => w.status === "pending") || []
-    const approvedWithdrawals = withdrawalsResult.data?.filter((w) => w.status === "approved") || []
-
-    const totalPendingWithdrawals = pendingWithdrawals.reduce((sum, w) => sum + Number(w.amount || 0), 0)
-    const totalApprovedWithdrawals = approvedWithdrawals.reduce((sum, w) => sum + Number(w.amount || 0), 0)
-
-    console.log("[v0] Admin stats fetched successfully")
+    const totalVendors = vendorsResult.count || 0
+    const totalOrders = ordersResult.count || 0
+    const totalRevenue = ordersResult.data?.reduce((sum, order) => sum + Number(order.total_amount), 0) || 0
+    const pendingWithdrawals = withdrawalsResult.data?.length || 0
+    const pendingWithdrawalAmount = withdrawalsResult.data?.reduce((sum, w) => sum + Number(w.amount), 0) || 0
 
     return NextResponse.json({
-      totalUsers,
-      totalProducts,
-      totalRevenue,
-      totalOrders,
-      pendingWithdrawalsCount: pendingWithdrawals.length,
-      totalPendingWithdrawals,
-      totalApprovedWithdrawals,
+      data: {
+        totalVendors,
+        totalOrders,
+        totalRevenue,
+        pendingWithdrawals,
+        pendingWithdrawalAmount,
+      },
     })
   } catch (error) {
-    console.error("[v0] Error fetching admin stats:", error)
+    console.error("[v0] Admin stats error:", error)
     return NextResponse.json({ error: "Failed to fetch admin stats" }, { status: 500 })
   }
 }

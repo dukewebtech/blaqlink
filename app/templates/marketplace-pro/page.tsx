@@ -5,60 +5,55 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
 import { Card } from "@/components/ui/card"
-import { Search, ShoppingCart, Heart, User, Star, SlidersHorizontal, ArrowLeft, Eye, AlertCircle } from "lucide-react"
+import { Search, ShoppingCart, Heart, User, Star, SlidersHorizontal, ArrowLeft, Eye } from "lucide-react"
 import Link from "next/link"
-import { cartStore } from "@/lib/cart-store"
-import { ProductDetailModal } from "@/components/store/product-detail-modal"
-import { useRouter } from "next/navigation"
+
+interface Category {
+  id: string
+  name: string
+  image_url: string | null
+}
 
 interface Product {
   id: string
   name: string
   price: number
-  images: string[]
-  product_type: string
-  category_id: string
+  description: string | null
+  image_url: string | null
+  category_id: string | null
 }
 
-interface Category {
-  id: string
-  name: string
-  image: string | null
-}
-
-interface StoreInfo {
-  business_name: string
-}
+const brands = [
+  { name: "Nike", logo: "/nike-swoosh.png", rating: 4.8, reviews: 2525 },
+  { name: "Adidas", logo: "/adidas-logo.png", rating: 4.7, reviews: 3567 },
+  { name: "Puma", logo: "/leaping-cat-logo.png", rating: 4.6, reviews: 1864 },
+  { name: "Reebok", logo: "/reebok-logo.jpg", rating: 4.5, reviews: 2404 },
+  { name: "New Balance", logo: "/new-balance-logo.jpg", rating: 4.9, reviews: 1868 },
+  { name: "Converse", logo: "/converse-logo.jpg", rating: 4.6, reviews: 7086 },
+]
 
 export default function MarketplaceProTemplate() {
   const [products, setProducts] = useState<Product[]>([])
   const [categories, setCategories] = useState<Category[]>([])
-  const [storeInfo, setStoreInfo] = useState<StoreInfo | null>(null)
   const [loading, setLoading] = useState(true)
-  const [selectedProduct, setSelectedProduct] = useState<any>(null)
-  const [modalOpen, setModalOpen] = useState(false)
-  const [cartCount, setCartCount] = useState(0)
-  const router = useRouter()
 
   useEffect(() => {
     async function fetchData() {
       try {
-        const [productsRes, categoriesRes, storeRes] = await Promise.all([
-          fetch("/api/public/products"),
-          fetch("/api/public/categories"),
-          fetch("/api/public/store-info"),
-        ])
+        const [productsRes, categoriesRes] = await Promise.all([fetch("/api/products"), fetch("/api/categories")])
 
-        const productsData = await productsRes.json()
-        const categoriesData = await categoriesRes.json()
-        const storeData = await storeRes.json()
+        if (productsRes.ok) {
+          const productsData = await productsRes.json()
+          setProducts(productsData)
+        }
 
-        setProducts(productsData.products || [])
-        setCategories(categoriesData.categories || [])
-        setStoreInfo(storeData)
-        setLoading(false)
-      } catch (err) {
-        console.error("[v0] Error fetching template data:", err)
+        if (categoriesRes.ok) {
+          const categoriesData = await categoriesRes.json()
+          setCategories(categoriesData)
+        }
+      } catch (error) {
+        console.error("Error fetching data:", error)
+      } finally {
         setLoading(false)
       }
     }
@@ -66,51 +61,12 @@ export default function MarketplaceProTemplate() {
     fetchData()
   }, [])
 
-  useEffect(() => {
-    const updateCartCount = () => {
-      setCartCount(cartStore.getItemCount())
-    }
-    updateCartCount()
-    const interval = setInterval(updateCartCount, 500)
-    return () => clearInterval(interval)
-  }, [])
-
-  const handleProductClick = (product: Product) => {
-    setSelectedProduct({
-      id: product.id,
-      title: product.name,
-      price: product.price,
-      images: product.images,
-      product_type: product.product_type,
-      category: product.category_id,
-      description: "",
-    })
-    setModalOpen(true)
-  }
-
-  if (!loading && products.length === 0) {
-    return (
-      <div className="min-h-screen bg-background flex items-center justify-center p-4">
-        <Card className="max-w-md w-full p-8 text-center space-y-4">
-          <AlertCircle className="h-12 w-12 text-muted-foreground mx-auto" />
-          <h2 className="text-2xl font-bold">No Products Available</h2>
-          <p className="text-muted-foreground">
-            You need to add products to your store before this template can display properly.
-          </p>
-          <Link href="/products/create">
-            <Button className="mt-4">Add Your First Product</Button>
-          </Link>
-        </Card>
-      </div>
-    )
-  }
-
   if (loading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="text-center space-y-4">
-          <div className="animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full mx-auto" />
-          <p className="text-muted-foreground">Loading template...</p>
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto"></div>
+          <p className="text-muted-foreground">Loading your store...</p>
         </div>
       </div>
     )
@@ -131,7 +87,7 @@ export default function MarketplaceProTemplate() {
                 <span className="text-sm">Back</span>
               </Link>
               <h1 className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-                {storeInfo?.business_name || "shop"}
+                shop
               </h1>
             </div>
             <div className="flex-1 max-w-xl mx-8 hidden md:block">
@@ -144,10 +100,10 @@ export default function MarketplaceProTemplate() {
               <Button variant="ghost" size="icon">
                 <Heart className="h-5 w-5" />
               </Button>
-              <Button variant="ghost" size="icon" className="relative" onClick={() => router.push("/store/cart")}>
+              <Button variant="ghost" size="icon" className="relative">
                 <ShoppingCart className="h-5 w-5" />
                 <Badge className="absolute -top-1 -right-1 h-5 w-5 flex items-center justify-center p-0 text-xs">
-                  {cartCount}
+                  0
                 </Badge>
               </Button>
               <Button variant="ghost" size="icon">
@@ -180,11 +136,49 @@ export default function MarketplaceProTemplate() {
       </div>
 
       <div className="container mx-auto px-4 py-8">
+        {/* Related Brands */}
+        <section className="mb-12">
+          <div className="flex items-center justify-between mb-6">
+            <h2 className="text-2xl font-bold">Related shops</h2>
+            <div className="flex gap-2">
+              <Button variant="outline" size="icon" className="h-8 w-8 bg-transparent">
+                <ArrowLeft className="h-4 w-4" />
+              </Button>
+              <Button variant="outline" size="icon" className="h-8 w-8 bg-transparent">
+                <ArrowLeft className="h-4 w-4 rotate-180" />
+              </Button>
+            </div>
+          </div>
+          <div className="grid grid-cols-3 md:grid-cols-6 gap-4">
+            {brands.map((brand, index) => (
+              <Card
+                key={brand.name}
+                className="group p-4 hover:shadow-lg transition-all duration-300 animate-in fade-in zoom-in-95"
+                style={{ animationDelay: `${index * 50}ms` }}
+              >
+                <div className="aspect-square bg-muted rounded-lg mb-3 overflow-hidden">
+                  <img
+                    src={brand.logo || "/placeholder.svg?height=100&width=100"}
+                    alt={brand.name}
+                    className="w-full h-full object-contain p-4 group-hover:scale-110 transition-transform duration-300"
+                  />
+                </div>
+                <h3 className="font-semibold text-sm text-center mb-1">{brand.name}</h3>
+                <div className="flex items-center justify-center gap-1 text-xs">
+                  <Star className="h-3 w-3 fill-yellow-400 text-yellow-400" />
+                  <span className="font-medium">{brand.rating}</span>
+                  <span className="text-muted-foreground">({brand.reviews})</span>
+                </div>
+              </Card>
+            ))}
+          </div>
+        </section>
+
         {/* Related Categories */}
         {categories.length > 0 && (
           <section className="mb-12">
             <div className="flex items-center justify-between mb-6">
-              <h2 className="text-2xl font-bold">Shop by Category</h2>
+              <h2 className="text-2xl font-bold">Categories</h2>
             </div>
             <div className="grid grid-cols-3 md:grid-cols-6 gap-4">
               {categories.slice(0, 6).map((category, index) => (
@@ -195,9 +189,9 @@ export default function MarketplaceProTemplate() {
                 >
                   <div className="aspect-square bg-muted rounded-lg mb-3 overflow-hidden">
                     <img
-                      src={category.image || "/placeholder.svg?height=100&width=100"}
+                      src={category.image_url || "/placeholder.svg?height=100&width=100"}
                       alt={category.name}
-                      className="w-full h-full object-cover p-4 group-hover:scale-110 transition-transform duration-300"
+                      className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
                     />
                   </div>
                   <h3 className="font-semibold text-sm text-center">{category.name}</h3>
@@ -213,71 +207,62 @@ export default function MarketplaceProTemplate() {
             <h2 className="text-2xl font-bold">All Products</h2>
             <span className="text-sm text-muted-foreground">Showing {products.length} results</span>
           </div>
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-            {products.map((product, index) => (
-              <Card
-                key={product.id}
-                onClick={() => handleProductClick(product)}
-                className="group overflow-hidden hover:shadow-xl transition-all duration-300 animate-in fade-in slide-in-from-bottom cursor-pointer"
-                style={{ animationDelay: `${index * 75}ms` }}
-              >
-                <div className="relative aspect-square overflow-hidden bg-muted">
-                  <Button
-                    size="icon"
-                    variant="secondary"
-                    className="absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity z-10"
-                    onClick={(e) => e.stopPropagation()}
-                  >
-                    <Heart className="h-4 w-4" />
-                  </Button>
-                  <Button
-                    size="icon"
-                    variant="secondary"
-                    className="absolute bottom-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity z-10"
-                    onClick={(e) => {
-                      e.stopPropagation()
-                      handleProductClick(product)
-                    }}
-                  >
-                    <Eye className="h-4 w-4" />
-                  </Button>
-                  <img
-                    src={product.images?.[0] || "/placeholder.svg?height=400&width=400"}
-                    alt={product.name}
-                    className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
-                  />
-                </div>
-                <div className="p-4 space-y-3">
-                  <div>
-                    <p className="text-xs text-muted-foreground mb-1">{product.product_type}</p>
-                    <h3 className="font-semibold text-sm line-clamp-2">{product.name}</h3>
+          {products.length > 0 ? (
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+              {products.map((product, index) => (
+                <Card
+                  key={product.id}
+                  className="group overflow-hidden hover:shadow-xl transition-all duration-300 animate-in fade-in slide-in-from-bottom"
+                  style={{ animationDelay: `${index * 75}ms` }}
+                >
+                  <div className="relative aspect-square overflow-hidden bg-muted">
+                    <Button
+                      size="icon"
+                      variant="secondary"
+                      className="absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity z-10"
+                    >
+                      <Heart className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      size="icon"
+                      variant="secondary"
+                      className="absolute bottom-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity z-10"
+                    >
+                      <Eye className="h-4 w-4" />
+                    </Button>
+                    <img
+                      src={product.image_url || "/placeholder.svg?height=300&width=300"}
+                      alt={product.name}
+                      className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
+                    />
                   </div>
-                  <div className="flex items-center gap-1">
-                    {Array.from({ length: 5 }).map((_, i) => (
-                      <Star
-                        key={i}
-                        className={`h-3 w-3 ${i < 4 ? "fill-yellow-400 text-yellow-400" : "text-muted-foreground"}`}
-                      />
-                    ))}
-                    <span className="text-xs text-muted-foreground ml-1">(0)</span>
+                  <div className="p-4 space-y-3">
+                    <div>
+                      <h3 className="font-semibold text-sm line-clamp-2">{product.name}</h3>
+                    </div>
+                    <div className="flex items-center gap-1">
+                      {Array.from({ length: 5 }).map((_, i) => (
+                        <Star
+                          key={i}
+                          className={`h-3 w-3 ${i < 4 ? "fill-yellow-400 text-yellow-400" : "text-muted-foreground"}`}
+                        />
+                      ))}
+                      <span className="text-xs text-muted-foreground ml-1">(0)</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="font-bold">${product.price.toFixed(2)}</span>
+                    </div>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <span className="font-bold">NGN {product.price.toLocaleString()}</span>
-                  </div>
-                </div>
-              </Card>
-            ))}
-          </div>
+                </Card>
+              ))}
+            </div>
+          ) : (
+            <div className="text-center py-12">
+              <p className="text-muted-foreground">No products available yet. Add some products to see them here!</p>
+            </div>
+          )}
         </section>
       </div>
-
-      {/* Product Detail Modal */}
-      <ProductDetailModal
-        product={selectedProduct}
-        open={modalOpen}
-        onOpenChange={setModalOpen}
-        storeName={storeInfo?.business_name}
-      />
     </div>
   )
 }

@@ -16,28 +16,24 @@ export async function POST(request: Request) {
 
     const supabase = await createServerClient()
 
-    // Sign up with Supabase
-    const { data, error } = await supabase.auth.signUp({
+    const { data, error } = await supabase.auth.admin.createUser({
       email,
       password,
-      options: {
-        data: {
-          full_name: fullName,
-          role: role,
-        },
-        emailRedirectTo: `${process.env.NEXT_PUBLIC_DEV_SUPABASE_REDIRECT_URL || "http://localhost:3000"}/auth/callback`,
+      email_confirm: true, // Auto-confirm email
+      user_metadata: {
+        full_name: fullName,
+        role: role,
       },
     })
 
     if (error) {
+      console.error("[v0] Signup error:", error)
       return NextResponse.json({ error: error.message }, { status: 400 })
     }
 
-    // No need to manually insert into public.users anymore
-
     return NextResponse.json(
       {
-        message: "Signup successful. Please check your email to verify your account.",
+        message: "Account created successfully! You can now login with your credentials.",
         user: {
           id: data.user?.id,
           email: data.user?.email,

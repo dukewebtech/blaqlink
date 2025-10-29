@@ -1,113 +1,62 @@
+import { createClient } from "@/lib/supabase/server"
 import { NextResponse } from "next/server"
-import { createServerClient } from "@/lib/supabase/server"
 
 export async function GET() {
   try {
-    const supabase = await createServerClient()
+    const supabase = await createClient()
 
-    // Check authentication
+    // Verify admin access
     const {
-      data: { user },
+      data: { user: authUser },
       error: authError,
     } = await supabase.auth.getUser()
 
-    if (authError || !user) {
+    if (authError || !authUser) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
-    // Check if user is admin
+    // Get user profile to check admin status
     const { data: userData, error: userError } = await supabase
       .from("users")
-      .select("is_admin")
-      .eq("auth_id", user.id)
-      .single()
+      .select("is_admin, role")
+      .eq("auth_id", authUser.id)
+      .maybeSingle()
 
-    if (userError || !userData?.is_admin) {
-      return NextResponse.json({ error: "Forbidden - Admin access required" }, { status: 403 })
+    if (userError || !userData || (!userData.is_admin && userData.role !== "admin")) {
+      return NextResponse.json({ error: "Admin access required" }, { status: 403 })
     }
 
-    // Fetch all withdrawal requests with user information
+    // Fetch all pending withdrawals with user details
     const { data: withdrawals, error: withdrawalsError } = await supabase
       .from("withdrawal_requests")
-      .select(`
+      .select(
+        `
         *,
         users!inner (
-          id,
           full_name,
-          business_name,
-          email
+          email,
+          business_name
         )
-      `)
+      `,
+      )
+      .eq("status", "pending")
       .order("created_at", { ascending: false })
 
     if (withdrawalsError) {
-      console.error("[v0] Error fetching withdrawals:", withdrawalsError)
+      console.error("[v0] Withdrawals fetch error:", withdrawalsError)
       return NextResponse.json({ error: "Failed to fetch withdrawals" }, { status: 500 })
     }
 
-    console.log("[v0] Admin withdrawals fetched:", withdrawals?.length || 0)
+    // Transform the data to flatten the user object
+    const transformedWithdrawals = withdrawals?.map((w: any) => ({
+      ...w,
+      user: w.users,
+      users: undefined,
+    }))
 
-    return NextResponse.json({ withdrawals: withdrawals || [] })
+    return NextResponse.json({ data: transformedWithdrawals })
   } catch (error) {
-    console.error("[v0] Error in admin withdrawals API:", error)
+    console.error("[v0] Admin withdrawals error:", error)
     return NextResponse.json({ error: "Failed to fetch withdrawals" }, { status: 500 })
-  }
-}
-
-export async function PATCH(request: Request) {
-  try {
-    const supabase = await createServerClient()
-
-    // Check authentication
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser()
-
-    if (authError || !user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-    }
-
-    // Check if user is admin
-    const { data: userData, error: userError } = await supabase
-      .from("users")
-      .select("is_admin")
-      .eq("auth_id", user.id)
-      .single()
-
-    if (userError || !userData?.is_admin) {
-      return NextResponse.json({ error: "Forbidden - Admin access required" }, { status: 403 })
-    }
-
-    const body = await request.json()
-    const { id, status, admin_notes } = body
-
-    if (!id || !status) {
-      return NextResponse.json({ error: "Missing required fields" }, { status: 400 })
-    }
-
-    // Update withdrawal request
-    const { data: updatedWithdrawal, error: updateError } = await supabase
-      .from("withdrawal_requests")
-      .update({
-        status,
-        admin_notes: admin_notes || null,
-        updated_at: new Date().toISOString(),
-      })
-      .eq("id", id)
-      .select()
-      .single()
-
-    if (updateError) {
-      console.error("[v0] Error updating withdrawal:", updateError)
-      return NextResponse.json({ error: "Failed to update withdrawal" }, { status: 500 })
-    }
-
-    console.log("[v0] Withdrawal updated:", id, "status:", status)
-
-    return NextResponse.json({ withdrawal: updatedWithdrawal })
-  } catch (error) {
-    console.error("[v0] Error in admin withdrawal update:", error)
-    return NextResponse.json({ error: "Failed to update withdrawal" }, { status: 500 })
   }
 }

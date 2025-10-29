@@ -49,6 +49,7 @@ export default function PayoutsPage() {
   const [accountNumber, setAccountNumber] = useState("")
   const [accountName, setAccountName] = useState("")
   const [submitting, setSubmitting] = useState(false)
+  const [platformSettings, setPlatformSettings] = useState<any>(null)
 
   useEffect(() => {
     fetchData()
@@ -57,23 +58,30 @@ export default function PayoutsPage() {
   const fetchData = async () => {
     try {
       setLoading(true)
-      // Fetch orders for revenue calculation
+      const settingsResponse = await fetch("/api/settings")
+      const settingsData = await settingsResponse.json()
+      if (settingsData.ok) {
+        setPlatformSettings(settingsData.settings)
+        console.log("[v0] Platform settings loaded:", settingsData.settings)
+      }
+
       const ordersResponse = await fetch("/api/orders")
       const ordersData = await ordersResponse.json()
 
-      // Fetch withdrawals
       const withdrawalsResponse = await fetch("/api/withdrawals")
       const withdrawalsData = await withdrawalsResponse.json()
 
       if (ordersResponse.ok && withdrawalsResponse.ok) {
-        // Calculate stats from orders
         const paidOrders = ordersData.orders?.filter(
           (order: any) => order.payment_status === "paid" || order.payment_status === "success",
         )
         const totalRevenue =
           paidOrders?.reduce((sum: number, order: any) => sum + Number(order.total_amount || 0), 0) || 0
 
-        // Calculate withdrawal stats
+        const commissionRate = settingsData.settings?.commission_percentage || 10
+        const netRevenue = totalRevenue * (1 - commissionRate / 100)
+        console.log("[v0] Revenue calculation:", { totalRevenue, commissionRate, netRevenue })
+
         const allWithdrawals = withdrawalsData.withdrawals || []
         const completedWithdrawals = allWithdrawals.filter(
           (w: Withdrawal) => w.status === "completed" || w.status === "approved",
@@ -84,8 +92,8 @@ export default function PayoutsPage() {
         const totalPending = pendingWithdrawals.reduce((sum: number, w: Withdrawal) => sum + Number(w.amount), 0)
 
         setStats({
-          totalRevenue,
-          availableToWithdraw: totalRevenue - totalWithdrawn - totalPending,
+          totalRevenue: netRevenue,
+          availableToWithdraw: netRevenue - totalWithdrawn - totalPending,
           totalWithdrawals: totalWithdrawn,
           pendingWithdrawals: totalPending,
         })
@@ -100,8 +108,15 @@ export default function PayoutsPage() {
   }
 
   const handleRequestWithdrawal = async () => {
+    const minWithdrawal = platformSettings?.minimum_withdrawal_amount || 5000
+
     if (!requestAmount || Number(requestAmount) <= 0) {
       alert("Please enter a valid amount")
+      return
+    }
+
+    if (Number(requestAmount) < minWithdrawal) {
+      alert(`Minimum withdrawal amount is NGN ${minWithdrawal.toLocaleString()}`)
       return
     }
 
@@ -370,11 +385,14 @@ export default function PayoutsPage() {
                   placeholder="0.00"
                   value={requestAmount}
                   onChange={(e) => setRequestAmount(e.target.value)}
-                  min="0"
+                  min={platformSettings?.minimum_withdrawal_amount || 5000}
                   max={stats?.availableToWithdraw || 0}
                 />
                 <p className="text-sm text-muted-foreground">
                   Available balance: NGN {stats?.availableToWithdraw.toLocaleString() || 0}
+                </p>
+                <p className="text-sm text-amber-600">
+                  Minimum withdrawal: NGN {(platformSettings?.minimum_withdrawal_amount || 5000).toLocaleString()}
                 </p>
               </div>
 

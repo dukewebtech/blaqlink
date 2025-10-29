@@ -77,6 +77,17 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Invalid amount" }, { status: 400 })
     }
 
+    const { data: settings } = await supabase.from("platform_settings").select("minimum_withdrawal_amount").single()
+    const minWithdrawal = settings?.minimum_withdrawal_amount || 5000
+
+    if (amount < minWithdrawal) {
+      console.log("[v0] Withdrawal amount below minimum:", { amount, minWithdrawal })
+      return NextResponse.json(
+        { error: `Minimum withdrawal amount is NGN ${minWithdrawal.toLocaleString()}` },
+        { status: 400 },
+      )
+    }
+
     if (!bank_name || !account_number || !account_name) {
       return NextResponse.json(
         { error: "Please provide bank details (bank name, account number, and account name)" },
@@ -104,6 +115,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Failed to create withdrawal request" }, { status: 500 })
     }
 
+    console.log("[v0] Withdrawal request created successfully:", withdrawal)
     return NextResponse.json({ ok: true, withdrawal })
   } catch (error) {
     console.error("[v0] Withdrawal request API error:", error)

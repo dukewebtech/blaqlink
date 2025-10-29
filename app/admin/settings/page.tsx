@@ -7,6 +7,8 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { useEffect, useState } from "react"
 import { useToast } from "@/hooks/use-toast"
+import { AlertCircle } from "lucide-react"
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 
 export default function AdminSettingsPage() {
   const [userData, setUserData] = useState<any>(null)
@@ -15,6 +17,7 @@ export default function AdminSettingsPage() {
   const [minWithdrawal, setMinWithdrawal] = useState("")
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
+  const [needsSetup, setNeedsSetup] = useState(false)
   const { toast } = useToast()
 
   useEffect(() => {
@@ -33,6 +36,7 @@ export default function AdminSettingsPage() {
           setPlatformSettings(settingsResult.settings)
           setCommission(settingsResult.settings.commission_percentage?.toString() || "10")
           setMinWithdrawal(settingsResult.settings.minimum_withdrawal_amount?.toString() || "5000")
+          setNeedsSetup(settingsResult.needsSetup || false)
           console.log("[v0] Platform settings loaded:", settingsResult.settings)
         }
       } catch (error) {
@@ -63,13 +67,17 @@ export default function AdminSettingsPage() {
 
       if (response.ok) {
         setPlatformSettings(result.settings)
+        setNeedsSetup(false)
         console.log("[v0] Platform settings saved successfully:", result.settings)
         toast({
           title: "Settings Saved",
-          description: "Platform settings have been updated successfully.",
+          description: result.message || "Platform settings have been updated successfully.",
         })
       } else {
         console.error("[v0] Failed to save settings:", result.error)
+        if (result.needsSetup) {
+          setNeedsSetup(true)
+        }
         toast({
           title: "Error",
           description: result.error || "Failed to save settings",
@@ -112,6 +120,19 @@ export default function AdminSettingsPage() {
           <h1 className="text-3xl font-bold tracking-tight">Admin Settings</h1>
           <p className="text-muted-foreground">Manage your admin profile and preferences</p>
         </div>
+
+        {needsSetup && (
+          <Alert variant="destructive">
+            <AlertCircle className="h-4 w-4" />
+            <AlertTitle>Database Setup Required</AlertTitle>
+            <AlertDescription>
+              The platform_settings table needs to be created. Please run the SQL script located at{" "}
+              <code className="bg-muted px-1 py-0.5 rounded">scripts/001-create-platform-settings.sql</code> in your
+              Supabase SQL Editor. The script will create the table with default values (10% commission, ₦5,000 minimum
+              withdrawal).
+            </AlertDescription>
+          </Alert>
+        )}
 
         <Card>
           <CardHeader>
@@ -167,7 +188,7 @@ export default function AdminSettingsPage() {
                 onChange={(e) => setMinWithdrawal(e.target.value)}
               />
               <p className="text-sm text-muted-foreground">
-                Minimum amount vendors can withdraw. Current: NGN {Number(minWithdrawal).toLocaleString()}
+                Minimum amount vendors can withdraw. Current: ₦{Number(minWithdrawal).toLocaleString()}
               </p>
             </div>
             <Button onClick={handleSavePlatformSettings} disabled={saving}>

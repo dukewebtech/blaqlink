@@ -23,12 +23,36 @@ export async function GET() {
       return NextResponse.json({ error: "Forbidden - Admin access required" }, { status: 403 })
     }
 
-    // Fetch platform settings
-    const { data: settings, error } = await supabase.from("platform_settings").select("*").single()
+    const { data: settings, error } = await supabase.from("platform_settings").select("*").maybeSingle()
 
     if (error) {
-      console.error("[v0] Error fetching platform settings:", error)
+      console.error("[v0] Error fetching platform settings:", error.message)
+      if (error.code === "PGRST116" || error.message.includes("schema cache")) {
+        console.log("[v0] Platform settings table not found, returning defaults")
+        return NextResponse.json({
+          ok: true,
+          settings: {
+            commission_percentage: 10,
+            minimum_withdrawal_amount: 5000,
+          },
+          needsSetup: true,
+          message: "Please run the SQL script in scripts/001-create-platform-settings.sql",
+        })
+      }
       return NextResponse.json({ error: "Failed to fetch settings" }, { status: 500 })
+    }
+
+    if (!settings) {
+      console.log("[v0] No platform settings found, returning defaults")
+      return NextResponse.json({
+        ok: true,
+        settings: {
+          commission_percentage: 10,
+          minimum_withdrawal_amount: 5000,
+        },
+        needsSetup: true,
+        message: "Please run the SQL script in scripts/001-create-platform-settings.sql",
+      })
     }
 
     console.log("[v0] Platform settings fetched:", settings)
@@ -64,6 +88,8 @@ export async function PUT(request: Request) {
     const body = await request.json()
     const { commission_percentage, minimum_withdrawal_amount } = body
 
+    console.log("[v0] Update request:", { commission_percentage, minimum_withdrawal_amount })
+
     // Validate inputs
     if (commission_percentage !== undefined && (commission_percentage < 0 || commission_percentage > 100)) {
       return NextResponse.json({ error: "Commission must be between 0 and 100" }, { status: 400 })
@@ -76,33 +102,49 @@ export async function PUT(request: Request) {
     // Use admin client to update settings
     const adminClient = await createAdminClient()
 
-    // Get the first settings record
-    const { data: existingSettings } = await adminClient.from("platform_settings").select("id").single()
+    const { data: existingSettings, error: fetchError } = await adminClient
+      .from("platform_settings")
+      .select("id")
+      .maybeSingle()
+
+    if (fetchError && (fetchError.code === "PGRST116" || fetchError.message.includes("schema cache"))) {
+      console.error("[v0] Platform settings table doesn't exist")
+      return NextResponse.json(
+        {
+          error:
+            "Platform settings table not found. Please run the SQL script in scripts/001-create-platform-settings.sql",
+          needsSetup: true,
+        },
+        { status: 404 },
+      )
+    }
 
     if (!existingSettings) {
-      // Create settings if they don't exist
+      console.log("[v0] Creating new platform settings record...")
       const { data: newSettings, error: insertError } = await adminClient
         .from("platform_settings")
         .insert({
-          commission_percentage: commission_percentage || 10,
-          minimum_withdrawal_amount: minimum_withdrawal_amount || 5000,
+          commission_percentage: commission_percentage ?? 10,
+          minimum_withdrawal_amount: minimum_withdrawal_amount ?? 5000,
         })
         .select()
         .single()
 
       if (insertError) {
         console.error("[v0] Error creating platform settings:", insertError)
-        return NextResponse.json({ error: "Failed to create settings" }, { status: 500 })
+        return NextResponse.json({ error: "Failed to create settings: " + insertError.message }, { status: 500 })
       }
 
-      console.log("[v0] Platform settings created:", newSettings)
-      return NextResponse.json({ ok: true, settings: newSettings })
+      console.log("[v0] Platform settings created successfully:", newSettings)
+      return NextResponse.json({ ok: true, settings: newSettings, message: "Settings created successfully" })
     }
 
     // Update existing settings
-    const updateData: any = { updated_at: new Date().toISOString() }
+    const updateData: any = {}
     if (commission_percentage !== undefined) updateData.commission_percentage = commission_percentage
     if (minimum_withdrawal_amount !== undefined) updateData.minimum_withdrawal_amount = minimum_withdrawal_amount
+
+    console.log("[v0] Updating settings with:", updateData)
 
     const { data: updatedSettings, error: updateError } = await adminClient
       .from("platform_settings")
@@ -113,13 +155,13 @@ export async function PUT(request: Request) {
 
     if (updateError) {
       console.error("[v0] Error updating platform settings:", updateError)
-      return NextResponse.json({ error: "Failed to update settings" }, { status: 500 })
+      return NextResponse.json({ error: "Failed to update settings: " + updateError.message }, { status: 500 })
     }
 
-    console.log("[v0] Platform settings updated:", updatedSettings)
-    return NextResponse.json({ ok: true, settings: updatedSettings })
-  } catch (error) {
+    console.log("[v0] Platform settings updated successfully:", updatedSettings)
+    return NextResponse.json({ ok: true, settings: updatedSettings, message: "Settings updated successfully" })
+  } catch (error: any) {
     console.error("[v0] Platform settings update API error:", error)
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 })
+    return NextResponse.json({ error: "Internal server error: " + error.message }, { status: 500 })
   }
 }

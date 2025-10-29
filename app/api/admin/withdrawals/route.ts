@@ -1,37 +1,22 @@
-import { createClient } from "@/lib/supabase/server"
+import { createAdminClient } from "@/lib/supabase/server"
 import { NextResponse } from "next/server"
 
 export async function GET() {
   try {
-    const supabase = await createClient()
+    const adminClient = createAdminClient()
 
-    // Verify admin access
-    const {
-      data: { user: authUser },
-      error: authError,
-    } = await supabase.auth.getUser()
-
-    if (authError || !authUser) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-    }
-
-    // Get user profile to check admin status
-    const { data: userData, error: userError } = await supabase
-      .from("users")
-      .select("is_admin, role")
-      .eq("auth_id", authUser.id)
-      .maybeSingle()
-
-    if (userError || !userData || (!userData.is_admin && userData.role !== "admin")) {
-      return NextResponse.json({ error: "Admin access required" }, { status: 403 })
-    }
-
-    // Fetch all pending withdrawals with user details
-    const { data: withdrawals, error: withdrawalsError } = await supabase
+    const { data: withdrawals, error: withdrawalsError } = await adminClient
       .from("withdrawal_requests")
       .select(
         `
-        *,
+        id,
+        amount,
+        status,
+        bank_name,
+        account_number,
+        account_name,
+        created_at,
+        user_id,
         users!inner (
           full_name,
           email,
@@ -39,7 +24,6 @@ export async function GET() {
         )
       `,
       )
-      .eq("status", "pending")
       .order("created_at", { ascending: false })
 
     if (withdrawalsError) {
@@ -47,14 +31,20 @@ export async function GET() {
       return NextResponse.json({ error: "Failed to fetch withdrawals" }, { status: 500 })
     }
 
-    // Transform the data to flatten the user object
-    const transformedWithdrawals = withdrawals?.map((w: any) => ({
-      ...w,
-      user: w.users,
-      users: undefined,
+    const formattedWithdrawals = withdrawals?.map((w: any) => ({
+      id: w.id,
+      amount: w.amount,
+      status: w.status,
+      bank_name: w.bank_name,
+      account_number: w.account_number,
+      account_name: w.account_name,
+      created_at: w.created_at,
+      vendor_name: w.users?.full_name || "Unknown",
+      vendor_business: w.users?.business_name || "Unknown",
+      vendor_email: w.users?.email || "Unknown",
     }))
 
-    return NextResponse.json({ data: transformedWithdrawals })
+    return NextResponse.json({ withdrawals: formattedWithdrawals || [] })
   } catch (error) {
     console.error("[v0] Admin withdrawals error:", error)
     return NextResponse.json({ error: "Failed to fetch withdrawals" }, { status: 500 })

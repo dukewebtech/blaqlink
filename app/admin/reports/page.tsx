@@ -1,0 +1,158 @@
+"use client"
+
+import { AdminLayout } from "@/components/admin/admin-layout"
+import { useEffect, useState } from "react"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { TrendingUp, TrendingDown, DollarSign, ShoppingCart, Users, Package } from "lucide-react"
+
+interface ReportData {
+  totalRevenue: number
+  totalOrders: number
+  totalVendors: number
+  totalProducts: number
+  revenueGrowth: number
+  ordersGrowth: number
+  topVendors: Array<{
+    name: string
+    revenue: number
+  }>
+}
+
+export default function AdminReportsPage() {
+  const [data, setData] = useState<ReportData | null>(null)
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    async function fetchReports() {
+      try {
+        const response = await fetch("/api/admin/reports")
+        if (!response.ok) throw new Error("Failed to fetch reports")
+        const reportData = await response.json()
+        setData(reportData)
+      } catch (error) {
+        console.error("[v0] Failed to fetch reports:", error)
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    fetchReports()
+  }, [])
+
+  const formatCurrency = (amount: number) => {
+    return new Intl.NumberFormat("en-NG", {
+      style: "currency",
+      currency: "NGN",
+      minimumFractionDigits: 0,
+    }).format(amount)
+  }
+
+  if (loading) {
+    return (
+      <AdminLayout>
+        <div className="flex items-center justify-center min-h-[400px]">
+          <p>Loading reports...</p>
+        </div>
+      </AdminLayout>
+    )
+  }
+
+  return (
+    <AdminLayout>
+      <div className="space-y-6">
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight">Financial Reports</h1>
+          <p className="text-muted-foreground">Platform performance and analytics</p>
+        </div>
+
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Total Revenue</CardTitle>
+              <DollarSign className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{formatCurrency(data?.totalRevenue || 0)}</div>
+              <p className="text-xs text-muted-foreground flex items-center gap-1 mt-1">
+                {data && data.revenueGrowth >= 0 ? (
+                  <TrendingUp className="h-3 w-3 text-green-600" />
+                ) : (
+                  <TrendingDown className="h-3 w-3 text-red-600" />
+                )}
+                <span className={data && data.revenueGrowth >= 0 ? "text-green-600" : "text-red-600"}>
+                  {data?.revenueGrowth || 0}%
+                </span>{" "}
+                from last month
+              </p>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Total Orders</CardTitle>
+              <ShoppingCart className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{data?.totalOrders || 0}</div>
+              <p className="text-xs text-muted-foreground flex items-center gap-1 mt-1">
+                {data && data.ordersGrowth >= 0 ? (
+                  <TrendingUp className="h-3 w-3 text-green-600" />
+                ) : (
+                  <TrendingDown className="h-3 w-3 text-red-600" />
+                )}
+                <span className={data && data.ordersGrowth >= 0 ? "text-green-600" : "text-red-600"}>
+                  {data?.ordersGrowth || 0}%
+                </span>{" "}
+                from last month
+              </p>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Total Vendors</CardTitle>
+              <Users className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{data?.totalVendors || 0}</div>
+              <p className="text-xs text-muted-foreground mt-1">Active vendors</p>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Total Products</CardTitle>
+              <Package className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{data?.totalProducts || 0}</div>
+              <p className="text-xs text-muted-foreground mt-1">Listed products</p>
+            </CardContent>
+          </Card>
+        </div>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Top Performing Vendors</CardTitle>
+            <CardDescription>Vendors with highest revenue this month</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              {data?.topVendors?.map((vendor, index) => (
+                <div key={index} className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/10 text-sm font-bold text-primary">
+                      {index + 1}
+                    </div>
+                    <p className="font-medium">{vendor.name}</p>
+                  </div>
+                  <p className="font-bold">{formatCurrency(vendor.revenue)}</p>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    </AdminLayout>
+  )
+}

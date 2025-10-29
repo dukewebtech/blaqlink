@@ -6,13 +6,25 @@ export async function GET() {
     console.log("[v0] Fetching platform settings...")
     const supabase = await createClient()
 
-    // Get current user
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser()
+    let user
+    try {
+      const { data: authData, error: authError } = await supabase.auth.getUser()
 
-    if (authError || !user) {
+      if (authError) {
+        console.error("[v0] Auth error:", authError.message)
+        if (authError.message === "Failed to fetch") {
+          return NextResponse.json({ error: "Authentication service temporarily unavailable" }, { status: 503 })
+        }
+        return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+      }
+
+      user = authData.user
+    } catch (authError: any) {
+      console.error("[v0] Auth fetch error:", authError.message)
+      return NextResponse.json({ error: "Authentication service temporarily unavailable" }, { status: 503 })
+    }
+
+    if (!user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
@@ -68,13 +80,25 @@ export async function PUT(request: Request) {
     console.log("[v0] Updating platform settings...")
     const supabase = await createClient()
 
-    // Get current user
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser()
+    let user
+    try {
+      const { data: authData, error: authError } = await supabase.auth.getUser()
 
-    if (authError || !user) {
+      if (authError) {
+        console.error("[v0] Auth error:", authError.message)
+        if (authError.message === "Failed to fetch") {
+          return NextResponse.json({ error: "Authentication service temporarily unavailable" }, { status: 503 })
+        }
+        return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+      }
+
+      user = authData.user
+    } catch (authError: any) {
+      console.error("[v0] Auth fetch error:", authError.message)
+      return NextResponse.json({ error: "Authentication service temporarily unavailable" }, { status: 503 })
+    }
+
+    if (!user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 

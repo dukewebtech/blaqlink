@@ -38,9 +38,8 @@ export async function GET() {
     const { data: settings, error } = await supabase.from("platform_settings").select("*").maybeSingle()
 
     if (error) {
-      console.error("[v0] Error fetching platform settings:", error.message)
-      if (error.code === "PGRST116" || error.message.includes("schema cache")) {
-        console.log("[v0] Platform settings table not found, returning defaults")
+      if (error.code === "PGRST116" || error.code === "PGRST205" || error.message.includes("schema cache")) {
+        console.log("[v0] Platform settings table not found (expected during initial setup)")
         return NextResponse.json({
           ok: true,
           settings: {
@@ -51,6 +50,7 @@ export async function GET() {
           message: "Please run the SQL script in scripts/001-create-platform-settings.sql",
         })
       }
+      console.error("[v0] Unexpected error fetching platform settings:", error.message)
       return NextResponse.json({ error: "Failed to fetch settings" }, { status: 500 })
     }
 
@@ -131,7 +131,10 @@ export async function PUT(request: Request) {
       .select("id")
       .maybeSingle()
 
-    if (fetchError && (fetchError.code === "PGRST116" || fetchError.message.includes("schema cache"))) {
+    if (
+      fetchError &&
+      (fetchError.code === "PGRST116" || fetchError.code === "PGRST205" || fetchError.message.includes("schema cache"))
+    ) {
       console.error("[v0] Platform settings table doesn't exist")
       return NextResponse.json(
         {

@@ -3,12 +3,31 @@ import { createAdminClient } from "@/lib/supabase/server"
 
 export async function GET() {
   try {
+    console.log("[v0] Fetching admin reports...")
     const adminClient = createAdminClient()
 
-    // Get total revenue
-    const { data: orders } = await adminClient.from("orders").select("total_amount").eq("payment_status", "paid")
+    const { data: settings } = await adminClient.from("platform_settings").select("*").single()
+
+    const commissionPercentage = settings?.commission_percentage || 10
+    console.log("[v0] Commission percentage:", commissionPercentage)
+
+    // Get all paid orders
+    const { data: orders } = await adminClient
+      .from("orders")
+      .select("total_amount, user_id")
+      .in("payment_status", ["paid", "success"])
 
     const totalRevenue = orders?.reduce((sum, order) => sum + Number(order.total_amount || 0), 0) || 0
+
+    const totalCommission = (totalRevenue * commissionPercentage) / 100
+    const netRevenue = totalRevenue - totalCommission
+
+    console.log("[v0] Revenue breakdown:", {
+      totalRevenue,
+      commissionPercentage,
+      totalCommission,
+      netRevenue,
+    })
 
     // Get total orders
     const { count: totalOrders } = await adminClient.from("orders").select("*", { count: "exact", head: true })
@@ -22,7 +41,6 @@ export async function GET() {
     // Get total products
     const { count: totalProducts } = await adminClient.from("products").select("*", { count: "exact", head: true })
 
-    // Get top vendors by revenue
     const { data: vendors } = await adminClient
       .from("users")
       .select("id, full_name, business_name")
@@ -34,21 +52,30 @@ export async function GET() {
           .from("orders")
           .select("total_amount")
           .eq("user_id", vendor.id)
-          .eq("payment_status", "paid")
+          .in("payment_status", ["paid", "success"])
 
-        const revenue = vendorOrders?.reduce((sum, order) => sum + Number(order.total_amount || 0), 0) || 0
+        const grossRevenue = vendorOrders?.reduce((sum, order) => sum + Number(order.total_amount || 0), 0) || 0
+        const vendorCommission = (grossRevenue * commissionPercentage) / 100
+        const netRevenue = grossRevenue - vendorCommission
 
         return {
           name: vendor.business_name || vendor.full_name,
-          revenue,
+          grossRevenue,
+          netRevenue,
+          commission: vendorCommission,
         }
       }),
     )
 
-    const topVendors = vendorsWithRevenue.sort((a, b) => b.revenue - a.revenue).slice(0, 5)
+    const topVendors = vendorsWithRevenue.sort((a, b) => b.grossRevenue - a.grossRevenue).slice(0, 5)
+
+    console.log("[v0] Top vendors:", topVendors)
 
     return NextResponse.json({
       totalRevenue,
+      totalCommission,
+      netRevenue,
+      commissionPercentage,
       totalOrders: totalOrders || 0,
       totalVendors: totalVendors || 0,
       totalProducts: totalProducts || 0,

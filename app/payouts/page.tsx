@@ -75,7 +75,9 @@ export default function PayoutsPage() {
 
         // Calculate withdrawal stats
         const allWithdrawals = withdrawalsData.withdrawals || []
-        const completedWithdrawals = allWithdrawals.filter((w: Withdrawal) => w.status === "completed")
+        const completedWithdrawals = allWithdrawals.filter(
+          (w: Withdrawal) => w.status === "completed" || w.status === "approved",
+        )
         const pendingWithdrawals = allWithdrawals.filter((w: Withdrawal) => w.status === "pending")
 
         const totalWithdrawn = completedWithdrawals.reduce((sum: number, w: Withdrawal) => sum + Number(w.amount), 0)
@@ -150,10 +152,11 @@ export default function PayoutsPage() {
   const getStatusBadge = (status: string) => {
     switch (status) {
       case "completed":
+      case "approved":
         return (
           <Badge className="bg-green-500/10 text-green-700 hover:bg-green-500/20 border-green-500/20">
             <CheckCircle2 className="size-3 mr-1" />
-            Completed
+            {status === "approved" ? "Approved" : "Completed"}
           </Badge>
         )
       case "pending":

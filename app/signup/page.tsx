@@ -59,6 +59,13 @@ export default function SignupPage() {
 
       const supabase = createClient()
 
+      console.log("[v0] Supabase URL exists:", !!process.env.NEXT_PUBLIC_SUPABASE_URL)
+      console.log("[v0] Supabase Anon Key exists:", !!process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY)
+      console.log(
+        "[v0] Supabase URL domain:",
+        process.env.NEXT_PUBLIC_SUPABASE_URL?.replace("https://", "").split(".")[0],
+      )
+
       const { data, error: signUpError } = await supabase.auth.signUp({
         email,
         password,
@@ -71,8 +78,8 @@ export default function SignupPage() {
       })
 
       if (signUpError) {
-        console.error("[v0] Signup error:", signUpError)
-        throw new Error(signUpError.message)
+        console.error("[v0] Signup error:", signUpError.message)
+        throw signUpError
       }
 
       console.log("[v0] Signup response:", data)
@@ -94,16 +101,29 @@ export default function SignupPage() {
       }, 1500)
     } catch (error: unknown) {
       console.error("[v0] Signup error:", error)
+
       if (error instanceof Error) {
-        if (error.message.includes("User already registered")) {
+        const errorMessage = error.message.toLowerCase()
+
+        if (errorMessage.includes("rate limit") || errorMessage.includes("too many requests")) {
+          setError(
+            "Too many signup attempts. Please wait a few minutes before trying again. If you already have an account, try logging in instead.",
+          )
+        } else if (errorMessage.includes("user already registered") || errorMessage.includes("already exists")) {
           setError("This email is already registered. Please try logging in instead.")
-        } else if (error.message.includes("Email confirmations")) {
-          setError(error.message)
+        } else if (errorMessage.includes("email confirmations") || errorMessage.includes("confirmation")) {
+          setError(
+            "Email confirmation is enabled. Please disable 'Email Confirmations' in your Supabase Dashboard (Authentication → Providers → Email) to allow automatic verification.",
+          )
+        } else if (errorMessage.includes("invalid email")) {
+          setError("Please enter a valid email address.")
+        } else if (errorMessage.includes("password")) {
+          setError("Password must be at least 6 characters long.")
         } else {
-          setError(error.message)
+          setError(`Signup failed: ${error.message}. Please try again or contact support if the issue persists.`)
         }
       } else {
-        setError("An unexpected error occurred during signup. Please try again.")
+        setError("An unexpected error occurred during signup. Please try again later.")
       }
     } finally {
       setIsLoading(false)

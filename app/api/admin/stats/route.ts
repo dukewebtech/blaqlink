@@ -1,52 +1,64 @@
-import { createClient } from "@/lib/supabase/server"
+import { createAdminClient } from "@/lib/supabase/server"
 import { NextResponse } from "next/server"
 
 export async function GET() {
   try {
-    const supabase = await createClient()
+    const supabase = await createAdminClient()
 
-    // Verify admin access
-    const {
-      data: { user: authUser },
-      error: authError,
-    } = await supabase.auth.getUser()
+    const [usersResult, productsResult, ordersResult, pendingWithdrawalsResult, approvedWithdrawalsResult] =
+      await Promise.all([
+        // Total users count
+        supabase
+          .from("users")
+          .select("id", { count: "exact", head: true }),
+        // Total products count
+        supabase
+          .from("products")
+          .select("id", { count: "exact", head: true }),
+        // Total orders and revenue
+        supabase
+          .from("orders")
+          .select("total_amount", { count: "exact" }),
+        // Pending withdrawals
+        supabase
+          .from("withdrawal_requests")
+          .select("amount")
+          .eq("status", "pending"),
+        // Approved withdrawals
+        supabase
+          .from("withdrawal_requests")
+          .select("amount")
+          .eq("status", "approved"),
+      ])
 
-    if (authError || !authUser) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-    }
-
-    // Get user profile to check admin status
-    const { data: userData, error: userError } = await supabase
-      .from("users")
-      .select("is_admin, role")
-      .eq("auth_id", authUser.id)
-      .maybeSingle()
-
-    if (userError || !userData || (!userData.is_admin && userData.role !== "admin")) {
-      return NextResponse.json({ error: "Admin access required" }, { status: 403 })
-    }
-
-    // Fetch admin stats
-    const [vendorsResult, ordersResult, withdrawalsResult] = await Promise.all([
-      supabase.from("users").select("id", { count: "exact", head: true }),
-      supabase.from("orders").select("total_amount", { count: "exact" }),
-      supabase.from("withdrawal_requests").select("amount, status").eq("status", "pending"),
-    ])
-
-    const totalVendors = vendorsResult.count || 0
+    const totalUsers = usersResult.count || 0
+    const totalProducts = productsResult.count || 0
     const totalOrders = ordersResult.count || 0
-    const totalRevenue = ordersResult.data?.reduce((sum, order) => sum + Number(order.total_amount), 0) || 0
-    const pendingWithdrawals = withdrawalsResult.data?.length || 0
-    const pendingWithdrawalAmount = withdrawalsResult.data?.reduce((sum, w) => sum + Number(w.amount), 0) || 0
+    const totalRevenue = ordersResult.data?.reduce((sum, order) => sum + Number(order.total_amount || 0), 0) || 0
+    const pendingWithdrawalsCount = pendingWithdrawalsResult.data?.length || 0
+    const totalPendingWithdrawals =
+      pendingWithdrawalsResult.data?.reduce((sum, w) => sum + Number(w.amount || 0), 0) || 0
+    const totalApprovedWithdrawals =
+      approvedWithdrawalsResult.data?.reduce((sum, w) => sum + Number(w.amount || 0), 0) || 0
+
+    console.log("[v0] Admin stats calculated:", {
+      totalUsers,
+      totalProducts,
+      totalOrders,
+      totalRevenue,
+      pendingWithdrawalsCount,
+      totalPendingWithdrawals,
+      totalApprovedWithdrawals,
+    })
 
     return NextResponse.json({
-      data: {
-        totalVendors,
-        totalOrders,
-        totalRevenue,
-        pendingWithdrawals,
-        pendingWithdrawalAmount,
-      },
+      totalUsers,
+      totalProducts,
+      totalOrders,
+      totalRevenue,
+      pendingWithdrawalsCount,
+      totalPendingWithdrawals,
+      totalApprovedWithdrawals,
     })
   } catch (error) {
     console.error("[v0] Admin stats error:", error)

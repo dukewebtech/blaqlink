@@ -61,6 +61,24 @@ export function AdminLayout({ children }: { children: React.ReactNode }) {
     const fetchUserData = async () => {
       try {
         const response = await fetch("/api/users/me")
+
+        if (!response.ok) {
+          if (response.status === 503) {
+            console.log("[v0] Auth service temporarily unavailable, retrying...")
+            // Retry after a short delay
+            setTimeout(() => {
+              fetchUserData()
+            }, 2000)
+            return
+          }
+
+          if (response.status === 401) {
+            console.log("[v0] User not authenticated, redirecting to login")
+            router.push("/login")
+            return
+          }
+        }
+
         const result = await response.json()
 
         if (result.ok && result.data?.user) {
@@ -71,11 +89,14 @@ export function AdminLayout({ children }: { children: React.ReactNode }) {
             router.push("/admin/setup")
           }
         } else {
+          console.log("[v0] Invalid response, redirecting to login")
           router.push("/login")
         }
       } catch (error) {
         console.error("[v0] Error fetching user data:", error)
-        router.push("/login")
+        setTimeout(() => {
+          router.push("/login")
+        }, 3000)
       } finally {
         setLoading(false)
       }

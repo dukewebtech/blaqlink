@@ -7,13 +7,28 @@ export async function GET() {
     console.log("[v0] Fetching current user profile...")
     const supabase = await createServerClient()
 
-    // Get authenticated user
-    const {
-      data: { user: authUser },
-      error: authError,
-    } = await supabase.auth.getUser()
+    let authUser
+    try {
+      const { data, error: authError } = await supabase.auth.getUser()
 
-    if (authError || !authUser) {
+      if (authError) {
+        console.log("[v0] Auth error:", authError.message)
+        return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+      }
+
+      authUser = data.user
+    } catch (authFetchError) {
+      console.error("[v0] Failed to fetch auth user:", authFetchError)
+      return NextResponse.json(
+        {
+          error: "Authentication service unavailable",
+          details: "Please refresh the page",
+        },
+        { status: 503 },
+      )
+    }
+
+    if (!authUser) {
       console.log("[v0] User not authenticated")
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
@@ -54,13 +69,28 @@ export async function PUT(request: Request) {
     console.log("[v0] Updating user profile...")
     const supabase = await createServerClient()
 
-    // Get authenticated user
-    const {
-      data: { user: authUser },
-      error: authError,
-    } = await supabase.auth.getUser()
+    let authUser
+    try {
+      const { data, error: authError } = await supabase.auth.getUser()
 
-    if (authError || !authUser) {
+      if (authError) {
+        console.log("[v0] Auth error:", authError.message)
+        return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+      }
+
+      authUser = data.user
+    } catch (authFetchError) {
+      console.error("[v0] Failed to fetch auth user:", authFetchError)
+      return NextResponse.json(
+        {
+          error: "Authentication service unavailable",
+          details: "Please refresh the page",
+        },
+        { status: 503 },
+      )
+    }
+
+    if (!authUser) {
       console.log("[v0] User not authenticated")
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }

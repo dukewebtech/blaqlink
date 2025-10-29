@@ -11,6 +11,7 @@ import { Label } from "@/components/ui/label"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Eye, EyeOff, CheckCircle2 } from "lucide-react"
 import { Logo } from "@/components/logo"
+import { createClient } from "@/lib/supabase/client"
 
 export default function SignupPage() {
   const [showPassword, setShowPassword] = useState(false)
@@ -54,29 +55,29 @@ export default function SignupPage() {
     }
 
     try {
-      console.log("[v0] Starting signup process...")
+      console.log("[v0] Starting client-side signup process...")
 
-      const response = await fetch("/api/auth/signup", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
+      const supabase = createClient()
+
+      const { data, error: signUpError } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          data: {
+            full_name: fullName,
+            role: "vendor",
+          },
         },
-        body: JSON.stringify({
-          email,
-          password,
-          fullName,
-          role: "vendor",
-        }),
       })
 
-      const data = await response.json()
-      console.log("[v0] Signup response:", data)
-
-      if (!response.ok) {
-        throw new Error(data.error || "Failed to create account")
+      if (signUpError) {
+        console.error("[v0] Signup error:", signUpError)
+        throw signUpError
       }
 
-      console.log("[v0] User created successfully, redirecting to login...")
+      console.log("[v0] User created successfully:", data.user?.email)
+      console.log("[v0] User confirmed:", data.user?.confirmed_at ? "Yes" : "No (email confirmation required)")
+
       setSuccess(true)
 
       setTimeout(() => {
@@ -85,14 +86,16 @@ export default function SignupPage() {
     } catch (error: unknown) {
       console.error("[v0] Signup error:", error)
       if (error instanceof Error) {
-        if (error.message.includes("fetch")) {
-          setError("Unable to connect to authentication service. Please check your internet connection.")
-        } else if (error.message.includes("already registered") || error.message.includes("already been registered")) {
+        if (error.message.includes("User already registered")) {
           setError("This email is already registered. Please try logging in instead.")
-        } else if (error.message.includes("Database error")) {
-          setError("Unable to create account. Please try again or contact support if the issue persists.")
+        } else if (error.message.includes("Email rate limit exceeded")) {
+          setError("Too many signup attempts. Please try again in a few minutes.")
+        } else if (error.message.includes("Invalid email")) {
+          setError("Please enter a valid email address.")
+        } else if (error.message.includes("Password should be at least")) {
+          setError("Password must be at least 6 characters long.")
         } else {
-          setError(error.message)
+          setError(error.message || "Failed to create account. Please try again.")
         }
       } else {
         setError("An unexpected error occurred during signup. Please try again.")

@@ -229,14 +229,16 @@ export default function PayoutsPage() {
           <Card className="relative overflow-hidden bg-gradient-to-br from-primary to-primary/80 text-white border-0 group hover:shadow-lg transition-all duration-300">
             <div className="p-6">
               <div className="flex items-start justify-between mb-4">
-                <h3 className="text-sm font-medium text-white/90">Total Revenue</h3>
+                <h3 className="text-sm font-medium text-white/90">
+                  Net Revenue (After {platformSettings?.commission_percentage || 10}% Commission)
+                </h3>
                 <ArrowUpRight className="size-5 text-white/80 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform" />
               </div>
               <div className="space-y-2">
                 <p className="text-3xl font-bold">NGN {stats?.totalRevenue.toLocaleString() || 0}</p>
                 <div className="flex items-center gap-1.5 text-sm">
                   <TrendingUp className="size-4 text-green-300" />
-                  <span className="text-white/70">From all completed orders</span>
+                  <span className="text-white/70">Your earnings after platform fee</span>
                 </div>
               </div>
             </div>

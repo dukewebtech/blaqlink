@@ -6,9 +6,18 @@ export async function GET() {
     console.log("[v0] Fetching admin reports...")
     const adminClient = createAdminClient()
 
-    const { data: settings } = await adminClient.from("platform_settings").select("*").single()
+    let commissionPercentage = 10 // Default fallback
+    try {
+      const { data: settings, error: settingsError } = await adminClient.from("platform_settings").select("*").single()
 
-    const commissionPercentage = settings?.commission_percentage || 10
+      if (!settingsError && settings) {
+        commissionPercentage = settings.commission_percentage || 10
+      }
+    } catch (settingsErr) {
+      // Table doesn't exist yet, use default value
+      console.log("[v0] Platform settings table not found, using default commission (10%)")
+    }
+
     console.log("[v0] Commission percentage:", commissionPercentage)
 
     // Get all paid orders

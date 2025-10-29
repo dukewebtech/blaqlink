@@ -55,7 +55,7 @@ export default function SignupPage() {
     }
 
     try {
-      console.log("[v0] Starting client-side signup process...")
+      console.log("[v0] Starting signup process with supabase.auth.signUp()...")
 
       const supabase = createClient()
 
@@ -72,12 +72,21 @@ export default function SignupPage() {
 
       if (signUpError) {
         console.error("[v0] Signup error:", signUpError)
-        throw signUpError
+        throw new Error(signUpError.message)
       }
 
-      console.log("[v0] User created successfully:", data.user?.email)
-      console.log("[v0] User confirmed:", data.user?.confirmed_at ? "Yes" : "No (email confirmation required)")
+      console.log("[v0] Signup response:", data)
 
+      // Check if email confirmation is required
+      if (data.user && !data.user.confirmed_at && data.user.confirmation_sent_at) {
+        setError(
+          "Email confirmation is enabled. Please disable 'Email Confirmations' in your Supabase Dashboard (Authentication → Providers → Email) to allow automatic verification.",
+        )
+        setIsLoading(false)
+        return
+      }
+
+      console.log("[v0] User created successfully, redirecting to login...")
       setSuccess(true)
 
       setTimeout(() => {
@@ -88,14 +97,10 @@ export default function SignupPage() {
       if (error instanceof Error) {
         if (error.message.includes("User already registered")) {
           setError("This email is already registered. Please try logging in instead.")
-        } else if (error.message.includes("Email rate limit exceeded")) {
-          setError("Too many signup attempts. Please try again in a few minutes.")
-        } else if (error.message.includes("Invalid email")) {
-          setError("Please enter a valid email address.")
-        } else if (error.message.includes("Password should be at least")) {
-          setError("Password must be at least 6 characters long.")
+        } else if (error.message.includes("Email confirmations")) {
+          setError(error.message)
         } else {
-          setError(error.message || "Failed to create account. Please try again.")
+          setError(error.message)
         }
       } else {
         setError("An unexpected error occurred during signup. Please try again.")

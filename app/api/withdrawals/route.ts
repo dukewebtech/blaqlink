@@ -1,36 +1,21 @@
 import { createClient, createAdminClient } from "@/lib/supabase/server"
 import { NextResponse } from "next/server"
+import { getAuthenticatedUser, handleApiError } from "@/lib/utils/api-helpers"
+import { validateBody, withdrawalSchema } from "@/lib/utils/validation"
 
 export async function GET() {
   try {
+    const authResult = await getAuthenticatedUser()
+    if (!authResult.success) {
+      return authResult.error
+    }
+
     const supabase = await createClient()
 
-    // Get current user
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser()
-
-    if (authError || !user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-    }
-
-    const { data: userProfile, error: profileError } = await supabase
-      .from("users")
-      .select("id")
-      .eq("auth_id", user.id)
-      .maybeSingle()
-
-    if (profileError || !userProfile) {
-      console.error("[v0] Error fetching user profile:", profileError)
-      return NextResponse.json({ error: "User profile not found" }, { status: 404 })
-    }
-
-    // Fetch user's withdrawal requests using the users table id
     const { data: withdrawals, error } = await supabase
       .from("withdrawal_requests")
       .select("*")
-      .eq("user_id", userProfile.id)
+      .eq("user_id", authResult.user.userId)
       .order("created_at", { ascending: false })
 
     if (error) {
@@ -40,45 +25,35 @@ export async function GET() {
 
     return NextResponse.json({ ok: true, withdrawals })
   } catch (error) {
-    console.error("[v0] Withdrawals API error:", error)
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 })
+    return handleApiError(error, "GET /api/withdrawals")
   }
 }
 
 export async function POST(request: Request) {
   try {
-    const supabase = await createClient()
-
-    // Get current user
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser()
-
-    if (authError || !user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-    }
-
-    const { data: userProfile, error: profileError } = await supabase
-      .from("users")
-      .select("id")
-      .eq("auth_id", user.id)
-      .maybeSingle()
-
-    if (profileError || !userProfile) {
-      console.error("[v0] Error fetching user profile:", profileError)
-      return NextResponse.json({ error: "User profile not found" }, { status: 404 })
+    const authResult = await getAuthenticatedUser()
+    if (!authResult.success) {
+      return authResult.error
     }
 
     const body = await request.json()
-    const { amount, bank_name, account_number, account_name } = body
 
-    if (!amount || amount <= 0) {
-      return NextResponse.json({ error: "Invalid amount" }, { status: 400 })
+    const validation = validateBody(withdrawalSchema, body)
+    if (!validation.success) {
+      return NextResponse.json({ error: validation.error }, { status: 400 })
     }
 
-    const { data: settings } = await supabase.from("platform_settings").select("minimum_withdrawal_amount").single()
-    const minWithdrawal = settings?.minimum_withdrawal_amount || 5000
+    const { amount, bank_name, account_number, account_name } = validation.data
+
+    const supabase = await createClient()
+
+    let minWithdrawal = 5000
+    try {
+      const { data: settings } = await supabase.from("platform_settings").select("minimum_withdrawal_amount").single()
+      minWithdrawal = settings?.minimum_withdrawal_amount || 5000
+    } catch (error) {
+      console.log("[v0] Platform settings not available, using default minimum withdrawal")
+    }
 
     if (amount < minWithdrawal) {
       console.log("[v0] Withdrawal amount below minimum:", { amount, minWithdrawal })
@@ -88,19 +63,12 @@ export async function POST(request: Request) {
       )
     }
 
-    if (!bank_name || !account_number || !account_name) {
-      return NextResponse.json(
-        { error: "Please provide bank details (bank name, account number, and account name)" },
-        { status: 400 },
-      )
-    }
-
-    const adminClient = await createAdminClient()
+    const adminClient = createAdminClient()
 
     const { data: withdrawal, error: insertError } = await adminClient
       .from("withdrawal_requests")
       .insert({
-        user_id: userProfile.id,
+        user_id: authResult.user.userId,
         amount,
         bank_name,
         account_number,
@@ -115,10 +83,9 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Failed to create withdrawal request" }, { status: 500 })
     }
 
-    console.log("[v0] Withdrawal request created successfully:", withdrawal)
+    console.log("[v0] Withdrawal request created successfully:", withdrawal.id)
     return NextResponse.json({ ok: true, withdrawal })
   } catch (error) {
-    console.error("[v0] Withdrawal request API error:", error)
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 })
+    return handleApiError(error, "POST /api/withdrawals")
   }
 }

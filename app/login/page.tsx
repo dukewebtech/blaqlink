@@ -23,7 +23,6 @@ export default function LoginPage() {
   useEffect(() => {
     if (searchParams.get("signup") === "success") {
       setShowSignupSuccess(true)
-      // Auto-hide the message after 5 seconds
       const timer = setTimeout(() => {
         setShowSignupSuccess(false)
       }, 5000)
@@ -52,31 +51,80 @@ export default function LoginPage() {
 
       console.log("[v0] Login successful, checking onboarding status...")
 
-      const onboardingResponse = await fetch("/api/onboarding")
-      if (onboardingResponse.ok) {
-        const onboardingData = await onboardingResponse.json()
-        console.log("[v0] Onboarding status:", onboardingData)
+      const profileResponse = await fetch("/api/users/me")
 
-        if (!onboardingData.progress?.onboarding_completed || !onboardingData.adminKycApproved) {
-          console.log("[v0] Redirecting to onboarding...")
-          window.location.href = "/onboarding"
+      if (!profileResponse.ok && profileResponse.status === 404) {
+        console.log("[v0] Profile not found, creating profile...")
+        // Create profile using the authenticated user's email
+        const createResponse = await fetch("/api/users/me", {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            email: data.user.email,
+            full_name: data.user.user_metadata?.full_name || data.user.email?.split("@")[0],
+            role: "vendor",
+          }),
+        })
+
+        if (!createResponse.ok) {
+          console.error("[v0] Failed to create user profile")
+          setError("Failed to initialize user account. Please contact support.")
+          setIsLoading(false)
           return
+        }
+
+        console.log("[v0] Profile created successfully")
+      }
+
+      let shouldOnboard = false
+      let isAdmin = false
+
+      try {
+        const onboardingResponse = await fetch("/api/onboarding")
+
+        if (onboardingResponse.ok) {
+          const onboardingData = await onboardingResponse.json()
+          console.log("[v0] Onboarding status:", onboardingData)
+
+          // Check if user needs to complete onboarding
+          if (!onboardingData.progress?.onboarding_completed) {
+            shouldOnboard = true
+          } else if (!onboardingData.adminKycApproved) {
+            // Onboarding complete but KYC not approved - show pending screen
+            console.log("[v0] KYC pending approval, redirecting to onboarding...")
+            shouldOnboard = true
+          }
+        } else {
+          // If onboarding API fails, assume new user needs onboarding
+          console.log("[v0] Onboarding API not available, assuming new user...")
+          shouldOnboard = true
+        }
+      } catch (onboardingError) {
+        console.error("[v0] Onboarding check failed:", onboardingError)
+        // Continue to profile check
+      }
+
+      const profileCheckResponse = await fetch("/api/users/me")
+      if (profileCheckResponse.ok) {
+        const profileData = await profileCheckResponse.json()
+        const userData = profileData.data?.user || profileData.user || profileData
+
+        if (userData?.is_admin || userData?.role === "admin") {
+          isAdmin = true
+          console.log("[v0] Admin user detected")
         }
       }
 
-      console.log("[v0] Onboarding complete, checking profile...")
-      const profileResponse = await fetch("/api/users/me")
+      if (isAdmin) {
+        console.log("[v0] Admin user, redirecting to admin dashboard...")
+        window.location.href = "/admin/dashboard"
+        return
+      }
 
-      if (profileResponse.ok) {
-        const profileData = await profileResponse.json()
-        console.log("[v0] Profile data:", profileData)
-
-        const userData = profileData.data?.user || profileData.user || profileData
-        if (userData?.is_admin || userData?.role === "admin") {
-          console.log("[v0] Admin user, redirecting to admin dashboard...")
-          window.location.href = "/admin/dashboard"
-          return
-        }
+      if (shouldOnboard) {
+        console.log("[v0] Redirecting to onboarding...")
+        window.location.href = "/onboarding"
+        return
       }
 
       console.log("[v0] Regular user, redirecting to dashboard...")

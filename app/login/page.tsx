@@ -51,33 +51,35 @@ export default function LoginPage() {
 
       console.log("[v0] Login successful, checking onboarding status...")
 
-      const profileResponse = await fetch("/api/users/me")
+      const profileResponse = await fetch("/api/users/me", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          email: data.user.email,
+          full_name: data.user.user_metadata?.full_name || data.user.email?.split("@")[0],
+          role: data.user.user_metadata?.role || "vendor",
+        }),
+      })
 
-      if (!profileResponse.ok && profileResponse.status === 404) {
-        console.log("[v0] Profile not found, creating profile...")
-        // Create profile using the authenticated user's email
-        const createResponse = await fetch("/api/users/me", {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            email: data.user.email,
-            full_name: data.user.user_metadata?.full_name || data.user.email?.split("@")[0],
-            role: "vendor",
-          }),
-        })
-
-        if (!createResponse.ok) {
-          console.error("[v0] Failed to create user profile")
-          setError("Failed to initialize user account. Please contact support.")
-          setIsLoading(false)
-          return
-        }
-
-        console.log("[v0] Profile created successfully")
+      if (!profileResponse.ok) {
+        console.error("[v0] Failed to initialize user profile")
+        setError("Failed to initialize user account. Please try again.")
+        setIsLoading(false)
+        return
       }
 
+      const profileData = await profileResponse.json()
+      const userData = profileData.data?.user || profileData.user || profileData
+
+      // Check if user is admin
+      if (userData?.is_admin || userData?.role === "admin") {
+        console.log("[v0] Admin user, redirecting to admin dashboard...")
+        window.location.href = "/admin/dashboard"
+        return
+      }
+
+      // Check onboarding status
       let shouldOnboard = false
-      let isAdmin = false
 
       try {
         const onboardingResponse = await fetch("/api/onboarding")
@@ -89,36 +91,23 @@ export default function LoginPage() {
           // Check if user needs to complete onboarding
           if (!onboardingData.progress?.onboarding_completed) {
             shouldOnboard = true
-          } else if (!onboardingData.adminKycApproved) {
+          } else if (onboardingData.kycStatus === "pending_review" && !onboardingData.adminKycApproved) {
             // Onboarding complete but KYC not approved - show pending screen
             console.log("[v0] KYC pending approval, redirecting to onboarding...")
             shouldOnboard = true
           }
         } else {
-          // If onboarding API fails, assume new user needs onboarding
-          console.log("[v0] Onboarding API not available, assuming new user...")
-          shouldOnboard = true
+          // If onboarding API fails, check user profile directly
+          if (!userData.onboarding_completed) {
+            shouldOnboard = true
+          }
         }
       } catch (onboardingError) {
         console.error("[v0] Onboarding check failed:", onboardingError)
-        // Continue to profile check
-      }
-
-      const profileCheckResponse = await fetch("/api/users/me")
-      if (profileCheckResponse.ok) {
-        const profileData = await profileCheckResponse.json()
-        const userData = profileData.data?.user || profileData.user || profileData
-
-        if (userData?.is_admin || userData?.role === "admin") {
-          isAdmin = true
-          console.log("[v0] Admin user detected")
+        // Check profile fallback
+        if (!userData.onboarding_completed) {
+          shouldOnboard = true
         }
-      }
-
-      if (isAdmin) {
-        console.log("[v0] Admin user, redirecting to admin dashboard...")
-        window.location.href = "/admin/dashboard"
-        return
       }
 
       if (shouldOnboard) {
@@ -127,7 +116,7 @@ export default function LoginPage() {
         return
       }
 
-      console.log("[v0] Regular user, redirecting to dashboard...")
+      console.log("[v0] Redirecting to dashboard...")
       window.location.href = "/dashboard"
     } catch (error: unknown) {
       console.error("[v0] Login failed:", error)

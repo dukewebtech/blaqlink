@@ -101,25 +101,10 @@ export async function PUT(request: Request) {
     const body = await request.json()
     console.log("[v0] Update data:", { ...body, profile_image: body.profile_image ? "..." : null })
 
-    let existingProfile
-    const { data: profileById } = await supabase.from("users").select("id").eq("id", authUser.id).maybeSingle()
-
-    if (profileById) {
-      existingProfile = profileById
-    } else {
-      const { data: profileByAuthId } = await supabase
-        .from("users")
-        .select("id")
-        .eq("auth_id", authUser.id)
-        .maybeSingle()
-      existingProfile = profileByAuthId
-    }
-
-    if (!existingProfile) {
-      console.log("[v0] Creating new user profile...")
-      const { data: newProfile, error: createError } = await supabase
-        .from("users")
-        .insert({
+    const { data: upsertedProfile, error: upsertError } = await supabase
+      .from("users")
+      .upsert(
+        {
           id: authUser.id,
           auth_id: authUser.id,
           email: authUser.email || body.email,
@@ -129,53 +114,29 @@ export async function PUT(request: Request) {
           business_name: body.business_name,
           profile_image: body.profile_image,
           role: body.role || authUser.user_metadata?.role || "vendor",
-          onboarding_completed: false,
-          kyc_status: "not_submitted",
-          admin_kyc_approved: false,
-          created_at: new Date().toISOString(),
+          onboarding_completed: body.onboarding_completed ?? false,
+          kyc_status: body.kyc_status || "not_submitted",
+          admin_kyc_approved: body.admin_kyc_approved ?? false,
           updated_at: new Date().toISOString(),
-        })
-        .select()
-        .maybeSingle()
-
-      if (createError) {
-        console.error("[v0] Error creating user profile:", createError)
-        return NextResponse.json({ error: createError.message }, { status: 500 })
-      }
-
-      console.log("[v0] User profile created successfully")
-      return NextResponse.json({
-        ok: true,
-        data: { user: newProfile },
-      })
-    }
-
-    // Update user profile - try both id and auth_id
-    const { data: updatedUser, error: updateError } = await supabase
-      .from("users")
-      .update({
-        full_name: body.full_name,
-        email: body.email,
-        phone: body.phone,
-        location: body.location,
-        business_name: body.business_name,
-        profile_image: body.profile_image,
-        updated_at: new Date().toISOString(),
-      })
-      .or(`id.eq.${authUser.id},auth_id.eq.${authUser.id}`)
+        },
+        {
+          onConflict: "id",
+          ignoreDuplicates: false,
+        },
+      )
       .select()
       .maybeSingle()
 
-    if (updateError) {
-      console.error("[v0] Error updating user profile:", updateError)
-      return NextResponse.json({ error: updateError.message }, { status: 500 })
+    if (upsertError) {
+      console.error("[v0] Error upserting user profile:", upsertError)
+      return NextResponse.json({ error: upsertError.message }, { status: 500 })
     }
 
-    console.log("[v0] User profile updated successfully")
+    console.log("[v0] User profile upserted successfully")
 
     return NextResponse.json({
       ok: true,
-      data: { user: updatedUser },
+      data: { user: upsertedProfile },
     })
   } catch (error) {
     console.error("[v0] User profile update API error:", error)

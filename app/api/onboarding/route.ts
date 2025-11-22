@@ -78,46 +78,73 @@ export async function POST(request: Request) {
 
     console.log("[v0] Updating onboarding step:", step, "for user:", user.id)
 
-    // Update onboarding progress based on step
-    const updates: any = { updated_at: new Date().toISOString() }
+    // Get or create onboarding progress
+    let { data: progress } = await supabase.from("onboarding_progress").select("*").eq("user_id", user.id).single()
+
+    if (!progress) {
+      const { data: newProgress } = await supabase
+        .from("onboarding_progress")
+        .insert({ user_id: user.id })
+        .select()
+        .single()
+      progress = newProgress
+    }
+
+    const updates: any = {
+      current_step: step,
+      updated_at: new Date().toISOString(),
+    }
+
+    // Add completed step to array if not already there
+    const completedSteps = progress?.completed_steps || []
+    if (!completedSteps.includes(step)) {
+      completedSteps.push(step)
+      updates.completed_steps = completedSteps
+    }
 
     switch (step) {
+      case 1: // Welcome screen completed
+        break
+
       case 2: // Business Information
-        updates.business_info_completed = true
-        updates.step_completed = 2
-        // Update users table with business info
+        updates.business_name = stepData.businessName
+        updates.store_name = stepData.storeName
+        updates.business_category = stepData.businessCategory
+        updates.business_address = stepData.businessAddress
+
+        // Also update users table
         await supabase
           .from("users")
           .update({
             business_name: stepData.businessName,
-            full_name: stepData.storeName,
-            business_category: stepData.businessCategory,
-            business_address: stepData.businessAddress,
           })
           .eq("id", user.id)
         break
 
-      case 3: // Identity Upload
-        updates.kyc_info_completed = true
-        updates.step_completed = 3
-        // Update users table with KYC info
+      case 3: // Identity Upload (KYC)
+        updates.full_name = stepData.fullName
+        updates.date_of_birth = stepData.dateOfBirth
+        updates.bvn = stepData.bvn
+        updates.government_id_url = stepData.governmentIdUrl
+        updates.selfie_url = stepData.selfieUrl
+
+        // Update users table with KYC status
         await supabase
           .from("users")
           .update({
             full_name: stepData.fullName,
-            date_of_birth: stepData.dateOfBirth,
-            bvn: stepData.bvn,
-            government_id_url: stepData.governmentIdUrl,
-            selfie_url: stepData.selfieUrl,
             kyc_status: "pending_review",
+            kyc_submitted_at: new Date().toISOString(),
           })
           .eq("id", user.id)
         break
 
       case 4: // Bank Account Setup
-        updates.bank_info_completed = true
-        updates.step_completed = 4
-        // Update users table with bank info
+        updates.bank_name = stepData.bankName
+        updates.account_number = stepData.accountNumber
+        updates.account_name = stepData.accountName
+
+        // Update users table
         await supabase
           .from("users")
           .update({
@@ -129,24 +156,16 @@ export async function POST(request: Request) {
         break
 
       case 5: // Store Setup
-        updates.store_setup_completed = true
-        updates.step_completed = 5
+        updates.store_template = stepData.storeTemplate
+        updates.store_logo_url = stepData.storeLogo
+        updates.store_brand_color = stepData.brandColor
         updates.onboarding_completed = true
-        // Update users table with store info
-        await supabase
-          .from("users")
-          .update({
-            store_template: stepData.storeTemplate,
-            store_logo_url: stepData.storeLogo,
-            store_brand_color: stepData.brandColor,
-          })
-          .eq("id", user.id)
         break
     }
 
     const { data: updatedProgress, error: updateError } = await supabase
       .from("onboarding_progress")
-      .update(updates)
+      .upsert({ user_id: user.id, ...updates })
       .eq("user_id", user.id)
       .select()
       .single()
@@ -156,7 +175,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Failed to update progress" }, { status: 500 })
     }
 
-    console.log("[v0] Onboarding progress updated:", updatedProgress)
+    console.log("[v0] Onboarding progress updated successfully")
 
     return NextResponse.json({ progress: updatedProgress })
   } catch (error) {

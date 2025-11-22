@@ -50,28 +50,37 @@ export default function LoginPage() {
         return
       }
 
+      console.log("[v0] Login successful, checking onboarding status...")
+
       const onboardingResponse = await fetch("/api/onboarding")
       if (onboardingResponse.ok) {
         const onboardingData = await onboardingResponse.json()
+        console.log("[v0] Onboarding status:", onboardingData)
 
         if (!onboardingData.progress?.onboarding_completed || !onboardingData.adminKycApproved) {
-          // Redirect to onboarding if not complete
+          console.log("[v0] Redirecting to onboarding...")
           window.location.href = "/onboarding"
           return
         }
       }
 
-      // Onboarding complete, check profile
+      console.log("[v0] Onboarding complete, checking profile...")
       const profileResponse = await fetch("/api/users/me")
-      const profileData = await profileResponse.json()
 
-      if (!profileResponse.ok || !profileData.data?.user) {
-        // No profile exists, redirect to complete profile
-        window.location.href = "/settings/account?complete=true"
-      } else {
-        // Profile exists and onboarding complete, go to dashboard
-        window.location.href = "/dashboard"
+      if (profileResponse.ok) {
+        const profileData = await profileResponse.json()
+        console.log("[v0] Profile data:", profileData)
+
+        const userData = profileData.data?.user || profileData.user || profileData
+        if (userData?.is_admin || userData?.role === "admin") {
+          console.log("[v0] Admin user, redirecting to admin dashboard...")
+          window.location.href = "/admin/dashboard"
+          return
+        }
       }
+
+      console.log("[v0] Regular user, redirecting to dashboard...")
+      window.location.href = "/dashboard"
     } catch (error: unknown) {
       console.error("[v0] Login failed:", error)
       if (error instanceof Error && error.message === "Failed to fetch") {

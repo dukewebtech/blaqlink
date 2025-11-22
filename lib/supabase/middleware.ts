@@ -66,10 +66,53 @@ export async function updateSession(request: NextRequest) {
       return NextResponse.redirect(url)
     }
 
-    // If user is logged in and trying to access login/signup, redirect to dashboard
+    // Check if user needs to complete onboarding
+    if (user && !request.nextUrl.pathname.startsWith("/onboarding")) {
+      try {
+        // Check onboarding status
+        const { data: progress } = await supabase
+          .from("onboarding_progress")
+          .select("onboarding_completed")
+          .eq("user_id", user.id)
+          .single()
+
+        const { data: userData } = await supabase.from("users").select("admin_kyc_approved").eq("id", user.id).single()
+
+        // Redirect to onboarding if not completed or KYC not approved
+        if (!progress?.onboarding_completed || !userData?.admin_kyc_approved) {
+          const url = request.nextUrl.clone()
+          url.pathname = "/onboarding"
+          return NextResponse.redirect(url)
+        }
+      } catch (error) {
+        console.log("[v0] Error checking onboarding status:", error)
+        // If error checking onboarding, let them through (fail open)
+      }
+    }
+
+    // If user is logged in and trying to access login/signup, redirect to dashboard or onboarding
     if (user && (request.nextUrl.pathname.startsWith("/signup") || request.nextUrl.pathname.startsWith("/login"))) {
       const url = request.nextUrl.clone()
-      url.pathname = "/dashboard"
+
+      // Check if they need onboarding
+      try {
+        const { data: progress } = await supabase
+          .from("onboarding_progress")
+          .select("onboarding_completed")
+          .eq("user_id", user.id)
+          .single()
+
+        const { data: userData } = await supabase.from("users").select("admin_kyc_approved").eq("id", user.id).single()
+
+        if (!progress?.onboarding_completed || !userData?.admin_kyc_approved) {
+          url.pathname = "/onboarding"
+        } else {
+          url.pathname = "/dashboard"
+        }
+      } catch (error) {
+        url.pathname = "/onboarding"
+      }
+
       return NextResponse.redirect(url)
     }
 

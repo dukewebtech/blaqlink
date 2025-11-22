@@ -50,6 +50,18 @@ export default function LoginPage() {
         return
       }
 
+      const onboardingResponse = await fetch("/api/onboarding")
+      if (onboardingResponse.ok) {
+        const onboardingData = await onboardingResponse.json()
+
+        if (!onboardingData.progress?.onboarding_completed || !onboardingData.adminKycApproved) {
+          // Redirect to onboarding if not complete
+          window.location.href = "/onboarding"
+          return
+        }
+      }
+
+      // Onboarding complete, check profile
       const profileResponse = await fetch("/api/users/me")
       const profileData = await profileResponse.json()
 
@@ -57,7 +69,7 @@ export default function LoginPage() {
         // No profile exists, redirect to complete profile
         window.location.href = "/settings/account?complete=true"
       } else {
-        // Profile exists, go to dashboard
+        // Profile exists and onboarding complete, go to dashboard
         window.location.href = "/dashboard"
       }
     } catch (error: unknown) {

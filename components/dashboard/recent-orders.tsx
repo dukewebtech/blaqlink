@@ -28,9 +28,15 @@ export function RecentOrders() {
       try {
         const response = await fetch("/api/dashboard/recent-orders")
         const data = await response.json()
-        setOrders(data)
+        if (Array.isArray(data)) {
+          setOrders(data)
+        } else {
+          console.error("[v0] Expected array but got:", typeof data)
+          setOrders([])
+        }
       } catch (error) {
         console.error("[v0] Failed to fetch recent orders:", error)
+        setOrders([])
       } finally {
         setLoading(false)
       }

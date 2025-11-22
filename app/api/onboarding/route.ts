@@ -14,40 +14,66 @@ export async function GET() {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
-    // Get onboarding progress
     const { data: progress, error: progressError } = await supabase
       .from("onboarding_progress")
       .select("*")
       .eq("user_id", user.id)
-      .single()
+      .maybeSingle()
 
-    if (progressError) {
+    if (!progress && progressError?.code !== "PGRST116") {
+      console.log("[v0] Onboarding progress table error:", progressError)
+      return NextResponse.json(
+        {
+          error: "Onboarding system not ready",
+          details: progressError?.message,
+        },
+        { status: 503 },
+      )
+    }
+
+    if (!progress) {
       console.log("[v0] Creating new onboarding progress for user:", user.id)
-      // Create onboarding progress if it doesn't exist
       const { data: newProgress, error: createError } = await supabase
         .from("onboarding_progress")
         .insert({ user_id: user.id })
         .select()
-        .single()
+        .maybeSingle()
 
       if (createError) {
-        console.error("[v0] Error creating onboarding progress:", createError)
-        return NextResponse.json({ error: "Failed to create onboarding progress" }, { status: 500 })
+        console.error("[v0] Error creating onboarding progress:", createError.message)
+        // Return a default progress object instead of failing
+        return NextResponse.json({
+          progress: {
+            user_id: user.id,
+            current_step: 1,
+            completed_steps: [],
+            onboarding_completed: false,
+          },
+          kycStatus: "not_submitted",
+          adminKycApproved: false,
+        })
       }
 
-      return NextResponse.json({ progress: newProgress })
+      // Get user KYC status
+      const { data: userData } = await supabase
+        .from("users")
+        .select("kyc_status, admin_kyc_approved, onboarding_completed")
+        .eq("id", user.id)
+        .maybeSingle()
+
+      return NextResponse.json({
+        progress: newProgress,
+        kycStatus: userData?.kyc_status || "not_submitted",
+        adminKycApproved: userData?.admin_kyc_approved || false,
+      })
     }
 
     // Get user KYC status
-    const { data: userData, error: userError } = await supabase
+    const { data: userData } = await supabase
       .from("users")
-      .select("kyc_status, admin_kyc_approved")
+      .select("kyc_status, admin_kyc_approved, onboarding_completed")
       .eq("id", user.id)
-      .single()
-
-    if (userError) {
-      console.error("[v0] Error fetching user data:", userError)
-    }
+      .maybeSingle()
 
     return NextResponse.json({
       progress,
@@ -78,15 +104,14 @@ export async function POST(request: Request) {
 
     console.log("[v0] Updating onboarding step:", step, "for user:", user.id)
 
-    // Get or create onboarding progress
-    let { data: progress } = await supabase.from("onboarding_progress").select("*").eq("user_id", user.id).single()
+    let { data: progress } = await supabase.from("onboarding_progress").select("*").eq("user_id", user.id).maybeSingle()
 
     if (!progress) {
       const { data: newProgress } = await supabase
         .from("onboarding_progress")
         .insert({ user_id: user.id })
         .select()
-        .single()
+        .maybeSingle()
       progress = newProgress
     }
 
@@ -117,6 +142,7 @@ export async function POST(request: Request) {
           .from("users")
           .update({
             business_name: stepData.businessName,
+            store_name: stepData.storeName,
           })
           .eq("id", user.id)
         break
@@ -133,6 +159,10 @@ export async function POST(request: Request) {
           .from("users")
           .update({
             full_name: stepData.fullName,
+            date_of_birth: stepData.dateOfBirth,
+            bvn: stepData.bvn,
+            government_id_url: stepData.governmentIdUrl,
+            selfie_url: stepData.selfieUrl,
             kyc_status: "pending_review",
             kyc_submitted_at: new Date().toISOString(),
           })
@@ -160,15 +190,22 @@ export async function POST(request: Request) {
         updates.store_logo_url = stepData.storeLogo
         updates.store_brand_color = stepData.brandColor
         updates.onboarding_completed = true
+
+        await supabase
+          .from("users")
+          .update({
+            onboarding_completed: true,
+            updated_at: new Date().toISOString(),
+          })
+          .eq("id", user.id)
         break
     }
 
     const { data: updatedProgress, error: updateError } = await supabase
       .from("onboarding_progress")
-      .upsert({ user_id: user.id, ...updates })
-      .eq("user_id", user.id)
+      .upsert({ user_id: user.id, ...updates }, { onConflict: "user_id" })
       .select()
-      .single()
+      .maybeSingle()
 
     if (updateError) {
       console.error("[v0] Error updating onboarding progress:", updateError)

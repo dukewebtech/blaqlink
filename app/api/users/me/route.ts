@@ -35,15 +35,18 @@ export async function GET() {
 
     console.log("[v0] Auth user ID:", authUser.id)
 
-    const { data: userProfile, error: profileError } = await supabase
-      .from("users")
-      .select("*")
-      .eq("auth_id", authUser.id)
-      .maybeSingle()
+    let userProfile
+    const { data: profileById } = await supabase.from("users").select("*").eq("id", authUser.id).maybeSingle()
 
-    if (profileError) {
-      console.error("[v0] Error fetching user profile:", profileError)
-      return NextResponse.json({ error: profileError.message }, { status: 500 })
+    if (profileById) {
+      userProfile = profileById
+    } else {
+      const { data: profileByAuthId } = await supabase
+        .from("users")
+        .select("*")
+        .eq("auth_id", authUser.id)
+        .maybeSingle()
+      userProfile = profileByAuthId
     }
 
     if (!userProfile) {
@@ -98,26 +101,42 @@ export async function PUT(request: Request) {
     const body = await request.json()
     console.log("[v0] Update data:", { ...body, profile_image: body.profile_image ? "..." : null })
 
-    const { data: existingProfile } = await supabase.from("users").select("id").eq("auth_id", authUser.id).maybeSingle()
+    let existingProfile
+    const { data: profileById } = await supabase.from("users").select("id").eq("id", authUser.id).maybeSingle()
+
+    if (profileById) {
+      existingProfile = profileById
+    } else {
+      const { data: profileByAuthId } = await supabase
+        .from("users")
+        .select("id")
+        .eq("auth_id", authUser.id)
+        .maybeSingle()
+      existingProfile = profileByAuthId
+    }
 
     if (!existingProfile) {
       console.log("[v0] Creating new user profile...")
       const { data: newProfile, error: createError } = await supabase
         .from("users")
         .insert({
+          id: authUser.id,
           auth_id: authUser.id,
           email: authUser.email || body.email,
-          full_name: body.full_name || authUser.user_metadata?.full_name,
+          full_name: body.full_name || authUser.user_metadata?.full_name || "New User",
           phone: body.phone,
           location: body.location,
           business_name: body.business_name,
           profile_image: body.profile_image,
-          role: authUser.user_metadata?.role || "vendor",
+          role: body.role || authUser.user_metadata?.role || "vendor",
+          onboarding_completed: false,
+          kyc_status: "not_submitted",
+          admin_kyc_approved: false,
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString(),
         })
         .select()
-        .single()
+        .maybeSingle()
 
       if (createError) {
         console.error("[v0] Error creating user profile:", createError)
@@ -131,7 +150,7 @@ export async function PUT(request: Request) {
       })
     }
 
-    // Update user profile in public.users table
+    // Update user profile - try both id and auth_id
     const { data: updatedUser, error: updateError } = await supabase
       .from("users")
       .update({
@@ -143,9 +162,9 @@ export async function PUT(request: Request) {
         profile_image: body.profile_image,
         updated_at: new Date().toISOString(),
       })
-      .eq("auth_id", authUser.id)
+      .or(`id.eq.${authUser.id},auth_id.eq.${authUser.id}`)
       .select()
-      .single()
+      .maybeSingle()
 
     if (updateError) {
       console.error("[v0] Error updating user profile:", updateError)

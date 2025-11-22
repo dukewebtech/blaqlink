@@ -51,19 +51,15 @@ export default function LoginPage() {
 
       console.log("[v0] Login successful, checking onboarding status...")
 
+      // The handle_new_user() trigger creates profiles automatically on signup
       const profileResponse = await fetch("/api/users/me", {
-        method: "PUT",
+        method: "GET",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          email: data.user.email,
-          full_name: data.user.user_metadata?.full_name || data.user.email?.split("@")[0],
-          role: data.user.user_metadata?.role || "vendor",
-        }),
       })
 
       if (!profileResponse.ok) {
-        console.error("[v0] Failed to initialize user profile")
-        setError("Failed to initialize user account. Please try again.")
+        console.error("[v0] Failed to fetch user profile")
+        setError("Failed to load user account. Please try logging in again.")
         setIsLoading(false)
         return
       }

@@ -101,42 +101,37 @@ export async function PUT(request: Request) {
     const body = await request.json()
     console.log("[v0] Update data:", { ...body, profile_image: body.profile_image ? "..." : null })
 
-    const { data: upsertedProfile, error: upsertError } = await supabase
-      .from("users")
-      .upsert(
-        {
-          id: authUser.id,
-          auth_id: authUser.id,
-          email: authUser.email || body.email,
-          full_name: body.full_name || authUser.user_metadata?.full_name || "New User",
-          phone: body.phone,
-          location: body.location,
-          business_name: body.business_name,
-          profile_image: body.profile_image,
-          role: body.role || authUser.user_metadata?.role || "vendor",
-          onboarding_completed: body.onboarding_completed ?? false,
-          kyc_status: body.kyc_status || "not_submitted",
-          admin_kyc_approved: body.admin_kyc_approved ?? false,
-          updated_at: new Date().toISOString(),
-        },
-        {
-          onConflict: "id",
-          ignoreDuplicates: false,
-        },
-      )
-      .select()
-      .maybeSingle()
+    // The handle_new_user() trigger creates profiles automatically on signup
+    let userProfile
+    const { data: profileById } = await supabase.from("users").select("*").eq("id", authUser.id).maybeSingle()
 
-    if (upsertError) {
-      console.error("[v0] Error upserting user profile:", upsertError)
-      return NextResponse.json({ error: upsertError.message }, { status: 500 })
+    if (profileById) {
+      userProfile = profileById
+    } else {
+      const { data: profileByAuthId } = await supabase
+        .from("users")
+        .select("*")
+        .eq("auth_id", authUser.id)
+        .maybeSingle()
+      userProfile = profileByAuthId
     }
 
-    console.log("[v0] User profile upserted successfully")
+    if (!userProfile) {
+      console.log("[v0] Profile not found - trigger should have created it on signup")
+      return NextResponse.json(
+        {
+          error: "Profile not found",
+          message: "Please try logging in again. Your profile will be created automatically.",
+        },
+        { status: 404 },
+      )
+    }
+
+    console.log("[v0] User profile fetched successfully")
 
     return NextResponse.json({
       ok: true,
-      data: { user: upsertedProfile },
+      data: { user: userProfile },
     })
   } catch (error) {
     console.error("[v0] User profile update API error:", error)

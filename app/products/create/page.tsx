@@ -221,7 +221,12 @@ export default function CreateProductPage() {
         product_type: productType,
         title: formData.title || formData.serviceName,
         description: formData.description,
-        price: formData.price ? Number.parseFloat(formData.price) : null,
+        price:
+          productType === "event" && isPaidTicket
+            ? Math.min(...ticketTypes.filter((t) => t.name && t.price).map((t) => Number.parseFloat(t.price)))
+            : formData.price
+              ? Number.parseFloat(formData.price)
+              : 0,
         category: formData.category,
         status: "published",
         images: images.filter(Boolean),

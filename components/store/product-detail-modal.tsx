@@ -137,15 +137,15 @@ export function ProductDetailModal({
             <X className="h-6 w-6" />
           </button>
 
-          <div className="relative h-64 w-full bg-gray-100">
+          <div className="relative w-full bg-gray-100 flex items-center justify-center min-h-[300px] max-h-[400px]">
             {product.images && product.images.length > 0 ? (
               <img
                 src={product.images[0] || "/placeholder.svg"}
                 alt={product.title}
-                className="w-full h-full object-cover"
+                className="w-full h-full max-h-[400px] object-contain"
               />
             ) : (
-              <div className="flex h-full items-center justify-center">
+              <div className="flex h-64 items-center justify-center">
                 <Calendar className="h-16 w-16 text-gray-300" />
               </div>
             )}
@@ -232,7 +232,10 @@ export function ProductDetailModal({
                   variant="ghost"
                   size="icon"
                   className="h-12 w-12 rounded-none hover:bg-gray-50"
-                  onClick={() => setQuantity(Math.max(1, quantity - 1))}
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    setQuantity((prev) => Math.max(1, prev - 1))
+                  }}
                   disabled={quantity <= 1}
                 >
                   <Minus className="h-4 w-4" />
@@ -242,7 +245,10 @@ export function ProductDetailModal({
                   variant="ghost"
                   size="icon"
                   className="h-12 w-12 rounded-none hover:bg-gray-50"
-                  onClick={() => setQuantity(quantity + 1)}
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    setQuantity((prev) => prev + 1)
+                  }}
                   disabled={product.total_capacity ? quantity >= product.total_capacity : false}
                 >
                   <Plus className="h-4 w-4" />

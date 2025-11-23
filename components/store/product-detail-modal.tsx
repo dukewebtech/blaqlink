@@ -55,7 +55,10 @@ export function ProductDetailModal({
 }: ProductDetailModalProps) {
   const [quantity, setQuantity] = useState(1)
   const [currentImageIndex, setCurrentImageIndex] = useState(0)
-  const [selectedTicketType, setSelectedTicketType] = useState<{ name: string; price: string } | null>(null)
+  const [selectedTicketType, setSelectedTicketType] = useState<{
+    name: string
+    price: string
+  } | null>(null)
   const [selectedDate, setSelectedDate] = useState<Date | null>(null)
   const [selectedTimeSlot, setSelectedTimeSlot] = useState<string>("")
 
@@ -164,7 +167,6 @@ export function ProductDetailModal({
     const dates: Date[] = []
     const today = new Date()
 
-    // Map abbreviated day names to full names
     const dayMap: Record<string, string> = {
       Mon: "Monday",
       Tue: "Tuesday",
@@ -175,7 +177,6 @@ export function ProductDetailModal({
       Sun: "Sunday",
     }
 
-    // Convert available days to full names if abbreviated
     const availableDaysFull = product.available_days.map((day) => dayMap[day] || day)
 
     for (let i = 0; i < 30; i++) {
@@ -201,14 +202,12 @@ export function ProductDetailModal({
     let currentHour = startHour
     let currentMin = startMin
 
-    // Generate time slots within the available window
     while (currentHour < endHour || (currentHour === endHour && currentMin <= endMin)) {
       const hour = currentHour % 12 || 12
       const ampm = currentHour >= 12 ? "PM" : "AM"
       const timeStr = `${hour}:${currentMin.toString().padStart(2, "0")} ${ampm}`
       slots.push(timeStr)
 
-      // Stop if adding another duration would exceed end time
       const nextMin = currentMin + product.duration_minutes
       const nextHour = currentHour + Math.floor(nextMin / 60)
       const adjustedNextMin = nextMin % 60
@@ -221,7 +220,6 @@ export function ProductDetailModal({
       currentHour = nextHour
     }
 
-    console.log("[v0] Generated time slots:", slots)
     return slots
   }
 
@@ -333,9 +331,16 @@ export function ProductDetailModal({
                               : "border-gray-300 hover:border-[#7C3AED] bg-white"
                           }`}
                         >
-                          <div className="text-xs">{date.toLocaleDateString("en-US", { weekday: "short" })}</div>
+                          <div className="text-xs">
+                            {date.toLocaleDateString("en-US", {
+                              weekday: "short",
+                            })}
+                          </div>
                           <div className="font-semibold">
-                            {date.toLocaleDateString("en-US", { month: "short", day: "numeric" })}
+                            {date.toLocaleDateString("en-US", {
+                              month: "short",
+                              day: "numeric",
+                            })}
                           </div>
                         </button>
                       )
@@ -745,6 +750,6 @@ export function ProductDetailModal({
           </div>
         </div>
       </div>
-    )
-  )\
+    </div>
+  )
 }

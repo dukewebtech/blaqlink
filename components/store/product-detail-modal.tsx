@@ -61,12 +61,14 @@ export function ProductDetailModal({
   } | null>(null)
   const [selectedDate, setSelectedDate] = useState<Date | null>(null)
   const [selectedTimeSlot, setSelectedTimeSlot] = useState<string>("")
+  const [currentMonth, setCurrentMonth] = useState(new Date())
 
   useEffect(() => {
     setCurrentImageIndex(0)
     setQuantity(1)
     setSelectedDate(null)
     setSelectedTimeSlot("")
+    setCurrentMonth(new Date())
     if (product?.product_type === "event" && product.ticket_types && product.ticket_types.length > 0) {
       setSelectedTicketType(product.ticket_types[0])
     } else {
@@ -315,36 +317,88 @@ export function ProductDetailModal({
 
                 <div className="space-y-2 mb-4">
                   <label className="text-sm font-medium">Select Date</label>
-                  <div className="grid grid-cols-3 gap-2 max-h-40 overflow-y-auto">
-                    {availableDates.map((date, index) => {
-                      const isSelected = selectedDate?.toDateString() === date.toDateString()
-                      return (
-                        <button
-                          key={index}
-                          onClick={() => {
-                            setSelectedDate(date)
-                            setSelectedTimeSlot("")
-                          }}
-                          className={`p-3 text-sm rounded-lg border-2 transition-all ${
-                            isSelected
-                              ? "border-[#7C3AED] bg-[#7C3AED] text-white font-medium"
-                              : "border-gray-300 hover:border-[#7C3AED] bg-white"
-                          }`}
-                        >
-                          <div className="text-xs">
-                            {date.toLocaleDateString("en-US", {
-                              weekday: "short",
-                            })}
-                          </div>
-                          <div className="font-semibold">
-                            {date.toLocaleDateString("en-US", {
-                              month: "short",
-                              day: "numeric",
-                            })}
-                          </div>
-                        </button>
-                      )
-                    })}
+                  <div className="border rounded-lg p-4 bg-white">
+                    <div className="flex items-center justify-between mb-4">
+                      <button
+                        onClick={() => {
+                          const newDate = new Date(currentMonth)
+                          newDate.setMonth(newDate.getMonth() - 1)
+                          setCurrentMonth(newDate)
+                        }}
+                        className="p-2 hover:bg-gray-100 rounded-lg"
+                      >
+                        ←
+                      </button>
+                      <div className="font-semibold">
+                        {currentMonth.toLocaleDateString("en-US", {
+                          month: "long",
+                          year: "numeric",
+                        })}
+                      </div>
+                      <button
+                        onClick={() => {
+                          const newDate = new Date(currentMonth)
+                          newDate.setMonth(newDate.getMonth() + 1)
+                          setCurrentMonth(newDate)
+                        }}
+                        className="p-2 hover:bg-gray-100 rounded-lg"
+                      >
+                        →
+                      </button>
+                    </div>
+
+                    <div className="grid grid-cols-7 gap-1">
+                      {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map((day) => (
+                        <div key={day} className="text-center text-xs font-medium text-gray-600 py-2">
+                          {day}
+                        </div>
+                      ))}
+
+                      {(() => {
+                        const firstDay = new Date(currentMonth.getFullYear(), currentMonth.getMonth(), 1)
+                        const lastDay = new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 0)
+                        const startingDayOfWeek = firstDay.getDay()
+                        const daysInMonth = lastDay.getDate()
+                        const days = []
+
+                        for (let i = 0; i < startingDayOfWeek; i++) {
+                          days.push(<div key={`empty-${i}`} className="aspect-square" />)
+                        }
+
+                        for (let day = 1; day <= daysInMonth; day++) {
+                          const date = new Date(currentMonth.getFullYear(), currentMonth.getMonth(), day)
+                          const isAvailable = availableDates.some(
+                            (availableDate) => availableDate.toDateString() === date.toDateString(),
+                          )
+                          const isSelected = selectedDate?.toDateString() === date.toDateString()
+                          const isPast = date < new Date(new Date().setHours(0, 0, 0, 0))
+
+                          days.push(
+                            <button
+                              key={day}
+                              onClick={() => {
+                                if (isAvailable && !isPast) {
+                                  setSelectedDate(date)
+                                  setSelectedTimeSlot("")
+                                }
+                              }}
+                              disabled={!isAvailable || isPast}
+                              className={`aspect-square flex items-center justify-center text-sm rounded-lg transition-all ${
+                                isSelected
+                                  ? "bg-[#7C3AED] text-white font-semibold"
+                                  : isAvailable && !isPast
+                                    ? "hover:bg-[#7C3AED]/10 hover:border-[#7C3AED] border border-transparent"
+                                    : "text-gray-300 cursor-not-allowed"
+                              }`}
+                            >
+                              {day}
+                            </button>,
+                          )
+                        }
+
+                        return days
+                      })()}
+                    </div>
                   </div>
                 </div>
 
@@ -387,30 +441,6 @@ export function ProductDetailModal({
                   </div>
                 )}
               </div>
-            </div>
-
-            <div className="border-t pt-6">
-              <h3 className="font-semibold text-lg mb-3">What's Included</h3>
-              <ul className="space-y-2 text-gray-600">
-                <li className="flex items-start gap-2">
-                  <span className="text-[#7C3AED] mt-1">✓</span>
-                  <span>{product.duration_minutes}-minute personalized consultation</span>
-                </li>
-                <li className="flex items-start gap-2">
-                  <span className="text-[#7C3AED] mt-1">✓</span>
-                  <span>Expert guidance and actionable insights</span>
-                </li>
-                <li className="flex items-start gap-2">
-                  <span className="text-[#7C3AED] mt-1">✓</span>
-                  <span>Follow-up summary via email</span>
-                </li>
-                {product.booking_link && (
-                  <li className="flex items-start gap-2">
-                    <span className="text-[#7C3AED] mt-1">✓</span>
-                    <span>Calendar invite with video meeting link</span>
-                  </li>
-                )}
-              </ul>
             </div>
 
             <div className="flex items-center justify-between pt-6 border-t">

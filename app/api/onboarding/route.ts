@@ -151,7 +151,6 @@ export async function POST(request: Request) {
             government_id_url: stepData.governmentIdUrl,
             selfie_url: stepData.selfieUrl,
             kyc_status: "pending_review",
-            kyc_submitted_at: new Date().toISOString(),
           })
           .eq("id", user.id)
         break

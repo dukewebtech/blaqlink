@@ -116,43 +116,30 @@ export async function POST(request: Request) {
     }
 
     const updates: any = {
-      current_step: step,
       updated_at: new Date().toISOString(),
-    }
-
-    // Add completed step to array if not already there
-    const completedSteps = progress?.completed_steps || []
-    if (!completedSteps.includes(step)) {
-      completedSteps.push(step)
-      updates.completed_steps = completedSteps
     }
 
     switch (step) {
       case 1: // Welcome screen completed
+        updates.business_info_completed = false
         break
 
       case 2: // Business Information
-        updates.business_name = stepData.businessName
-        updates.store_name = stepData.storeName
-        updates.business_category = stepData.businessCategory
-        updates.business_address = stepData.businessAddress
+        updates.business_info_completed = true
 
-        // Also update users table
         await supabase
           .from("users")
           .update({
             business_name: stepData.businessName,
             store_name: stepData.storeName,
+            business_category: stepData.businessCategory,
+            business_address: stepData.businessAddress,
           })
           .eq("id", user.id)
         break
 
       case 3: // Identity Upload (KYC)
-        updates.full_name = stepData.fullName
-        updates.date_of_birth = stepData.dateOfBirth
-        updates.bvn = stepData.bvn
-        updates.government_id_url = stepData.governmentIdUrl
-        updates.selfie_url = stepData.selfieUrl
+        updates.kyc_info_completed = true
 
         // Update users table with KYC status
         await supabase
@@ -170,9 +157,7 @@ export async function POST(request: Request) {
         break
 
       case 4: // Bank Account Setup
-        updates.bank_name = stepData.bankName
-        updates.account_number = stepData.accountNumber
-        updates.account_name = stepData.accountName
+        updates.bank_info_completed = true
 
         // Update users table
         await supabase
@@ -186,14 +171,15 @@ export async function POST(request: Request) {
         break
 
       case 5: // Store Setup
-        updates.store_template = stepData.storeTemplate
-        updates.store_logo_url = stepData.storeLogo
-        updates.store_brand_color = stepData.brandColor
+        updates.store_setup_completed = true
         updates.onboarding_completed = true
 
         await supabase
           .from("users")
           .update({
+            store_template: stepData.storeTemplate,
+            store_logo_url: stepData.storeLogo,
+            store_brand_color: stepData.brandColor,
             onboarding_completed: true,
             updated_at: new Date().toISOString(),
           })

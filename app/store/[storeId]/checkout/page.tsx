@@ -43,6 +43,9 @@ export default function CheckoutPage({ params }: { params: { storeId: string } }
   }, [router, params.storeId])
 
   const hasPhysicalProducts = items.some((item) => item.product_type === "physical")
+  const hasOnlyVirtualProducts = items.every(
+    (item) => item.product_type === "digital" || item.product_type === "appointment" || item.product_type === "event",
+  )
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -81,6 +84,8 @@ export default function CheckoutPage({ params }: { params: { storeId: string } }
         quantity: item.quantity,
         price: item.price,
         subtotal: item.price * item.quantity,
+        appointment_date: item.appointment_date,
+        appointment_time: item.appointment_time,
       })),
       total_amount: total,
       notes,
@@ -265,6 +270,16 @@ export default function CheckoutPage({ params }: { params: { storeId: string } }
                         <p className="text-sm font-medium mt-1">
                           {item.quantity} × NGN {item.price.toLocaleString()}
                         </p>
+                        {item.appointment_date && item.appointment_time && (
+                          <p className="text-xs text-primary mt-1">
+                            📅{" "}
+                            {new Date(item.appointment_date).toLocaleDateString("en-US", {
+                              month: "short",
+                              day: "numeric",
+                            })}{" "}
+                            • {item.appointment_time}
+                          </p>
+                        )}
                       </div>
                     </div>
                   ))}
@@ -280,6 +295,12 @@ export default function CheckoutPage({ params }: { params: { storeId: string } }
                     <div className="flex justify-between text-base">
                       <span className="text-muted-foreground">Shipping</span>
                       <span className="font-medium">Calculated at payment</span>
+                    </div>
+                  )}
+                  {hasOnlyVirtualProducts && (
+                    <div className="flex items-start gap-2 text-sm text-muted-foreground bg-blue-50 p-3 rounded">
+                      <span>ℹ️</span>
+                      <span>Digital products and appointments - no shipping required</span>
                     </div>
                   )}
                   <div className="border-t pt-3">

@@ -56,10 +56,14 @@ export function ProductDetailModal({
   const [quantity, setQuantity] = useState(1)
   const [currentImageIndex, setCurrentImageIndex] = useState(0)
   const [selectedTicketType, setSelectedTicketType] = useState<{ name: string; price: string } | null>(null)
+  const [selectedDate, setSelectedDate] = useState<Date | null>(null)
+  const [selectedTimeSlot, setSelectedTimeSlot] = useState<string>("")
 
   useEffect(() => {
     setCurrentImageIndex(0)
     setQuantity(1)
+    setSelectedDate(null)
+    setSelectedTimeSlot("")
     if (product?.product_type === "event" && product.ticket_types && product.ticket_types.length > 0) {
       setSelectedTicketType(product.ticket_types[0])
     } else {
@@ -100,15 +104,28 @@ export function ProductDetailModal({
   }
 
   const handleAddToCart = () => {
+    const metadata =
+      isAppointment && selectedDate && selectedTimeSlot
+        ? {
+            appointment_date: selectedDate.toISOString(),
+            appointment_time: selectedTimeSlot,
+          }
+        : selectedTicketType
+          ? {
+              ticket_type: selectedTicketType.name,
+            }
+          : undefined
+
     cartStore.addItem(
       {
         id: product.id,
         title: product.title,
-        price: product.price,
+        price: isEventTicket && selectedTicketType ? Number.parseFloat(selectedTicketType.price) : product.price,
         product_type: product.product_type,
         images: product.images,
       },
       quantity,
+      metadata,
     )
     onOpenChange(false)
   }
@@ -141,9 +158,60 @@ export function ProductDetailModal({
     return `${displayHour}:${minutes} ${ampm}`
   }
 
+  const getAvailableDates = () => {
+    if (!product?.available_days || product.available_days.length === 0) return []
+
+    const dates: Date[] = []
+    const today = new Date()
+
+    for (let i = 0; i < 30; i++) {
+      const date = new Date(today)
+      date.setDate(today.getDate() + i)
+      const dayName = date.toLocaleDateString("en-US", { weekday: "long" })
+
+      if (product.available_days.includes(dayName)) {
+        dates.push(date)
+      }
+    }
+
+    return dates
+  }
+
+  const getTimeSlots = () => {
+    if (!product?.start_time || !product?.end_time || !product?.duration_minutes) return []
+
+    const slots: string[] = []
+    const [startHour, startMin] = product.start_time.split(":").map(Number)
+    const [endHour, endMin] = product.end_time.split(":").map(Number)
+
+    let currentHour = startHour
+    let currentMin = startMin
+
+    while (currentHour < endHour || (currentHour === endHour && currentMin < endMin)) {
+      const hour = currentHour % 12 || 12
+      const ampm = currentHour >= 12 ? "PM" : "AM"
+      const timeStr = `${hour}:${currentMin.toString().padStart(2, "0")} ${ampm}`
+      slots.push(timeStr)
+
+      currentMin += product.duration_minutes
+      if (currentMin >= 60) {
+        currentHour += Math.floor(currentMin / 60)
+        currentMin = currentMin % 60
+      }
+    }
+
+    return slots
+  }
+
+  const hasMultipleImages = product?.images && product.images.length > 1
+
   if (!product || !open) return null
 
   if (isAppointment) {
+    const availableDates = getAvailableDates()
+    const timeSlots = getTimeSlots()
+    const canBookAppointment = selectedDate && selectedTimeSlot
+
     return (
       <div
         className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm animate-in fade-in duration-200"
@@ -220,6 +288,80 @@ export function ProductDetailModal({
               <p className="text-gray-600 leading-relaxed">{product.description}</p>
             </div>
 
+            <div className="border rounded-lg p-5 space-y-5 bg-blue-50 border-blue-200">
+              <div>
+                <h3 className="font-semibold text-lg mb-3">Select Your Appointment</h3>
+                <p className="text-sm text-gray-600 mb-4">Choose a date and time that works best for you</p>
+
+                <div className="space-y-2 mb-4">
+                  <label className="text-sm font-medium">Select Date</label>
+                  <div className="grid grid-cols-3 gap-2 max-h-40 overflow-y-auto">
+                    {availableDates.map((date, index) => {
+                      const isSelected = selectedDate?.toDateString() === date.toDateString()
+                      return (
+                        <button
+                          key={index}
+                          onClick={() => {
+                            setSelectedDate(date)
+                            setSelectedTimeSlot("")
+                          }}
+                          className={`p-3 text-sm rounded-lg border-2 transition-all ${
+                            isSelected
+                              ? "border-[#7C3AED] bg-[#7C3AED] text-white font-medium"
+                              : "border-gray-300 hover:border-[#7C3AED] bg-white"
+                          }`}
+                        >
+                          <div className="text-xs">{date.toLocaleDateString("en-US", { weekday: "short" })}</div>
+                          <div className="font-semibold">
+                            {date.toLocaleDateString("en-US", { month: "short", day: "numeric" })}
+                          </div>
+                        </button>
+                      )
+                    })}
+                  </div>
+                </div>
+
+                {selectedDate && (
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium">Select Time</label>
+                    <div className="grid grid-cols-3 gap-2 max-h-40 overflow-y-auto">
+                      {timeSlots.map((time, index) => {
+                        const isSelected = selectedTimeSlot === time
+                        return (
+                          <button
+                            key={index}
+                            onClick={() => setSelectedTimeSlot(time)}
+                            className={`p-3 text-sm rounded-lg border-2 transition-all ${
+                              isSelected
+                                ? "border-[#7C3AED] bg-[#7C3AED] text-white font-medium"
+                                : "border-gray-300 hover:border-[#7C3AED] bg-white"
+                            }`}
+                          >
+                            {time}
+                          </button>
+                        )
+                      })}
+                    </div>
+                  </div>
+                )}
+
+                {canBookAppointment && (
+                  <div className="mt-4 p-3 bg-white rounded-lg border border-[#7C3AED]">
+                    <p className="text-sm font-medium text-[#7C3AED]">
+                      📅{" "}
+                      {selectedDate.toLocaleDateString("en-US", {
+                        weekday: "long",
+                        year: "numeric",
+                        month: "long",
+                        day: "numeric",
+                      })}{" "}
+                      at {selectedTimeSlot}
+                    </p>
+                  </div>
+                )}
+              </div>
+            </div>
+
             <div className="border-t pt-6">
               <h3 className="font-semibold text-lg mb-3">What's Included</h3>
               <ul className="space-y-2 text-gray-600">
@@ -244,13 +386,6 @@ export function ProductDetailModal({
               </ul>
             </div>
 
-            <div className="border rounded-lg p-4 bg-blue-50 border-blue-200">
-              <p className="text-sm text-blue-900">
-                <strong>Note:</strong> After booking, you'll receive an email with available time slots to schedule your
-                session.
-              </p>
-            </div>
-
             <div className="flex items-center justify-between pt-6 border-t">
               <div>
                 <p className="text-sm text-gray-500 mb-1">Session Price</p>
@@ -260,9 +395,10 @@ export function ProductDetailModal({
               <Button
                 size="lg"
                 onClick={handleAddToCart}
-                className="h-14 px-8 text-base bg-[#7C3AED] hover:bg-[#6D28D9] text-white rounded-lg font-medium"
+                disabled={!canBookAppointment}
+                className="h-14 px-8 text-base bg-[#7C3AED] hover:bg-[#6D28D9] text-white rounded-lg font-medium disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                Book Appointment
+                {canBookAppointment ? "Book Appointment" : "Select Date & Time"}
               </Button>
             </div>
           </div>
@@ -423,7 +559,7 @@ export function ProductDetailModal({
                 size="lg"
                 onClick={handleAddToCart}
                 disabled={product.total_capacity === 0}
-                className="h-14 px-8 text-base bg-[#7C3AED] hover:bg-[#6D28D9] text-white rounded-lg font-medium"
+                className="h-14 px-8 text-base bg-[#7C3AED] hover:bg-[#6D28D9] text-white rounded-lg font-medium disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {product.total_capacity === 0 ? "Sold Out" : "Get Tickets"}
               </Button>
@@ -433,8 +569,6 @@ export function ProductDetailModal({
       </div>
     )
   }
-
-  const hasMultipleImages = product?.images && product.images.length > 1
 
   return (
     <div

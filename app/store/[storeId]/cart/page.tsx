@@ -89,6 +89,21 @@ export default function StoreCartPage({ params }: { params: { storeId: string } 
                       <div>
                         <h3 className="font-semibold text-lg">{item.title}</h3>
                         <p className="text-sm text-muted-foreground capitalize">{item.product_type}</p>
+                        {item.appointment_date && item.appointment_time && (
+                          <p className="text-sm text-primary font-medium mt-1">
+                            📅{" "}
+                            {new Date(item.appointment_date).toLocaleDateString("en-US", {
+                              weekday: "short",
+                              month: "short",
+                              day: "numeric",
+                              year: "numeric",
+                            })}{" "}
+                            at {item.appointment_time}
+                          </p>
+                        )}
+                        {item.ticket_type && (
+                          <p className="text-sm text-primary font-medium mt-1">🎫 {item.ticket_type} Ticket</p>
+                        )}
                       </div>
                       <Button
                         variant="ghost"
@@ -101,26 +116,30 @@ export default function StoreCartPage({ params }: { params: { storeId: string } 
                     </div>
 
                     <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2 border rounded-lg">
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => updateQuantity(item.id, item.quantity - 1)}
-                          disabled={item.quantity <= 1}
-                          className="h-10 w-10"
-                        >
-                          <Minus className="h-4 w-4" />
-                        </Button>
-                        <span className="w-12 text-center font-medium">{item.quantity}</span>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => updateQuantity(item.id, item.quantity + 1)}
-                          className="h-10 w-10"
-                        >
-                          <Plus className="h-4 w-4" />
-                        </Button>
-                      </div>
+                      {item.product_type !== "appointment" ? (
+                        <div className="flex items-center gap-2 border rounded-lg">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => updateQuantity(item.id, item.quantity - 1)}
+                            disabled={item.quantity <= 1}
+                            className="h-10 w-10"
+                          >
+                            <Minus className="h-4 w-4" />
+                          </Button>
+                          <span className="w-12 text-center font-medium">{item.quantity}</span>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => updateQuantity(item.id, item.quantity + 1)}
+                            className="h-10 w-10"
+                          >
+                            <Plus className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      ) : (
+                        <span className="text-sm text-muted-foreground">1 Session</span>
+                      )}
                       <p className="text-xl font-bold">NGN {(item.price * item.quantity).toLocaleString()}</p>
                     </div>
                   </div>

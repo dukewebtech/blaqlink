@@ -192,13 +192,15 @@ export default function DashboardPage() {
           )}
         </div>
 
-        {!hasOnboardingCompleted ? (
+        {!hasOnboardingCompleted && (
           <Alert className="border-2 border-blue-500 bg-blue-50">
             <AlertCircle className="h-5 w-5 text-blue-600" />
             <AlertTitle className="font-semibold text-blue-900">Complete Your Onboarding</AlertTitle>
             <AlertDescription className="text-blue-800">Please complete your onboarding to continue.</AlertDescription>
           </Alert>
-        ) : !hasAdminApproval ? (
+        )}
+
+        {hasOnboardingCompleted && !hasAdminApproval && (
           <Alert className="border-2 border-yellow-500 bg-yellow-50">
             <Clock className="h-5 w-5 text-yellow-600" />
             <AlertTitle className="font-semibold text-yellow-900">Verification In Progress</AlertTitle>
@@ -206,79 +208,54 @@ export default function DashboardPage() {
               Your onboarding is complete. Verification is in progress — you'll gain full access once approved.
             </AlertDescription>
           </Alert>
-        ) : (
-          kycStatus && (
-            <Alert variant={kycStatus.variant} className="border-2">
-              <kycStatus.icon className={`h-5 w-5 ${kycStatus.iconColor}`} />
-              <AlertTitle className="font-semibold">{kycStatus.title}</AlertTitle>
-              <AlertDescription>{kycStatus.description}</AlertDescription>
-            </Alert>
-          )
         )}
 
-        {canAccessDashboard ? (
-          <>
-            {/* Stats Grid */}
-            <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
-              <StatsCard
-                title="Total Revenue"
-                value={loading ? "Loading..." : formatCurrency(stats?.totalRevenue || 0)}
-                change={
-                  loading ? "..." : `${Number(stats?.revenueChange || 0) >= 0 ? "+" : ""}${stats?.revenueChange}%`
-                }
-                changeLabel="From last week"
-                trend={Number(stats?.revenueChange || 0) >= 0 ? "up" : "down"}
-                icon={TrendingUp}
-                className="bg-gradient-to-br from-primary to-primary/80 text-white border-0 hover:shadow-2xl transition-all duration-500 hover:scale-105"
-                delay={0}
-              />
-              <StatsCard
-                title="Total Customer"
-                value={loading ? "Loading..." : (stats?.totalCustomers ?? 0).toLocaleString()}
-                change="+1.5%"
-                changeLabel="From last week"
-                trend="up"
-                icon={Users}
-                delay={100}
-              />
-              <StatsCard
-                title="Total Transactions"
-                value={loading ? "Loading..." : (stats?.totalTransactions ?? 0).toLocaleString()}
-                change="+3.6%"
-                changeLabel="From last week"
-                trend="up"
-                icon={ShoppingCart}
-                delay={200}
-              />
-              <StatsCard
-                title="Total Product"
-                value={loading ? "Loading..." : (stats?.totalProducts ?? 0).toLocaleString()}
-                change="-1.5%"
-                changeLabel="From last week"
-                trend="down"
-                icon={Package}
-                delay={300}
-              />
-            </div>
+        {/* Stats Grid */}
+        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
+          <StatsCard
+            title="Total Revenue"
+            value={loading ? "Loading..." : formatCurrency(stats?.totalRevenue || 0)}
+            change={loading ? "..." : `${Number(stats?.revenueChange || 0) >= 0 ? "+" : ""}${stats?.revenueChange}%`}
+            changeLabel="From last week"
+            trend={Number(stats?.revenueChange || 0) >= 0 ? "up" : "down"}
+            icon={TrendingUp}
+            className="bg-gradient-to-br from-primary to-primary/80 text-white border-0 hover:shadow-2xl transition-all duration-500 hover:scale-105"
+            delay={0}
+          />
+          <StatsCard
+            title="Total Customer"
+            value={loading ? "Loading..." : (stats?.totalCustomers ?? 0).toLocaleString()}
+            change="+1.5%"
+            changeLabel="From last week"
+            trend="up"
+            icon={Users}
+            delay={100}
+          />
+          <StatsCard
+            title="Total Transactions"
+            value={loading ? "Loading..." : (stats?.totalTransactions ?? 0).toLocaleString()}
+            change="+3.6%"
+            changeLabel="From last week"
+            trend="up"
+            icon={ShoppingCart}
+            delay={200}
+          />
+          <StatsCard
+            title="Total Product"
+            value={loading ? "Loading..." : (stats?.totalProducts ?? 0).toLocaleString()}
+            change="-1.5%"
+            changeLabel="From last week"
+            trend="down"
+            icon={Package}
+            delay={300}
+          />
+        </div>
 
-            {/* Sales Chart */}
-            <SalesChart />
+        {/* Sales Chart */}
+        <SalesChart />
 
-            {/* Recent Orders */}
-            <RecentOrders />
-          </>
-        ) : (
-          <div className="flex items-center justify-center min-h-[400px]">
-            <div className="text-center space-y-4 max-w-md">
-              <AlertCircle className="h-16 w-16 text-muted-foreground mx-auto" />
-              <p className="text-muted-foreground">
-                {!hasOnboardingCompleted
-                  ? "Please complete your onboarding to access the dashboard."
-                  : "Your account is pending verification. You'll gain access once approved."}
-              </p>
-            </div>
-          </div>
-        )}
+        {/* Recent Orders */}
+        <RecentOrders />
       </div>
     </DashboardLayout>
   )

@@ -51,15 +51,37 @@ export default function LoginPage() {
 
       console.log("[v0] Login successful, checking onboarding status...")
 
-      // The handle_new_user() trigger creates profiles automatically on signup
-      const profileResponse = await fetch("/api/users/me", {
-        method: "GET",
-        headers: { "Content-Type": "application/json" },
-      })
+      let profileResponse
+      let retryCount = 0
+      const maxRetries = 3
 
-      if (!profileResponse.ok) {
+      while (retryCount < maxRetries) {
+        profileResponse = await fetch("/api/users/me", {
+          method: "GET",
+          headers: { "Content-Type": "application/json" },
+        })
+
+        if (profileResponse.ok) {
+          break
+        }
+
+        // If session not ready, wait and retry
+        if (profileResponse.status === 401) {
+          const errorData = await profileResponse.json()
+          if (errorData.error?.includes("Session not ready") && retryCount < maxRetries - 1) {
+            console.log(`[v0] Session not ready, retrying (${retryCount + 1}/${maxRetries})...`)
+            await new Promise((resolve) => setTimeout(resolve, 1000))
+            retryCount++
+            continue
+          }
+        }
+
+        break
+      }
+
+      if (!profileResponse || !profileResponse.ok) {
         console.error("[v0] Failed to fetch user profile")
-        setError("Failed to load user account. Please try logging in again.")
+        setError("Session is initializing. Please wait a moment and try logging in again.")
         setIsLoading(false)
         return
       }

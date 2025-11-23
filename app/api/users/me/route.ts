@@ -13,6 +13,9 @@ export async function GET() {
 
       if (authError) {
         console.log("[v0] Auth error:", authError.message)
+        if (authError.message.includes("session") || authError.message.includes("Auth")) {
+          return NextResponse.json({ error: "Session not ready. Please wait a moment and try again." }, { status: 401 })
+        }
         return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
       }
 
@@ -30,7 +33,7 @@ export async function GET() {
 
     if (!authUser) {
       console.log("[v0] User not authenticated")
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+      return NextResponse.json({ error: "Session not found. Please log in again." }, { status: 401 })
     }
 
     console.log("[v0] Auth user ID:", authUser.id)
@@ -109,6 +112,9 @@ export async function PUT(request: Request) {
 
       if (authError) {
         console.log("[v0] Auth error:", authError.message)
+        if (authError.message.includes("session") || authError.message.includes("Auth")) {
+          return NextResponse.json({ error: "Session not ready. Please wait a moment and try again." }, { status: 401 })
+        }
         return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
       }
 
@@ -126,7 +132,7 @@ export async function PUT(request: Request) {
 
     if (!authUser) {
       console.log("[v0] User not authenticated")
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+      return NextResponse.json({ error: "Session not found. Please log in again." }, { status: 401 })
     }
 
     const body = await request.json()

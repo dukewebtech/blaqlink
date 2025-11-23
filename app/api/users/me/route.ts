@@ -50,8 +50,39 @@ export async function GET() {
     }
 
     if (!userProfile) {
-      console.log("[v0] No profile found for user")
-      return NextResponse.json({ error: "Profile not found" }, { status: 404 })
+      console.log("[v0] No profile found, creating one from auth user metadata...")
+
+      const metadata = authUser.user_metadata || {}
+      const fullName = metadata.full_name || authUser.email?.split("@")[0] || "User"
+
+      const { data: newProfile, error: createError } = await supabase
+        .from("users")
+        .insert({
+          id: authUser.id,
+          auth_id: authUser.id,
+          email: authUser.email,
+          full_name: fullName,
+          role: metadata.role || "vendor",
+          onboarding_completed: false,
+          kyc_status: "not_submitted",
+          admin_kyc_approved: false,
+        })
+        .select()
+        .single()
+
+      if (createError) {
+        console.error("[v0] Failed to create profile:", createError)
+        return NextResponse.json(
+          {
+            error: "Failed to create user profile",
+            details: createError.message,
+          },
+          { status: 500 },
+        )
+      }
+
+      userProfile = newProfile
+      console.log("[v0] Profile created successfully:", userProfile.email)
     }
 
     console.log("[v0] User profile fetched successfully:", userProfile.email)
@@ -129,9 +160,30 @@ export async function PUT(request: Request) {
 
     console.log("[v0] User profile fetched successfully")
 
+    // Update user profile with new data
+    const { data: updatedProfile, error: updateError } = await supabase
+      .from("users")
+      .update(body)
+      .eq("id", authUser.id)
+      .select()
+      .single()
+
+    if (updateError) {
+      console.error("[v0] Failed to update profile:", updateError)
+      return NextResponse.json(
+        {
+          error: "Failed to update user profile",
+          details: updateError.message,
+        },
+        { status: 500 },
+      )
+    }
+
+    console.log("[v0] Profile updated successfully:", updatedProfile.email)
+
     return NextResponse.json({
       ok: true,
-      data: { user: userProfile },
+      data: { user: updatedProfile },
     })
   } catch (error) {
     console.error("[v0] User profile update API error:", error)

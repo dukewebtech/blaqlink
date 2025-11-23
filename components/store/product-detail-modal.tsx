@@ -164,12 +164,26 @@ export function ProductDetailModal({
     const dates: Date[] = []
     const today = new Date()
 
+    // Map abbreviated day names to full names
+    const dayMap: Record<string, string> = {
+      Mon: "Monday",
+      Tue: "Tuesday",
+      Wed: "Wednesday",
+      Thu: "Thursday",
+      Fri: "Friday",
+      Sat: "Saturday",
+      Sun: "Sunday",
+    }
+
+    // Convert available days to full names if abbreviated
+    const availableDaysFull = product.available_days.map((day) => dayMap[day] || day)
+
     for (let i = 0; i < 30; i++) {
       const date = new Date(today)
       date.setDate(today.getDate() + i)
       const dayName = date.toLocaleDateString("en-US", { weekday: "long" })
 
-      if (product.available_days.includes(dayName)) {
+      if (availableDaysFull.includes(dayName)) {
         dates.push(date)
       }
     }
@@ -187,19 +201,27 @@ export function ProductDetailModal({
     let currentHour = startHour
     let currentMin = startMin
 
-    while (currentHour < endHour || (currentHour === endHour && currentMin < endMin)) {
+    // Generate time slots within the available window
+    while (currentHour < endHour || (currentHour === endHour && currentMin <= endMin)) {
       const hour = currentHour % 12 || 12
       const ampm = currentHour >= 12 ? "PM" : "AM"
       const timeStr = `${hour}:${currentMin.toString().padStart(2, "0")} ${ampm}`
       slots.push(timeStr)
 
-      currentMin += product.duration_minutes
-      if (currentMin >= 60) {
-        currentHour += Math.floor(currentMin / 60)
-        currentMin = currentMin % 60
+      // Stop if adding another duration would exceed end time
+      const nextMin = currentMin + product.duration_minutes
+      const nextHour = currentHour + Math.floor(nextMin / 60)
+      const adjustedNextMin = nextMin % 60
+
+      if (nextHour > endHour || (nextHour === endHour && adjustedNextMin > endMin)) {
+        break
       }
+
+      currentMin = adjustedNextMin
+      currentHour = nextHour
     }
 
+    console.log("[v0] Generated time slots:", slots)
     return slots
   }
 
@@ -723,6 +745,6 @@ export function ProductDetailModal({
           </div>
         </div>
       </div>
-    </div>
-  )
+    )
+  )\
 }

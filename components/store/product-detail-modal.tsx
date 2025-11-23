@@ -3,7 +3,20 @@
 import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { Heart, Minus, Plus, ChevronLeft, ChevronRight, X, ChevronDown, Calendar, MapPin, Users } from "lucide-react"
+import {
+  Heart,
+  Minus,
+  Plus,
+  ChevronLeft,
+  ChevronRight,
+  X,
+  ChevronDown,
+  Calendar,
+  MapPin,
+  Users,
+  Clock,
+  Video,
+} from "lucide-react"
 import { cartStore } from "@/lib/cart-store"
 
 interface Product {
@@ -20,6 +33,11 @@ interface Product {
   is_paid_ticket?: boolean
   ticket_types?: Array<{ name: string; price: string }>
   total_capacity?: number
+  duration_minutes?: number
+  available_days?: string[]
+  start_time?: string
+  end_time?: string
+  booking_link?: string
 }
 
 interface ProductDetailModalProps {
@@ -71,8 +89,7 @@ export function ProductDetailModal({
   }, [open, onOpenChange])
 
   const isEventTicket = product?.product_type === "event"
-
-  const hasMultipleImages = product?.images && product.images.length > 1
+  const isAppointment = product?.product_type === "appointment"
 
   const handlePreviousImage = () => {
     setCurrentImageIndex((prev) => (prev === 0 ? product.images.length - 1 : prev - 1))
@@ -116,7 +133,143 @@ export function ProductDetailModal({
     })
   }
 
+  const formatTime = (time: string) => {
+    const [hours, minutes] = time.split(":")
+    const hour = Number.parseInt(hours)
+    const ampm = hour >= 12 ? "PM" : "AM"
+    const displayHour = hour % 12 || 12
+    return `${displayHour}:${minutes} ${ampm}`
+  }
+
   if (!product || !open) return null
+
+  if (isAppointment) {
+    return (
+      <div
+        className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm animate-in fade-in duration-200"
+        onClick={() => onOpenChange(false)}
+      >
+        <div
+          className="relative bg-white rounded-2xl shadow-2xl w-[90vw] max-w-3xl max-h-[90vh] overflow-y-auto animate-in zoom-in-95 duration-300"
+          onClick={(e) => e.stopPropagation()}
+        >
+          <button
+            onClick={() => onOpenChange(false)}
+            className="absolute top-4 right-4 z-10 p-2 rounded-full bg-white/90 hover:bg-white shadow-lg transition-all hover:scale-110"
+          >
+            <X className="h-6 w-6" />
+          </button>
+
+          {product.images && product.images.length > 0 && (
+            <div className="relative w-full bg-gradient-to-br from-purple-50 to-blue-50 flex items-center justify-center h-48">
+              <img
+                src={product.images[0] || "/placeholder.svg"}
+                alt={product.title}
+                className="w-full h-full object-cover"
+              />
+              <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent" />
+            </div>
+          )}
+
+          <div className="p-8 space-y-6">
+            <div>
+              {product.category && (
+                <Badge variant="secondary" className="mb-2">
+                  {product.category}
+                </Badge>
+              )}
+              <h2 className="text-3xl font-bold text-balance">{product.title}</h2>
+              <p className="text-sm text-gray-500 mt-2">By {storeName}</p>
+            </div>
+
+            <div className="border rounded-lg p-5 space-y-3 bg-gray-50">
+              {product.duration_minutes && (
+                <div className="flex items-center gap-3 text-sm">
+                  <Clock className="h-5 w-5 text-[#7C3AED]" />
+                  <div>
+                    <p className="font-medium text-base">{product.duration_minutes} Minutes Session</p>
+                    <p className="text-xs text-gray-500 mt-1">One-on-one consultation</p>
+                  </div>
+                </div>
+              )}
+
+              {product.available_days && product.available_days.length > 0 && (
+                <div className="flex items-center gap-3 text-sm">
+                  <Calendar className="h-5 w-5 text-[#7C3AED]" />
+                  <div>
+                    <p className="font-medium text-base">Available: {product.available_days.join(", ")}</p>
+                    {product.start_time && product.end_time && (
+                      <p className="text-xs text-gray-500 mt-1">
+                        {formatTime(product.start_time)} - {formatTime(product.end_time)}
+                      </p>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {product.booking_link && (
+                <div className="flex items-center gap-3 text-sm">
+                  <Video className="h-5 w-5 text-[#7C3AED]" />
+                  <p className="font-medium text-base">Online video consultation</p>
+                </div>
+              )}
+            </div>
+
+            <div>
+              <h3 className="font-semibold text-lg mb-2">About This Service</h3>
+              <p className="text-gray-600 leading-relaxed">{product.description}</p>
+            </div>
+
+            <div className="border-t pt-6">
+              <h3 className="font-semibold text-lg mb-3">What's Included</h3>
+              <ul className="space-y-2 text-gray-600">
+                <li className="flex items-start gap-2">
+                  <span className="text-[#7C3AED] mt-1">✓</span>
+                  <span>{product.duration_minutes}-minute personalized consultation</span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <span className="text-[#7C3AED] mt-1">✓</span>
+                  <span>Expert guidance and actionable insights</span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <span className="text-[#7C3AED] mt-1">✓</span>
+                  <span>Follow-up summary via email</span>
+                </li>
+                {product.booking_link && (
+                  <li className="flex items-start gap-2">
+                    <span className="text-[#7C3AED] mt-1">✓</span>
+                    <span>Calendar invite with video meeting link</span>
+                  </li>
+                )}
+              </ul>
+            </div>
+
+            <div className="border rounded-lg p-4 bg-blue-50 border-blue-200">
+              <p className="text-sm text-blue-900">
+                <strong>Note:</strong> After booking, you'll receive an email with available time slots to schedule your
+                session.
+              </p>
+            </div>
+
+            <div className="flex items-center justify-between pt-6 border-t">
+              <div>
+                <p className="text-sm text-gray-500 mb-1">Session Price</p>
+                <p className="text-3xl font-bold">NGN {Number(product.price).toLocaleString()}</p>
+                <p className="text-xs text-gray-500 mt-1">per session</p>
+              </div>
+              <Button
+                size="lg"
+                onClick={handleAddToCart}
+                className="h-14 px-8 text-base bg-[#7C3AED] hover:bg-[#6D28D9] text-white rounded-lg font-medium"
+              >
+                Book Appointment
+              </Button>
+            </div>
+          </div>
+        </div>
+      </div>
+    )
+  }
 
   if (isEventTicket) {
     const daysUntil = product.event_date ? getDaysUntilEvent(product.event_date) : 0
@@ -280,6 +433,8 @@ export function ProductDetailModal({
       </div>
     )
   }
+
+  const hasMultipleImages = product?.images && product.images.length > 1
 
   return (
     <div

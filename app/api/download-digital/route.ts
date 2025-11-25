@@ -19,15 +19,19 @@ export async function GET(request: Request) {
 
     const supabase = await createClient()
 
-    // Verify the order exists and is paid
     const { data: order, error: orderError } = await supabase
       .from("orders")
       .select("id, payment_status, status")
       .eq("id", orderId)
-      .single()
+      .maybeSingle()
 
-    if (orderError || !order) {
-      console.log("[v0] Order not found:", orderError)
+    if (orderError) {
+      console.log("[v0] Order query error:", orderError)
+      return NextResponse.json({ error: "Failed to verify order" }, { status: 500 })
+    }
+
+    if (!order) {
+      console.log("[v0] Order not found for ID:", orderId)
       return NextResponse.json({ error: "Order not found" }, { status: 404 })
     }
 

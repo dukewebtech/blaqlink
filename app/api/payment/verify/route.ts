@@ -37,11 +37,21 @@ export async function GET(request: NextRequest) {
 
     // This assumes all products in an order belong to the same vendor
     let vendorUserId = null
+    let vendorInfo = null
     if (orderData.items && orderData.items.length > 0) {
       const firstProductId = orderData.items[0].product_id
       const { data: product } = await supabase.from("products").select("user_id").eq("id", firstProductId).single()
 
       vendorUserId = product?.user_id
+
+      if (vendorUserId) {
+        const { data: vendor } = await supabase
+          .from("users")
+          .select("store_name, business_name, store_logo_url, email, phone, business_address")
+          .eq("id", vendorUserId)
+          .single()
+        vendorInfo = vendor
+      }
     }
 
     if (!vendorUserId) {
@@ -91,11 +101,43 @@ export async function GET(request: NextRequest) {
       console.log("[v0] Order items created successfully:", orderItems.length, "items")
     }
 
+    const productIds = orderData.items.map((item: any) => item.product_id)
+    const { data: products } = await supabase
+      .from("products")
+      .select(
+        "id, title, product_type, images, file_urls, event_date, event_location, duration_minutes, booking_link, license_type, download_limit",
+      )
+      .in("id", productIds)
+
+    // Merge product details with order items
+    const itemsWithDetails = orderData.items.map((item: any) => {
+      const product = products?.find((p) => p.id === item.product_id)
+      return {
+        ...item,
+        product_details: product || null,
+        appointment_date: item.appointment_date,
+        appointment_time: item.appointment_time,
+      }
+    })
+
     return NextResponse.json({
       success: true,
       order_id: order.id,
       reference,
       amount: paymentData.amount / 100,
+      order: {
+        id: order.id,
+        created_at: order.created_at,
+        customer_name: order.customer_name,
+        customer_email: order.customer_email,
+        customer_phone: order.customer_phone,
+        shipping_address: order.shipping_address,
+        total_amount: order.total_amount,
+        payment_reference: reference,
+        status: order.status,
+        items: itemsWithDetails,
+      },
+      vendor: vendorInfo,
     })
   } catch (error) {
     console.error("[v0] Payment verification error:", error)

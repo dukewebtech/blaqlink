@@ -20,7 +20,6 @@ export async function GET(request: Request) {
     const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY
 
     if (!supabaseUrl || !supabaseServiceKey) {
-      console.error("[v0] Missing Supabase credentials")
       return NextResponse.json({ error: "Server configuration error" }, { status: 500 })
     }
 
@@ -39,7 +38,6 @@ export async function GET(request: Request) {
       .maybeSingle()
 
     if (orderError) {
-      console.error("[v0] Order query error:", orderError.message)
       return NextResponse.json({ error: "Failed to verify order" }, { status: 500 })
     }
 
@@ -73,22 +71,44 @@ export async function GET(request: Request) {
       storagePath = filePath.split("/product-images/")[1]
     }
 
-    // Generate a signed URL for download (valid for 1 hour)
-    const { data: signedUrlData, error: signedUrlError } = await supabase.storage
-      .from(bucket)
-      .createSignedUrl(storagePath, 3600, {
-        download: true,
-      })
+    const { data: fileData, error: downloadError } = await supabase.storage.from(bucket).download(storagePath)
 
-    if (signedUrlError || !signedUrlData?.signedUrl) {
-      console.error("[v0] Signed URL error:", signedUrlError?.message)
-      return NextResponse.json({ error: "Failed to generate download link" }, { status: 500 })
+    if (downloadError || !fileData) {
+      return NextResponse.json({ error: "Failed to download file" }, { status: 500 })
     }
 
-    // Redirect to the signed URL for download
-    return NextResponse.redirect(signedUrlData.signedUrl)
+    // Extract filename from path (remove timestamp prefix if present)
+    const pathParts = storagePath.split("/")
+    let filename = pathParts[pathParts.length - 1]
+    // Remove timestamp prefix (e.g., "1764097450666-filename.pdf" -> "filename.pdf")
+    const timestampMatch = filename.match(/^\d+-(.+)$/)
+    if (timestampMatch) {
+      filename = timestampMatch[1]
+    }
+
+    // Determine content type based on file extension
+    const extension = filename.split(".").pop()?.toLowerCase() || ""
+    const contentTypes: Record<string, string> = {
+      pdf: "application/pdf",
+      zip: "application/zip",
+      mp4: "video/mp4",
+      mov: "video/quicktime",
+      avi: "video/x-msvideo",
+      mp3: "audio/mpeg",
+      epub: "application/epub+zip",
+      doc: "application/msword",
+      docx: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    }
+    const contentType = contentTypes[extension] || "application/octet-stream"
+
+    return new NextResponse(fileData, {
+      headers: {
+        "Content-Type": contentType,
+        "Content-Disposition": `attachment; filename="${filename}"`,
+        "Content-Length": fileData.size.toString(),
+      },
+    })
   } catch (error) {
-    console.error("[v0] Download error:", error)
     return NextResponse.json({ error: "Download failed" }, { status: 500 })
   }
 }

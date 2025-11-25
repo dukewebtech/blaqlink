@@ -1,11 +1,11 @@
 import { createClient } from "@/lib/supabase/server"
-import { type NextRequest, NextResponse } from "next/server"
+import { NextResponse } from "next/server"
 
-export async function GET(request: NextRequest) {
+export async function GET(request: Request) {
   try {
-    const searchParams = request.nextUrl.searchParams
-    const filePath = searchParams.get("path")
-    const orderId = searchParams.get("orderId")
+    const url = new URL(request.url)
+    const filePath = url.searchParams.get("path")
+    const orderId = url.searchParams.get("orderId")
 
     console.log("[v0] Download request - path:", filePath, "orderId:", orderId)
 

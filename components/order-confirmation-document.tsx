@@ -359,21 +359,28 @@ export function OrderConfirmationDocument({ order, vendor }: OrderConfirmationDo
                         {fileUrls.length} file{fileUrls.length !== 1 ? "s" : ""} available for download:
                       </p>
                       {fileUrls.map((url: string, fileIndex: number) => {
-                        const fileName = url.split("/").pop() || `File ${fileIndex + 1}`
+                        let fileName = `File ${fileIndex + 1}`
+                        if (url.startsWith("digital-files:")) {
+                          fileName = url.split("/").pop() || fileName
+                        } else {
+                          fileName = url.split("/").pop() || fileName
+                        }
+                        // Clean up the filename (remove timestamp prefix)
+                        const cleanFileName = fileName.replace(/^\d+-/, "")
+
+                        const downloadUrl = `/api/download-digital?path=${encodeURIComponent(url)}&orderId=${order.id}`
+
                         return (
                           <a
                             key={fileIndex}
-                            href={url}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            download
+                            href={downloadUrl}
                             className="flex items-center gap-3 bg-white border rounded-lg p-4 hover:bg-primary/5 hover:border-primary transition-colors"
                           >
                             <div className="bg-primary/10 rounded-full p-2">
                               <Download className="w-5 h-5 text-primary" />
                             </div>
                             <div className="flex-1">
-                              <span className="font-medium block">{fileName}</span>
+                              <span className="font-medium block">{cleanFileName}</span>
                               <span className="text-xs text-muted-foreground">Click to download</span>
                             </div>
                           </a>

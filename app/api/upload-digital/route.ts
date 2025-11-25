@@ -114,15 +114,12 @@ export async function POST(request: NextRequest) {
         )
       }
 
-      const {
-        data: { publicUrl },
-      } = supabase.storage.from("product-images").getPublicUrl(fileName)
-
-      console.log("[v0] Digital file uploaded (fallback):", publicUrl)
+      const storagePath = `product-images:${fallbackData.path}`
+      console.log("[v0] Digital file uploaded (fallback):", storagePath)
 
       return NextResponse.json({
         success: true,
-        url: publicUrl,
+        url: storagePath,
         path: fallbackData.path,
         originalName: file.name,
       })
@@ -130,16 +127,14 @@ export async function POST(request: NextRequest) {
 
     console.log("[v0] File uploaded successfully:", data.path)
 
-    // Get public URL
-    const {
-      data: { publicUrl },
-    } = supabase.storage.from("digital-files").getPublicUrl(fileName)
+    // The download API will generate signed URLs on demand
+    const storagePath = `digital-files:${data.path}`
 
-    console.log("[v0] Digital file public URL:", publicUrl)
+    console.log("[v0] Digital file storage path:", storagePath)
 
     return NextResponse.json({
       success: true,
-      url: publicUrl,
+      url: storagePath,
       path: data.path,
       originalName: file.name,
     })

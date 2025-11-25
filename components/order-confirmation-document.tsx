@@ -331,42 +331,77 @@ export function OrderConfirmationDocument({ order, vendor }: OrderConfirmationDo
               <FileText className="w-5 h-5 text-primary" />
               <h2 className="text-lg font-semibold">Digital Downloads</h2>
             </div>
-            {digitalItems.map((item, index) => (
-              <div key={index} className="bg-muted/30 rounded-lg p-6 mb-4 last:mb-0">
-                <div className="flex items-start justify-between mb-4">
-                  <div>
-                    <h3 className="font-bold text-lg">{item.product_title}</h3>
-                    <p className="text-sm text-muted-foreground">
-                      {item.product_details?.license_type === "extended" ? "Extended License" : "Standard License"}
+            {digitalItems.map((item, index) => {
+              const fileUrls = item.product_details?.file_urls || []
+              const hasFiles = fileUrls.length > 0
+
+              return (
+                <div key={index} className="bg-muted/30 rounded-lg p-6 mb-4 last:mb-0">
+                  <div className="flex items-start justify-between mb-4">
+                    <div>
+                      <h3 className="font-bold text-lg">{item.product_title}</h3>
+                      <p className="text-sm text-muted-foreground">
+                        {item.product_details?.license_type === "extended" ? "Extended License" : "Standard License"}
+                      </p>
+                    </div>
+                    <span
+                      className={`px-2 py-1 rounded text-xs font-medium ${
+                        hasFiles ? "bg-green-100 text-green-700" : "bg-amber-100 text-amber-700"
+                      }`}
+                    >
+                      {hasFiles ? "Ready to Download" : "Pending Files"}
+                    </span>
+                  </div>
+
+                  {hasFiles ? (
+                    <div className="space-y-2 print:hidden">
+                      <p className="text-sm text-muted-foreground mb-3">
+                        {fileUrls.length} file{fileUrls.length !== 1 ? "s" : ""} available for download:
+                      </p>
+                      {fileUrls.map((url: string, fileIndex: number) => {
+                        const fileName = url.split("/").pop() || `File ${fileIndex + 1}`
+                        return (
+                          <a
+                            key={fileIndex}
+                            href={url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            download
+                            className="flex items-center gap-3 bg-white border rounded-lg p-4 hover:bg-primary/5 hover:border-primary transition-colors"
+                          >
+                            <div className="bg-primary/10 rounded-full p-2">
+                              <Download className="w-5 h-5 text-primary" />
+                            </div>
+                            <div className="flex-1">
+                              <span className="font-medium block">{fileName}</span>
+                              <span className="text-xs text-muted-foreground">Click to download</span>
+                            </div>
+                          </a>
+                        )
+                      })}
+                    </div>
+                  ) : (
+                    /* Show pending message if no files uploaded yet */
+                    <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 print:hidden">
+                      <p className="text-amber-800 font-medium mb-1">Files Not Yet Available</p>
+                      <p className="text-amber-700 text-sm">
+                        The vendor has not uploaded the download files yet. You will receive an email with download
+                        links once the files are ready.
+                      </p>
+                      <p className="text-xs text-amber-600 mt-3">
+                        Keep this receipt - Order ID: {order.id.slice(0, 8).toUpperCase()}
+                      </p>
+                    </div>
+                  )}
+
+                  {item.product_details?.download_limit && hasFiles && (
+                    <p className="text-xs text-muted-foreground mt-4">
+                      Download limit: {item.product_details.download_limit} downloads remaining
                     </p>
-                  </div>
-                  <span className="bg-green-100 text-green-700 px-2 py-1 rounded text-xs font-medium">
-                    Ready to Download
-                  </span>
+                  )}
                 </div>
-                {item.product_details?.file_urls && item.product_details.file_urls.length > 0 && (
-                  <div className="space-y-2 print:hidden">
-                    {item.product_details.file_urls.map((url, fileIndex) => (
-                      <a
-                        key={fileIndex}
-                        href={url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="flex items-center gap-2 bg-white border rounded p-3 hover:bg-muted/50 transition-colors"
-                      >
-                        <Download className="w-4 h-4 text-primary" />
-                        <span className="text-sm font-medium">Download File {fileIndex + 1}</span>
-                      </a>
-                    ))}
-                  </div>
-                )}
-                {item.product_details?.download_limit && (
-                  <p className="text-xs text-muted-foreground mt-3">
-                    Download limit: {item.product_details.download_limit} downloads
-                  </p>
-                )}
-              </div>
-            ))}
+              )
+            })}
           </div>
         )}
 

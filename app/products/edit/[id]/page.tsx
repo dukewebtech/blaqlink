@@ -9,7 +9,7 @@ import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Card } from "@/components/ui/card"
-import { ArrowLeft, Loader2, Upload, X } from "lucide-react"
+import { ArrowLeft, Loader2, Upload, X, FileText } from "lucide-react"
 import { useRouter, useParams } from "next/navigation"
 import { useState, useEffect, useRef } from "react"
 
@@ -24,7 +24,7 @@ type Product = {
   stock_quantity: number | null
   status: string
   images: string[]
-  file_url?: string | null
+  file_urls?: string[]
   file_size?: string | null
   download_limit?: number | null
   license_type?: string | null
@@ -46,12 +46,14 @@ export default function EditProductPage() {
   const params = useParams()
   const productId = params.id as string
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const digitalFileInputRef = useRef<HTMLInputElement>(null)
 
   const [product, setProduct] = useState<Product | null>(null)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [uploadingImage, setUploadingImage] = useState(false)
+  const [uploadingDigitalFile, setUploadingDigitalFile] = useState(false)
 
   // Form state
   const [formData, setFormData] = useState<Partial<Product>>({})
@@ -87,7 +89,6 @@ export default function EditProductPage() {
 
     try {
       setUploadingImage(true)
-      console.log("[v0] Uploading image:", file.name, file.size, "bytes")
 
       const formData = new FormData()
       formData.append("file", file)
@@ -102,20 +103,63 @@ export default function EditProductPage() {
       }
 
       const data = await response.json()
-      console.log("[v0] Image uploaded successfully:", data.url)
 
       setFormData((prev) => ({
         ...prev,
         images: [...(prev.images || []), data.url],
       }))
-
-      console.log("[v0] Updated images array:", [...(formData.images || []), data.url])
     } catch (err) {
       console.error("[v0] Error uploading image:", err)
       alert("Failed to upload image")
     } finally {
       setUploadingImage(false)
     }
+  }
+
+  const handleDigitalFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files
+    if (!files || files.length === 0) return
+
+    try {
+      setUploadingDigitalFile(true)
+
+      for (const file of Array.from(files)) {
+        const uploadFormData = new FormData()
+        uploadFormData.append("file", file)
+
+        const response = await fetch("/api/upload-digital", {
+          method: "POST",
+          body: uploadFormData,
+        })
+
+        if (!response.ok) {
+          const errorData = await response.json()
+          throw new Error(errorData.error || "Failed to upload file")
+        }
+
+        const data = await response.json()
+
+        setFormData((prev) => ({
+          ...prev,
+          file_urls: [...(prev.file_urls || []), data.url],
+        }))
+      }
+    } catch (err) {
+      console.error("[v0] Error uploading digital file:", err)
+      alert(err instanceof Error ? err.message : "Failed to upload file")
+    } finally {
+      setUploadingDigitalFile(false)
+      if (digitalFileInputRef.current) {
+        digitalFileInputRef.current.value = ""
+      }
+    }
+  }
+
+  const handleRemoveDigitalFile = (index: number) => {
+    setFormData((prev) => ({
+      ...prev,
+      file_urls: prev.file_urls?.filter((_, i) => i !== index) || [],
+    }))
   }
 
   const handleRemoveImage = (index: number) => {
@@ -130,8 +174,6 @@ export default function EditProductPage() {
     setSaving(true)
 
     try {
-      console.log("[v0] Saving product with images:", formData.images)
-
       const response = await fetch(`/api/products/${productId}`, {
         method: "PUT",
         headers: {
@@ -144,15 +186,22 @@ export default function EditProductPage() {
         throw new Error("Failed to update product")
       }
 
-      const result = await response.json()
-      console.log("[v0] Product updated successfully:", result.product)
-
       router.push(`/products/view/${productId}`)
     } catch (err) {
       console.error("[v0] Error updating product:", err)
       alert("Failed to update product")
     } finally {
       setSaving(false)
+    }
+  }
+
+  const getFileName = (url: string) => {
+    try {
+      const urlParts = url.split("/")
+      const fileName = urlParts[urlParts.length - 1]
+      return decodeURIComponent(fileName.split("?")[0])
+    } catch {
+      return "File"
     }
   }
 
@@ -301,6 +350,98 @@ export default function EditProductPage() {
               <input ref={fileInputRef} type="file" accept="image/*" onChange={handleFileChange} className="hidden" />
             </div>
           </Card>
+
+          {product.product_type === "digital" && (
+            <Card className="p-6">
+              <h2 className="text-lg font-semibold mb-4">Digital Files</h2>
+              <p className="text-sm text-muted-foreground mb-4">
+                Upload the files that customers will receive after purchase.
+              </p>
+              <div className="space-y-4">
+                {/* Uploaded files list */}
+                {formData.file_urls && formData.file_urls.length > 0 && (
+                  <div className="space-y-2">
+                    {formData.file_urls.map((url, index) => (
+                      <div key={index} className="flex items-center justify-between p-3 bg-muted/50 rounded-lg border">
+                        <div className="flex items-center gap-3">
+                          <FileText className="h-5 w-5 text-primary" />
+                          <span className="text-sm font-medium truncate max-w-[300px]">{getFileName(url)}</span>
+                        </div>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleRemoveDigitalFile(index)}
+                          className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                        >
+                          <X className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {/* Upload button */}
+                <button
+                  type="button"
+                  onClick={() => digitalFileInputRef.current?.click()}
+                  disabled={uploadingDigitalFile}
+                  className="w-full h-24 border-2 border-dashed border-border rounded-lg flex flex-col items-center justify-center hover:border-primary hover:bg-primary/5 transition-colors"
+                >
+                  {uploadingDigitalFile ? (
+                    <>
+                      <Loader2 className="h-6 w-6 animate-spin text-primary" />
+                      <span className="text-sm text-muted-foreground mt-2">Uploading...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Upload className="h-6 w-6 text-muted-foreground" />
+                      <span className="text-sm text-muted-foreground mt-2">Click to upload digital files</span>
+                      <span className="text-xs text-muted-foreground">PDF, ZIP, MP4, MP3, EPUB, DOC (max 100MB)</span>
+                    </>
+                  )}
+                </button>
+                <input
+                  ref={digitalFileInputRef}
+                  type="file"
+                  multiple
+                  accept=".pdf,.zip,.mp4,.mov,.avi,.mp3,.epub,.doc,.docx"
+                  onChange={handleDigitalFileChange}
+                  className="hidden"
+                />
+
+                {/* License and download settings */}
+                <div className="grid grid-cols-2 gap-4 pt-4 border-t">
+                  <div>
+                    <Label htmlFor="license_type">License Type</Label>
+                    <Select
+                      value={formData.license_type || "standard"}
+                      onValueChange={(value) => setFormData({ ...formData, license_type: value })}
+                    >
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="standard">Standard License</SelectItem>
+                        <SelectItem value="extended">Extended License</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div>
+                    <Label htmlFor="download_limit">Download Limit</Label>
+                    <Input
+                      id="download_limit"
+                      type="number"
+                      min="1"
+                      value={formData.download_limit || ""}
+                      onChange={(e) => setFormData({ ...formData, download_limit: Number.parseInt(e.target.value) })}
+                      placeholder="e.g., 5"
+                    />
+                  </div>
+                </div>
+              </div>
+            </Card>
+          )}
 
           {/* Type-specific fields */}
           {product.product_type === "physical" && (

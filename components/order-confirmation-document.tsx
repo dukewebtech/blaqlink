@@ -374,6 +374,8 @@ export function OrderConfirmationDocument({ order, vendor }: OrderConfirmationDo
                           <a
                             key={fileIndex}
                             href={downloadUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
                             className="flex items-center gap-3 bg-white border rounded-lg p-4 hover:bg-primary/5 hover:border-primary transition-colors"
                           >
                             <div className="bg-primary/10 rounded-full p-2">

@@ -3,15 +3,18 @@
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
-import { Loader2, CreditCard, Shield, Lock, AlertCircle, CheckCircle, X } from "lucide-react"
+import { Loader2, CreditCard, Shield, Lock, AlertCircle } from "lucide-react"
+import { cartStore } from "@/lib/cart-store"
+import { OrderConfirmationDocument } from "@/components/order-confirmation-document"
 
 export default function PaymentPage({ params }: { params: { storeId: string } }) {
   const router = useRouter()
   const [loading, setLoading] = useState(false)
   const [orderData, setOrderData] = useState<any>(null)
   const [error, setError] = useState<string | null>(null)
-  const [showSuccessModal, setShowSuccessModal] = useState(false)
+  const [showConfirmation, setShowConfirmation] = useState(false)
   const [verifiedOrder, setVerifiedOrder] = useState<any>(null)
+  const [vendorData, setVendorData] = useState<any>(null)
 
   useEffect(() => {
     // Get order data from sessionStorage
@@ -86,10 +89,12 @@ export default function PaymentPage({ params }: { params: { storeId: string } })
               console.log("[v0] Payment verification response:", verifyData)
 
               if (verifyResponse.ok && verifyData.success) {
-                // Show success modal
                 setVerifiedOrder(verifyData.order)
-                setShowSuccessModal(true)
-                // Clear pending order
+                setVendorData(verifyData.vendor)
+                setShowConfirmation(true)
+
+                // Clear cart and pending order
+                cartStore.clearCart()
                 sessionStorage.removeItem("pendingOrder")
               } else {
                 setError(verifyData.error || "Payment verification failed. Please contact support.")
@@ -108,6 +113,10 @@ export default function PaymentPage({ params }: { params: { storeId: string } })
       setError(error.message || "Failed to initialize payment. Please try again.")
       setLoading(false)
     }
+  }
+
+  if (showConfirmation && verifiedOrder) {
+    return <OrderConfirmationDocument order={verifiedOrder} vendor={vendorData} />
   }
 
   if (!orderData) {
@@ -180,70 +189,6 @@ export default function PaymentPage({ params }: { params: { storeId: string } })
           </Button>
         </div>
       </div>
-
-      {showSuccessModal && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50">
-          <div className="bg-card rounded-lg border max-w-md w-full p-8 text-center space-y-6 animate-in zoom-in-95 duration-300">
-            <button
-              onClick={() => {
-                setShowSuccessModal(false)
-                router.push(`/store/${params.storeId}`)
-              }}
-              className="absolute top-4 right-4 text-muted-foreground hover:text-foreground"
-            >
-              <X className="w-5 h-5" />
-            </button>
-
-            <div className="w-20 h-20 bg-green-500/10 rounded-full flex items-center justify-center mx-auto">
-              <CheckCircle className="w-10 h-10 text-green-500" />
-            </div>
-
-            <div>
-              <h2 className="text-3xl font-bold mb-2">Payment Successful!</h2>
-              <p className="text-muted-foreground">Your order has been placed successfully.</p>
-            </div>
-
-            {verifiedOrder && (
-              <div className="bg-muted/50 rounded-lg p-6 space-y-3 text-left">
-                <div className="flex justify-between text-sm">
-                  <span className="text-muted-foreground">Order ID</span>
-                  <span className="font-mono font-medium">#{verifiedOrder.id}</span>
-                </div>
-                <div className="flex justify-between text-sm">
-                  <span className="text-muted-foreground">Amount Paid</span>
-                  <span className="font-bold text-lg text-green-600">
-                    NGN {verifiedOrder.total_amount.toLocaleString()}
-                  </span>
-                </div>
-                <div className="flex justify-between text-sm">
-                  <span className="text-muted-foreground">Items</span>
-                  <span className="font-medium">{verifiedOrder.items?.length || 0} item(s)</span>
-                </div>
-                <div className="flex justify-between text-sm">
-                  <span className="text-muted-foreground">Status</span>
-                  <span className="font-medium text-green-600">Paid</span>
-                </div>
-              </div>
-            )}
-
-            <div className="space-y-3">
-              <Button onClick={() => router.push(`/store/${params.storeId}`)} className="w-full" size="lg">
-                Continue Shopping
-              </Button>
-              <Button
-                variant="outline"
-                onClick={() => {
-                  setShowSuccessModal(false)
-                  router.push(`/store/${params.storeId}`)
-                }}
-                className="w-full"
-              >
-                Close
-              </Button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   )
 }

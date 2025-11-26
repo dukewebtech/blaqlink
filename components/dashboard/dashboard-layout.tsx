@@ -46,7 +46,7 @@ const navigation = [
     icon: Package,
   },
   { name: "Categories", href: "/categories", icon: FolderTree },
-  { name: "Transaction", href: "/transactions", icon: Receipt, count: 441 },
+  { name: "Transaction", href: "/transactions", icon: Receipt, },
   { name: "Payouts", href: "/payouts", icon: Wallet },
   { name: "Customers", href: "/customers", icon: Users },
   { name: "Sales Report", href: "/sales", icon: BarChart3 },

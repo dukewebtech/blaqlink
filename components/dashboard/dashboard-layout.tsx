@@ -372,7 +372,7 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
 
               <div className="hidden md:flex items-center gap-3 ml-2">
                 <Avatar className="h-9 w-9 ring-2 ring-primary/10">
-                  <AvatarImage src={userData?.profile_image || "/placeholder.svg?height=36&width=36"} />
+                  <AvatarImage src={userData?.profile_image || "/placeholder.svg?height=36&width=360"} />
                   <AvatarFallback>{getUserInitials()}</AvatarFallback>
                 </Avatar>
                 <div>

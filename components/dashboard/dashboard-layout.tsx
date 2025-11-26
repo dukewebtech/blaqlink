@@ -44,11 +44,6 @@ const navigation = [
     name: "Product",
     href: "/products-list",
     icon: Package,
-    count: 119,
-    children: [
-      { name: "All Products", href: "/products-list" },
-      { name: "Create Product", href: "/products/choose-type" },
-    ],
   },
   { name: "Categories", href: "/categories", icon: FolderTree },
   { name: "Transaction", href: "/transactions", icon: Receipt, count: 441 },

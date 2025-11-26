@@ -368,18 +368,8 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
             </div>
 
             <div className="flex items-center gap-2">
-              <Button variant="ghost" size="icon" className="relative">
-                <ShoppingCart className="h-5 w-5" />
-                <Badge className="absolute -top-1 -right-1 h-5 w-5 flex items-center justify-center p-0 bg-primary text-[10px]">
-                  3
-                </Badge>
-              </Button>
-              <Button variant="ghost" size="icon" className="relative">
-                <Bell className="h-5 w-5" />
-                <Badge className="absolute -top-1 -right-1 h-5 w-5 flex items-center justify-center p-0 bg-destructive text-[10px]">
-                  4
-                </Badge>
-              </Button>
+
+
               <div className="hidden md:flex items-center gap-3 ml-2">
                 <Avatar className="h-9 w-9 ring-2 ring-primary/10">
                   <AvatarImage src={userData?.profile_image || "/placeholder.svg?height=36&width=36"} />

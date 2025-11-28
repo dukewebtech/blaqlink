@@ -211,11 +211,17 @@ function DefaultStorefront({
   const router = useRouter()
 
   useEffect(() => {
-    setCartCount(cartStore.getItems().length)
-    const unsubscribe = cartStore.subscribe(() => {
-      setCartCount(cartStore.getItems().length)
-    })
-    return unsubscribe
+    setCartCount(cartStore.getItemCount())
+
+    // Listen for cart updates via custom event
+    const handleCartUpdate = () => {
+      setCartCount(cartStore.getItemCount())
+    }
+
+    window.addEventListener("cartUpdated", handleCartUpdate)
+    return () => {
+      window.removeEventListener("cartUpdated", handleCartUpdate)
+    }
   }, [])
 
   const filteredProducts = products.filter((product) => {
@@ -238,7 +244,7 @@ function DefaultStorefront({
   }
 
   const handleCartUpdate = () => {
-    setCartCount(cartStore.getItems().length)
+    setCartCount(cartStore.getItemCount())
   }
 
   const handleCategoryClick = (categoryName: string) => {

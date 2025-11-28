@@ -1,5 +1,9 @@
 import { NextResponse } from "next/server"
-import { createPublicClient } from "@/lib/supabase/public"
+import { createClient } from "@supabase/supabase-js"
+
+function createServiceClient() {
+  return createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!)
+}
 
 export async function GET(request: Request) {
   try {
@@ -10,7 +14,7 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: "Store ID is required" }, { status: 400 })
     }
 
-    const supabase = createPublicClient()
+    const supabase = createServiceClient()
 
     const { data: user, error } = await supabase
       .from("users")

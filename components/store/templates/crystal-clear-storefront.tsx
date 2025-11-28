@@ -50,7 +50,7 @@ export function CrystalClearStorefront({ storeInfo, products, categories, storeI
   const [searchQuery, setSearchQuery] = useState("")
   const [selectedCategory, setSelectedCategory] = useState("all")
   const [selectedType, setSelectedType] = useState("all")
-  const [cartCount, setCartCount] = useState(cartStore.getItems().length)
+  const [cartCount, setCartCount] = useState(cartStore.getItemCount())
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null)
   const [isModalOpen, setIsModalOpen] = useState(false)
   const router = useRouter()
@@ -318,7 +318,7 @@ export function CrystalClearStorefront({ storeInfo, products, categories, storeI
             setSelectedProduct(null)
           }}
           storeId={storeId}
-          onCartUpdate={() => setCartCount(cartStore.getItems().length)}
+          onCartUpdate={() => setCartCount(cartStore.getItemCount())}
         />
       )}
     </div>

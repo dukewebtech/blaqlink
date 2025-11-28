@@ -2,6 +2,8 @@ import { NextResponse } from "next/server"
 import { createClient } from "@supabase/supabase-js"
 
 function createServiceClient() {
+  const hasServiceKey = !!process.env.SUPABASE_SERVICE_ROLE_KEY
+  console.log("[v0] Service role key available:", hasServiceKey)
   return createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!)
 }
 
@@ -21,6 +23,10 @@ export async function GET(request: Request) {
       .select("id, business_name, full_name, email, phone, location, profile_image, store_template")
       .eq("id", storeId)
       .maybeSingle()
+
+    console.log("[v0] Store info query result - user:", JSON.stringify(user))
+    console.log("[v0] Store info query result - error:", error)
+    console.log("[v0] Store template from DB:", user?.store_template)
 
     if (error) {
       console.error("[v0] Error fetching store info:", error)

@@ -66,7 +66,7 @@ export function CrystalClearStorefront({ storeInfo, products, categories, storeI
     const matchesSearch = product.title.toLowerCase().includes(searchQuery.toLowerCase())
     const matchesCategory = selectedCategory === "all" || product.category === selectedCategory
     const matchesType = selectedType === "all" || product.product_type === selectedType
-    return matchesSearch && matchesCategory && matchesType && product.status === "active"
+    return matchesSearch && matchesCategory && matchesType && product.status === "published"
   })
 
   const formatPrice = (price: number) => {

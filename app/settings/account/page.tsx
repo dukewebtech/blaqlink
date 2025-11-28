@@ -12,7 +12,7 @@ import { Separator } from "@/components/ui/separator"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
 import { User, Mail, Phone, MapPin, Lock, Key, CheckCircle2, Upload, Chrome, Loader2 } from "lucide-react"
-import { useRouter } from "next/navigation"
+import { useRouter, useSearchParams } from "next/navigation"
 
 interface UserProfile {
   id: string
@@ -30,6 +30,8 @@ interface UserProfile {
 
 export default function AccountSettingsPage() {
   const router = useRouter()
+  const searchParams = useSearchParams()
+  const isCompleteProfile = searchParams.get("complete") === "true"
   const [isSaving, setIsSaving] = useState(false)
   const [saved, setSaved] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
@@ -58,6 +60,11 @@ export default function AccountSettingsPage() {
       const data = await response.json()
 
       if (!response.ok) {
+        if (isCompleteProfile) {
+          console.log("[v0] No profile found, showing complete profile form")
+          setIsLoading(false)
+          return
+        }
         throw new Error(data.error || "Failed to fetch user profile")
       }
 
@@ -124,6 +131,19 @@ export default function AccountSettingsPage() {
       setIsSaving(true)
       setError(null)
 
+      if (isCompleteProfile) {
+        if (!formData.full_name?.trim()) {
+          setError("Full name is required")
+          setIsSaving(false)
+          return
+        }
+        if (!formData.business_name?.trim()) {
+          setError("Business name is required")
+          setIsSaving(false)
+          return
+        }
+      }
+
       console.log("[v0] Saving user profile:", formData)
 
       const response = await fetch("/api/users/me", {
@@ -141,8 +161,15 @@ export default function AccountSettingsPage() {
       }
 
       console.log("[v0] Profile saved successfully")
-      setSaved(true)
-      setTimeout(() => setSaved(false), 3000)
+
+      if (isCompleteProfile) {
+        setTimeout(() => {
+          router.push("/dashboard")
+        }, 1000)
+      } else {
+        setSaved(true)
+        setTimeout(() => setSaved(false), 3000)
+      }
     } catch (err) {
       console.error("[v0] Error saving profile:", err)
       setError(err instanceof Error ? err.message : "Failed to save profile")
@@ -164,10 +191,15 @@ export default function AccountSettingsPage() {
   return (
     <DashboardLayout>
       <div className="space-y-6 max-w-4xl animate-in fade-in slide-in-from-bottom-4 duration-500">
-        {/* Header */}
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Account Settings</h1>
-          <p className="text-muted-foreground mt-2">Manage your account information and preferences</p>
+          <h1 className="text-3xl font-bold tracking-tight">
+            {isCompleteProfile ? "Complete Your Profile" : "Account Settings"}
+          </h1>
+          <p className="text-muted-foreground mt-2">
+            {isCompleteProfile
+              ? "Please complete your profile to continue"
+              : "Manage your account information and preferences"}
+          </p>
         </div>
 
         {error && (

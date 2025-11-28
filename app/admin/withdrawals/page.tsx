@@ -2,106 +2,104 @@
 
 import { AdminLayout } from "@/components/admin/admin-layout"
 import { useEffect, useState } from "react"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
+import { Button } from "@/components/ui/button"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog"
-import { Textarea } from "@/components/ui/textarea"
-import { Label } from "@/components/ui/label"
-import { CheckCircle, XCircle, Clock, Eye } from "lucide-react"
+import { Check, X } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 
-interface WithdrawalRequest {
+interface Withdrawal {
   id: string
   amount: number
+  status: string
   bank_name: string
   account_number: string
   account_name: string
-  status: string
   created_at: string
-  admin_notes?: string
-  users: {
-    full_name: string
-    business_name: string
-    email: string
-  }
+  vendor_name: string
+  vendor_business: string
+  vendor_email: string
 }
 
 export default function AdminWithdrawalsPage() {
-  const [withdrawals, setWithdrawals] = useState<WithdrawalRequest[]>([])
+  const [withdrawals, setWithdrawals] = useState<Withdrawal[]>([])
   const [loading, setLoading] = useState(true)
-  const [selectedWithdrawal, setSelectedWithdrawal] = useState<WithdrawalRequest | null>(null)
-  const [dialogOpen, setDialogOpen] = useState(false)
-  const [adminNotes, setAdminNotes] = useState("")
-  const [processing, setProcessing] = useState(false)
+  const [processing, setProcessing] = useState<string | null>(null)
   const { toast } = useToast()
 
   useEffect(() => {
     fetchWithdrawals()
   }, [])
 
-  const fetchWithdrawals = async () => {
+  async function fetchWithdrawals() {
     try {
       const response = await fetch("/api/admin/withdrawals")
       if (!response.ok) throw new Error("Failed to fetch withdrawals")
       const data = await response.json()
       setWithdrawals(data.withdrawals || [])
-      console.log("[v0] Withdrawals loaded:", data.withdrawals?.length || 0)
     } catch (error) {
-      console.error("[v0] Error fetching withdrawals:", error)
-      toast({
-        title: "Error",
-        description: "Failed to load withdrawal requests",
-        variant: "destructive",
-      })
+      console.error("[v0] Failed to fetch withdrawals:", error)
     } finally {
       setLoading(false)
     }
   }
 
-  const handleUpdateStatus = async (status: string) => {
-    if (!selectedWithdrawal) return
-
-    setProcessing(true)
+  async function handleApprove(id: string) {
+    setProcessing(id)
     try {
-      const response = await fetch("/api/admin/withdrawals", {
+      const response = await fetch(`/api/admin/withdrawals/${id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          id: selectedWithdrawal.id,
-          status,
-          admin_notes: adminNotes,
-        }),
+        body: JSON.stringify({ status: "approved" }),
       })
 
-      if (!response.ok) throw new Error("Failed to update withdrawal")
+      if (!response.ok) throw new Error("Failed to approve withdrawal")
 
       toast({
-        title: "Success",
-        description: `Withdrawal ${status === "approved" ? "approved" : "rejected"} successfully`,
+        title: "Withdrawal Approved",
+        description: "The withdrawal request has been approved successfully.",
       })
 
-      setDialogOpen(false)
-      setSelectedWithdrawal(null)
-      setAdminNotes("")
-      fetchWithdrawals()
+      await fetchWithdrawals()
     } catch (error) {
-      console.error("[v0] Error updating withdrawal:", error)
+      console.error("[v0] Failed to approve withdrawal:", error)
       toast({
         title: "Error",
-        description: "Failed to update withdrawal request",
+        description: "Failed to approve withdrawal request.",
         variant: "destructive",
       })
     } finally {
-      setProcessing(false)
+      setProcessing(null)
+    }
+  }
+
+  async function handleReject(id: string) {
+    setProcessing(id)
+    try {
+      const response = await fetch(`/api/admin/withdrawals/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: "rejected" }),
+      })
+
+      if (!response.ok) throw new Error("Failed to reject withdrawal")
+
+      toast({
+        title: "Withdrawal Rejected",
+        description: "The withdrawal request has been rejected.",
+      })
+
+      await fetchWithdrawals()
+    } catch (error) {
+      console.error("[v0] Failed to reject withdrawal:", error)
+      toast({
+        title: "Error",
+        description: "Failed to reject withdrawal request.",
+        variant: "destructive",
+      })
+    } finally {
+      setProcessing(null)
     }
   }
 
@@ -113,216 +111,105 @@ export default function AdminWithdrawalsPage() {
     }).format(amount)
   }
 
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString("en-US", {
-      year: "numeric",
-      month: "short",
-      day: "numeric",
-      hour: "2-digit",
-      minute: "2-digit",
-    })
-  }
-
-  const getStatusBadge = (status: string) => {
-    switch (status) {
-      case "pending":
-        return (
-          <Badge variant="outline" className="bg-yellow-500/10 text-yellow-600 border-yellow-500/20">
-            <Clock className="h-3 w-3 mr-1" />
-            Pending
-          </Badge>
-        )
+  const getStatusColor = (status: string) => {
+    switch (status.toLowerCase()) {
       case "approved":
-        return (
-          <Badge variant="outline" className="bg-green-500/10 text-green-600 border-green-500/20">
-            <CheckCircle className="h-3 w-3 mr-1" />
-            Approved
-          </Badge>
-        )
+        return "bg-green-100 text-green-800"
+      case "pending":
+        return "bg-yellow-100 text-yellow-800"
       case "rejected":
-        return (
-          <Badge variant="outline" className="bg-red-500/10 text-red-600 border-red-500/20">
-            <XCircle className="h-3 w-3 mr-1" />
-            Rejected
-          </Badge>
-        )
+        return "bg-red-100 text-red-800"
       default:
-        return <Badge variant="outline">{status}</Badge>
+        return "bg-gray-100 text-gray-800"
     }
   }
 
-  const pendingCount = withdrawals.filter((w) => w.status === "pending").length
-  const totalPending = withdrawals.filter((w) => w.status === "pending").reduce((sum, w) => sum + Number(w.amount), 0)
+  if (loading) {
+    return (
+      <AdminLayout>
+        <div className="flex items-center justify-center min-h-[400px]">
+          <p>Loading withdrawals...</p>
+        </div>
+      </AdminLayout>
+    )
+  }
 
   return (
     <AdminLayout>
       <div className="space-y-6">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Withdrawal Requests</h1>
-          <p className="text-muted-foreground mt-1">Review and approve withdrawal requests from stores</p>
-        </div>
-
-        <div className="grid gap-6 md:grid-cols-3">
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-sm font-medium">Pending Requests</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{pendingCount}</div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-sm font-medium">Total Pending Amount</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{formatCurrency(totalPending)}</div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-sm font-medium">Total Requests</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{withdrawals.length}</div>
-            </CardContent>
-          </Card>
+          <p className="text-muted-foreground">Review and process vendor withdrawal requests</p>
         </div>
 
         <Card>
           <CardHeader>
-            <CardTitle>All Withdrawal Requests</CardTitle>
-            <CardDescription>Manage withdrawal requests from all stores</CardDescription>
+            <CardTitle>Withdrawal Requests ({withdrawals.length})</CardTitle>
           </CardHeader>
           <CardContent>
-            {loading ? (
-              <div className="text-center py-8">Loading...</div>
-            ) : withdrawals.length === 0 ? (
-              <div className="text-center py-8 text-muted-foreground">No withdrawal requests found</div>
-            ) : (
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Store</TableHead>
-                    <TableHead>Owner</TableHead>
-                    <TableHead>Amount</TableHead>
-                    <TableHead>Bank Details</TableHead>
-                    <TableHead>Date</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead>Actions</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {withdrawals.map((withdrawal) => (
-                    <TableRow key={withdrawal.id}>
-                      <TableCell className="font-medium">{withdrawal.users.business_name}</TableCell>
-                      <TableCell>{withdrawal.users.full_name}</TableCell>
-                      <TableCell className="font-semibold">{formatCurrency(withdrawal.amount)}</TableCell>
-                      <TableCell>
-                        <div className="text-sm">
-                          <div>{withdrawal.bank_name}</div>
-                          <div className="text-muted-foreground">{withdrawal.account_number}</div>
-                          <div className="text-muted-foreground">{withdrawal.account_name}</div>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Vendor</TableHead>
+                  <TableHead>Amount</TableHead>
+                  <TableHead>Bank Details</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead>Date</TableHead>
+                  <TableHead>Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {withdrawals.map((withdrawal) => (
+                  <TableRow key={withdrawal.id}>
+                    <TableCell>
+                      <div>
+                        <p className="font-medium">{withdrawal.vendor_business || withdrawal.vendor_name}</p>
+                        <p className="text-xs text-muted-foreground">{withdrawal.vendor_email}</p>
+                      </div>
+                    </TableCell>
+                    <TableCell className="font-medium">{formatCurrency(withdrawal.amount)}</TableCell>
+                    <TableCell>
+                      <div className="text-sm">
+                        <p className="font-medium">{withdrawal.bank_name}</p>
+                        <p className="text-muted-foreground">{withdrawal.account_number}</p>
+                        <p className="text-muted-foreground">{withdrawal.account_name}</p>
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <Badge className={getStatusColor(withdrawal.status)}>{withdrawal.status}</Badge>
+                    </TableCell>
+                    <TableCell>{new Date(withdrawal.created_at).toLocaleDateString()}</TableCell>
+                    <TableCell>
+                      {withdrawal.status === "pending" && (
+                        <div className="flex gap-2">
+                          <Button
+                            size="sm"
+                            variant="default"
+                            onClick={() => handleApprove(withdrawal.id)}
+                            disabled={processing === withdrawal.id}
+                            className="bg-green-600 hover:bg-green-700"
+                          >
+                            <Check className="h-4 w-4 mr-1" />
+                            Approve
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="destructive"
+                            onClick={() => handleReject(withdrawal.id)}
+                            disabled={processing === withdrawal.id}
+                          >
+                            <X className="h-4 w-4 mr-1" />
+                            Reject
+                          </Button>
                         </div>
-                      </TableCell>
-                      <TableCell className="text-sm text-muted-foreground">
-                        {formatDate(withdrawal.created_at)}
-                      </TableCell>
-                      <TableCell>{getStatusBadge(withdrawal.status)}</TableCell>
-                      <TableCell>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => {
-                            setSelectedWithdrawal(withdrawal)
-                            setAdminNotes(withdrawal.admin_notes || "")
-                            setDialogOpen(true)
-                          }}
-                        >
-                          <Eye className="h-4 w-4 mr-1" />
-                          Review
-                        </Button>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            )}
+                      )}
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
           </CardContent>
         </Card>
-
-        <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-          <DialogContent className="max-w-2xl">
-            <DialogHeader>
-              <DialogTitle>Review Withdrawal Request</DialogTitle>
-              <DialogDescription>Review and approve or reject this withdrawal request</DialogDescription>
-            </DialogHeader>
-
-            {selectedWithdrawal && (
-              <div className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <Label className="text-muted-foreground">Store</Label>
-                    <p className="font-medium">{selectedWithdrawal.users.business_name}</p>
-                  </div>
-                  <div>
-                    <Label className="text-muted-foreground">Owner</Label>
-                    <p className="font-medium">{selectedWithdrawal.users.full_name}</p>
-                  </div>
-                  <div>
-                    <Label className="text-muted-foreground">Email</Label>
-                    <p className="font-medium">{selectedWithdrawal.users.email}</p>
-                  </div>
-                  <div>
-                    <Label className="text-muted-foreground">Amount</Label>
-                    <p className="font-bold text-lg">{formatCurrency(selectedWithdrawal.amount)}</p>
-                  </div>
-                  <div>
-                    <Label className="text-muted-foreground">Bank Name</Label>
-                    <p className="font-medium">{selectedWithdrawal.bank_name}</p>
-                  </div>
-                  <div>
-                    <Label className="text-muted-foreground">Account Number</Label>
-                    <p className="font-medium">{selectedWithdrawal.account_number}</p>
-                  </div>
-                  <div className="col-span-2">
-                    <Label className="text-muted-foreground">Account Name</Label>
-                    <p className="font-medium">{selectedWithdrawal.account_name}</p>
-                  </div>
-                </div>
-
-                <div>
-                  <Label htmlFor="admin-notes">Admin Notes (Optional)</Label>
-                  <Textarea
-                    id="admin-notes"
-                    placeholder="Add notes about this withdrawal request..."
-                    value={adminNotes}
-                    onChange={(e) => setAdminNotes(e.target.value)}
-                    rows={3}
-                  />
-                </div>
-              </div>
-            )}
-
-            <DialogFooter>
-              <Button variant="outline" onClick={() => setDialogOpen(false)} disabled={processing}>
-                Cancel
-              </Button>
-              {selectedWithdrawal?.status === "pending" && (
-                <>
-                  <Button variant="destructive" onClick={() => handleUpdateStatus("rejected")} disabled={processing}>
-                    <XCircle className="h-4 w-4 mr-2" />
-                    Reject
-                  </Button>
-                  <Button onClick={() => handleUpdateStatus("approved")} disabled={processing}>
-                    <CheckCircle className="h-4 w-4 mr-2" />
-                    Approve
-                  </Button>
-                </>
-              )}
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
       </div>
     </AdminLayout>
   )

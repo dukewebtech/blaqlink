@@ -5,6 +5,29 @@ export async function GET() {
   try {
     const supabase = await createServerClient()
 
+    let user
+    let authError
+    try {
+      const result = await supabase.auth.getUser()
+      user = result.data.user
+      authError = result.error
+    } catch (err) {
+      console.error("[v0] Auth error:", err)
+      return NextResponse.json([], { status: 200 })
+    }
+
+    if (authError || !user) {
+      console.log("[v0] No authenticated user, returning empty array")
+      return NextResponse.json([], { status: 200 })
+    }
+
+    const { data: userProfile } = await supabase.from("users").select("id").eq("auth_id", user.id).single()
+
+    if (!userProfile) {
+      console.log("[v0] No user profile found, returning empty array")
+      return NextResponse.json([], { status: 200 })
+    }
+
     const { data: orders, error } = await supabase
       .from("orders")
       .select(
@@ -23,10 +46,14 @@ export async function GET() {
         )
       `,
       )
+      .eq("user_id", userProfile.id)
       .order("created_at", { ascending: false })
       .limit(5)
 
-    if (error) throw error
+    if (error) {
+      console.error("[v0] Orders fetch error:", error)
+      return NextResponse.json([], { status: 200 })
+    }
 
     // Get product images for each order
     const ordersWithImages = await Promise.all(
@@ -39,7 +66,8 @@ export async function GET() {
             .from("products")
             .select("images")
             .eq("id", firstItem.product_id)
-            .maybeSingle()
+            .eq("user_id", user.id)
+            .single()
 
           productImage = product?.images?.[0] || null
         }
@@ -59,6 +87,6 @@ export async function GET() {
     return NextResponse.json(ordersWithImages)
   } catch (error) {
     console.error("[v0] Recent orders error:", error)
-    return NextResponse.json({ error: "Failed to fetch recent orders" }, { status: 500 })
+    return NextResponse.json([], { status: 200 })
   }
 }

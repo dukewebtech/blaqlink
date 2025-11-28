@@ -7,8 +7,9 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import Link from "next/link"
-import { useState } from "react"
-import { Eye, EyeOff } from "lucide-react"
+import { useState, useEffect } from "react"
+import { Eye, EyeOff, CheckCircle2 } from "lucide-react"
+import { useSearchParams } from "next/navigation"
 
 export default function LoginPage() {
   const [email, setEmail] = useState("")
@@ -16,6 +17,18 @@ export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(false)
+  const [showSignupSuccess, setShowSignupSuccess] = useState(false)
+  const searchParams = useSearchParams()
+
+  useEffect(() => {
+    if (searchParams.get("signup") === "success") {
+      setShowSignupSuccess(true)
+      const timer = setTimeout(() => {
+        setShowSignupSuccess(false)
+      }, 5000)
+      return () => clearTimeout(timer)
+    }
+  }, [searchParams])
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -23,11 +36,7 @@ export default function LoginPage() {
     setError(null)
 
     try {
-      console.log("[v0] Attempting login...")
       const supabase = createClient()
-
-      console.log("[v0] Supabase client created successfully")
-      console.log("[v0] Calling signInWithPassword...")
 
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
@@ -35,14 +44,97 @@ export default function LoginPage() {
       })
 
       if (error) {
-        console.log("[v0] Login error:", error.message)
-        console.log("[v0] Error details:", error)
-        throw error
+        setError(error.message)
+        setIsLoading(false)
+        return
       }
 
-      console.log("[v0] Login successful, user:", data.user?.email)
-      console.log("[v0] Redirecting to dashboard...")
+      console.log("[v0] Login successful, checking onboarding status...")
 
+      let profileResponse
+      let retryCount = 0
+      const maxRetries = 3
+
+      while (retryCount < maxRetries) {
+        profileResponse = await fetch("/api/users/me", {
+          method: "GET",
+          headers: { "Content-Type": "application/json" },
+        })
+
+        if (profileResponse.ok) {
+          break
+        }
+
+        // If session not ready, wait and retry
+        if (profileResponse.status === 401) {
+          const errorData = await profileResponse.json()
+          if (errorData.error?.includes("Session not ready") && retryCount < maxRetries - 1) {
+            console.log(`[v0] Session not ready, retrying (${retryCount + 1}/${maxRetries})...`)
+            await new Promise((resolve) => setTimeout(resolve, 1000))
+            retryCount++
+            continue
+          }
+        }
+
+        break
+      }
+
+      if (!profileResponse || !profileResponse.ok) {
+        console.error("[v0] Failed to fetch user profile")
+        setError("Session is initializing. Please wait a moment and try logging in again.")
+        setIsLoading(false)
+        return
+      }
+
+      const profileData = await profileResponse.json()
+      const userData = profileData.data?.user || profileData.user || profileData
+
+      // Check if user is admin
+      if (userData?.is_admin || userData?.role === "admin") {
+        console.log("[v0] Admin user, redirecting to admin dashboard...")
+        window.location.href = "/admin/dashboard"
+        return
+      }
+
+      // Check onboarding status
+      let shouldOnboard = false
+
+      try {
+        const onboardingResponse = await fetch("/api/onboarding")
+
+        if (onboardingResponse.ok) {
+          const onboardingData = await onboardingResponse.json()
+          console.log("[v0] Onboarding status:", onboardingData)
+
+          // Check if user needs to complete onboarding
+          if (!onboardingData.progress?.onboarding_completed) {
+            shouldOnboard = true
+          } else if (onboardingData.kycStatus === "pending_review" && !onboardingData.adminKycApproved) {
+            // Onboarding complete but KYC not approved - show pending screen
+            console.log("[v0] KYC pending approval, redirecting to onboarding...")
+            shouldOnboard = true
+          }
+        } else {
+          // If onboarding API fails, check user profile directly
+          if (!userData.onboarding_completed) {
+            shouldOnboard = true
+          }
+        }
+      } catch (onboardingError) {
+        console.error("[v0] Onboarding check failed:", onboardingError)
+        // Check profile fallback
+        if (!userData.onboarding_completed) {
+          shouldOnboard = true
+        }
+      }
+
+      if (shouldOnboard) {
+        console.log("[v0] Redirecting to onboarding...")
+        window.location.href = "/onboarding"
+        return
+      }
+
+      console.log("[v0] Redirecting to dashboard...")
       window.location.href = "/dashboard"
     } catch (error: unknown) {
       console.error("[v0] Login failed:", error)
@@ -65,6 +157,20 @@ export default function LoginPage() {
             <h1 className="text-3xl font-bold tracking-tight">Welcome Back</h1>
             <p className="text-muted-foreground">Sign in to your account to continue</p>
           </div>
+
+          {showSignupSuccess && (
+            <div className="rounded-lg bg-success/10 border border-success/20 p-4 animate-in fade-in slide-in-from-top-2 duration-300">
+              <div className="flex items-start gap-3">
+                <CheckCircle2 className="h-5 w-5 text-success mt-0.5 flex-shrink-0" />
+                <div className="space-y-1">
+                  <p className="text-sm font-medium text-success">Account created successfully!</p>
+                  <p className="text-sm text-muted-foreground">
+                    Your account is ready to use. Please sign in with your credentials.
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
 
           <form onSubmit={handleLogin} className="space-y-6">
             <div className="space-y-4">

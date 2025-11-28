@@ -55,15 +55,21 @@ export default function SignupPage() {
     }
 
     try {
-      console.log("[v0] Starting signup process...")
+      console.log("[v0] Starting signup process with supabase.auth.signUp()...")
+
       const supabase = createClient()
-      console.log("[v0] Supabase client created")
+
+      console.log("[v0] Supabase URL exists:", !!process.env.NEXT_PUBLIC_SUPABASE_URL)
+      console.log("[v0] Supabase Anon Key exists:", !!process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY)
+      console.log(
+        "[v0] Supabase URL domain:",
+        process.env.NEXT_PUBLIC_SUPABASE_URL?.replace("https://", "").split(".")[0],
+      )
 
       const { data, error: signUpError } = await supabase.auth.signUp({
         email,
         password,
         options: {
-          emailRedirectTo: process.env.NEXT_PUBLIC_DEV_SUPABASE_REDIRECT_URL || `${window.location.origin}/dashboard`,
           data: {
             full_name: fullName,
             role: "vendor",
@@ -71,36 +77,53 @@ export default function SignupPage() {
         },
       })
 
-      console.log("[v0] Signup response:", { data, error: signUpError })
-
-      if (signUpError) throw signUpError
-
-      if (data.session) {
-        console.log("[v0] Session created, redirecting to dashboard...")
-        setSuccess(true)
-        setTimeout(() => {
-          router.push("/dashboard")
-        }, 1500)
-      } else {
-        // Email verification required
-        console.log("[v0] Email verification required, redirecting to success page...")
-        setSuccess(true)
-        setTimeout(() => {
-          router.push("/auth/signup-success")
-        }, 2000)
+      if (signUpError) {
+        console.error("[v0] Signup error:", signUpError.message)
+        throw signUpError
       }
+
+      console.log("[v0] Signup response:", data)
+
+      // Check if email confirmation is required
+      if (data.user && !data.user.confirmed_at && data.user.confirmation_sent_at) {
+        setError(
+          "Email confirmation is enabled. Please disable 'Email Confirmations' in your Supabase Dashboard (Authentication → Providers → Email) to allow automatic verification.",
+        )
+        setIsLoading(false)
+        return
+      }
+
+      console.log("[v0] User created successfully, redirecting to login...")
+      setSuccess(true)
+
+      setTimeout(() => {
+        router.push("/login?signup=success")
+      }, 1500)
     } catch (error: unknown) {
       console.error("[v0] Signup error:", error)
+
       if (error instanceof Error) {
-        if (error.message.includes("fetch")) {
-          setError("Unable to connect to authentication service. Please check your internet connection.")
-        } else if (error.message.includes("already registered")) {
+        const errorMessage = error.message.toLowerCase()
+
+        if (errorMessage.includes("rate limit") || errorMessage.includes("too many requests")) {
+          setError(
+            "Too many signup attempts. Please wait a few minutes before trying again. If you already have an account, try logging in instead.",
+          )
+        } else if (errorMessage.includes("user already registered") || errorMessage.includes("already exists")) {
           setError("This email is already registered. Please try logging in instead.")
+        } else if (errorMessage.includes("email confirmations") || errorMessage.includes("confirmation")) {
+          setError(
+            "Email confirmation is enabled. Please disable 'Email Confirmations' in your Supabase Dashboard (Authentication → Providers → Email) to allow automatic verification.",
+          )
+        } else if (errorMessage.includes("invalid email")) {
+          setError("Please enter a valid email address.")
+        } else if (errorMessage.includes("password")) {
+          setError("Password must be at least 6 characters long.")
         } else {
-          setError(error.message)
+          setError(`Signup failed: ${error.message}. Please try again or contact support if the issue persists.`)
         }
       } else {
-        setError("An unexpected error occurred during signup. Please try again.")
+        setError("An unexpected error occurred during signup. Please try again later.")
       }
     } finally {
       setIsLoading(false)
@@ -116,7 +139,7 @@ export default function SignupPage() {
           </div>
           <div className="space-y-2">
             <h2 className="text-2xl font-bold">Account Created!</h2>
-            <p className="text-muted-foreground">Please check your email to verify your account before signing in.</p>
+            <p className="text-muted-foreground">Redirecting you to login page...</p>
           </div>
         </div>
       </div>
@@ -146,7 +169,7 @@ export default function SignupPage() {
                 />
                 <path
                   fill="currentColor"
-                  d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
+                  d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"
                 />
                 <path
                   fill="currentColor"

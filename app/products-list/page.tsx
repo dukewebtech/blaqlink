@@ -28,7 +28,7 @@ import {
   Loader2,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
-import { useRouter } from "next/navigation"
+import { useRouter, useSearchParams } from "next/navigation"
 import { useState, useEffect } from "react"
 
 type Product = {
@@ -55,6 +55,7 @@ const categories = [
 
 export default function ProductListPage() {
   const router = useRouter()
+  const searchParams = useSearchParams()
   const [open, setOpen] = useState(false)
   const [categoryName, setCategoryName] = useState("")
   const [categoryDescription, setCategoryDescription] = useState("")
@@ -74,24 +75,11 @@ export default function ProductListPage() {
     try {
       setLoading(true)
       setError(null)
-      console.log("[v0] Fetching products...")
       const url = selectedType ? `/api/products?type=${selectedType}` : "/api/products"
-      console.log("[v0] Fetch URL:", url)
-
       const response = await fetch(url)
-      console.log("[v0] Response status:", response.status)
 
       if (!response.ok) {
-        const errorData = await response.json().catch(() => ({ error: "Failed to fetch products" }))
-        console.error("[v0] API error:", errorData)
-
-        if (response.status === 401) {
-          console.error("[v0] Unauthorized - redirecting to login")
-          window.location.href = "/login"
-          return
-        }
-
-        throw new Error(errorData.details || errorData.error || "Failed to fetch products")
+        throw new Error("Failed to fetch products")
       }
 
       const data = await response.json()
@@ -101,9 +89,8 @@ export default function ProductListPage() {
       }
       setProducts(data.products || [])
     } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : "Failed to load products"
-      setError(errorMessage)
-      console.error("[v0] Error fetching products:", errorMessage)
+      setError(err instanceof Error ? err.message : "Failed to load products")
+      console.error("[v0] Error fetching products:", err)
     } finally {
       setLoading(false)
     }

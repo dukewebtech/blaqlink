@@ -5,6 +5,21 @@ export async function GET() {
   try {
     const supabase = await createServerClient()
 
+    const {
+      data: { user },
+      error: authError,
+    } = await supabase.auth.getUser()
+
+    if (authError || !user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+    }
+
+    const { data: userProfile } = await supabase.from("users").select("id").eq("auth_id", user.id).single()
+
+    if (!userProfile) {
+      return NextResponse.json({ error: "User profile not found" }, { status: 404 })
+    }
+
     // Get orders from the last 12 months
     const now = new Date()
     const twelveMonthsAgo = new Date(now.getFullYear(), now.getMonth() - 11, 1)
@@ -12,6 +27,7 @@ export async function GET() {
     const { data: orders, error } = await supabase
       .from("orders")
       .select("total_amount, created_at, order_items(quantity)")
+      .eq("user_id", userProfile.id)
       .in("payment_status", ["success", "paid"])
       .gte("created_at", twelveMonthsAgo.toISOString())
 

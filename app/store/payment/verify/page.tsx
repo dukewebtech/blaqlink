@@ -3,14 +3,16 @@
 import { useEffect, useState } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import { Button } from "@/components/ui/button"
-import { Loader2, CheckCircle, XCircle } from "lucide-react"
+import { Loader2, XCircle } from "lucide-react"
 import { cartStore } from "@/lib/cart-store"
+import { OrderConfirmationDocument } from "@/components/order-confirmation-document"
 
 export default function PaymentVerifyPage() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const [status, setStatus] = useState<"loading" | "success" | "error">("loading")
   const [orderData, setOrderData] = useState<any>(null)
+  const [vendorData, setVendorData] = useState<any>(null)
   const [error, setError] = useState("")
 
   useEffect(() => {
@@ -50,7 +52,8 @@ export default function PaymentVerifyPage() {
       }
 
       // Payment successful
-      setOrderData(data)
+      setOrderData(data.order)
+      setVendorData(data.vendor)
       setStatus("success")
 
       // Clear cart and session storage
@@ -105,46 +108,6 @@ export default function PaymentVerifyPage() {
     )
   }
 
-  return (
-    <div className="min-h-screen bg-background flex items-center justify-center p-4">
-      <div className="max-w-md w-full">
-        <div className="bg-card rounded-lg border p-8 text-center space-y-6">
-          <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto">
-            <CheckCircle className="w-8 h-8 text-green-600" />
-          </div>
-
-          <div>
-            <h1 className="text-3xl font-bold mb-2">Payment Successful!</h1>
-            <p className="text-muted-foreground">Thank you for your purchase. Your order has been confirmed.</p>
-          </div>
-
-          <div className="bg-muted/50 rounded-lg p-6 space-y-3 text-left">
-            <div className="flex justify-between text-sm">
-              <span className="text-muted-foreground">Order ID</span>
-              <span className="font-mono font-medium">{orderData?.order_id?.slice(0, 8)}</span>
-            </div>
-            <div className="flex justify-between text-sm">
-              <span className="text-muted-foreground">Reference</span>
-              <span className="font-mono font-medium">{orderData?.reference?.slice(0, 12)}</span>
-            </div>
-            <div className="flex justify-between text-sm">
-              <span className="text-muted-foreground">Amount Paid</span>
-              <span className="font-bold text-lg">NGN {orderData?.amount?.toLocaleString()}</span>
-            </div>
-          </div>
-
-          <div className="space-y-3">
-            <Button onClick={() => router.push("/store")} className="w-full" size="lg">
-              Continue Shopping
-            </Button>
-            <Button variant="outline" onClick={() => router.push("/")} className="w-full">
-              View Dashboard
-            </Button>
-          </div>
-
-          <p className="text-xs text-muted-foreground">A confirmation email has been sent to your email address</p>
-        </div>
-      </div>
-    </div>
-  )
+  // Success state - show the order confirmation document
+  return <OrderConfirmationDocument order={orderData} vendor={vendorData} />
 }

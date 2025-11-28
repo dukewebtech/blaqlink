@@ -3,105 +3,122 @@
 import type React from "react"
 
 import { useState } from "react"
-import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Alert, AlertDescription } from "@/components/ui/alert"
-import { Shield, AlertCircle, CheckCircle2 } from "lucide-react"
+import { CheckCircle2, XCircle, Shield } from "lucide-react"
+import Link from "next/link"
 
 export default function AdminSetupPage() {
-  const router = useRouter()
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
+  const [fullName, setFullName] = useState("")
   const [setupKey, setSetupKey] = useState("")
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState("")
+  const [isLoading, setIsLoading] = useState(false)
   const [success, setSuccess] = useState(false)
+  const [error, setError] = useState("")
 
-  const handleSetup = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    setLoading(true)
+    setIsLoading(true)
     setError("")
+    setSuccess(false)
 
     try {
-      console.log("[v0] Logging in and setting up admin...")
-
-      // Step 1: Login with email and password
-      const loginResponse = await fetch("/api/auth/login", {
+      const response = await fetch("/api/admin/setup", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password }),
+        body: JSON.stringify({ email, password, fullName, setupKey }),
       })
 
-      const loginData = await loginResponse.json()
-      console.log("[v0] Login response:", loginData)
+      const data = await response.json()
 
-      if (!loginResponse.ok) {
-        throw new Error(loginData.error || "Failed to login")
-      }
-
-      // Step 2: Setup admin with the key
-      console.log("[v0] Submitting admin setup with key:", setupKey)
-      const setupResponse = await fetch("/api/admin/setup", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ setupKey }),
-      })
-
-      const setupData = await setupResponse.json()
-      console.log("[v0] Admin setup response:", setupData)
-
-      if (!setupResponse.ok) {
-        throw new Error(setupData.error || "Failed to setup admin account")
+      if (!response.ok) {
+        throw new Error(data.error || "Failed to create admin user")
       }
 
       setSuccess(true)
-      setTimeout(() => {
-        router.push("/admin")
-      }, 2000)
-    } catch (err: any) {
-      console.error("[v0] Admin setup error:", err)
-      setError(err.message)
+      setEmail("")
+      setPassword("")
+      setFullName("")
+      setSetupKey("")
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "An error occurred")
     } finally {
-      setLoading(false)
+      setIsLoading(false)
     }
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-red-50 to-orange-50 p-4">
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 to-slate-100 p-4">
       <Card className="w-full max-w-md">
-        <CardHeader className="text-center">
-          <div className="mx-auto w-12 h-12 bg-red-100 rounded-full flex items-center justify-center mb-4">
-            <Shield className="h-6 w-6 text-red-600" />
+        <CardHeader className="space-y-1">
+          <div className="flex items-center gap-2">
+            <Shield className="h-6 w-6 text-primary" />
+            <CardTitle className="text-2xl">Admin Setup</CardTitle>
           </div>
-          <CardTitle className="text-2xl">Admin Setup</CardTitle>
-          <CardDescription>Login and enter the admin setup key to gain administrative access</CardDescription>
+          <CardDescription>Create a new admin user for your platform</CardDescription>
         </CardHeader>
         <CardContent>
           {success ? (
-            <Alert className="bg-green-50 border-green-200">
-              <CheckCircle2 className="h-4 w-4 text-green-600" />
-              <AlertDescription className="text-green-800">
-                Admin role granted successfully! Redirecting to admin dashboard...
-              </AlertDescription>
-            </Alert>
+            <div className="space-y-4">
+              <Alert className="border-green-200 bg-green-50">
+                <CheckCircle2 className="h-4 w-4 text-green-600" />
+                <AlertDescription className="text-green-800">
+                  Admin user created successfully! You can now login with your credentials.
+                </AlertDescription>
+              </Alert>
+              <Link href="/login" className="block">
+                <Button className="w-full">Go to Login</Button>
+              </Link>
+              <Button variant="outline" className="w-full bg-transparent" onClick={() => setSuccess(false)}>
+                Create Another Admin
+              </Button>
+            </div>
           ) : (
-            <form onSubmit={handleSetup} className="space-y-4">
+            <form onSubmit={handleSubmit} className="space-y-4">
               {error && (
                 <Alert variant="destructive">
-                  <AlertCircle className="h-4 w-4" />
+                  <XCircle className="h-4 w-4" />
                   <AlertDescription>{error}</AlertDescription>
                 </Alert>
               )}
+
+              <div className="space-y-2">
+                <Label htmlFor="setupKey">Admin Setup Key</Label>
+                <Input
+                  id="setupKey"
+                  type="password"
+                  placeholder="Enter admin setup key"
+                  value={setupKey}
+                  onChange={(e) => setSetupKey(e.target.value)}
+                  required
+                />
+                <p className="text-xs text-muted-foreground">
+                  This is the ADMIN_SETUP_KEY from your environment variables
+                </p>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="fullName">Full Name</Label>
+                <Input
+                  id="fullName"
+                  type="text"
+                  placeholder="John Doe"
+                  value={fullName}
+                  onChange={(e) => setFullName(e.target.value)}
+                  required
+                />
+              </div>
 
               <div className="space-y-2">
                 <Label htmlFor="email">Email</Label>
                 <Input
                   id="email"
                   type="email"
-                  placeholder="your@email.com"
+                  placeholder="admin@example.com"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   required
@@ -113,36 +130,22 @@ export default function AdminSetupPage() {
                 <Input
                   id="password"
                   type="password"
-                  placeholder="Enter your password"
+                  placeholder="Min 6 characters"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   required
+                  minLength={6}
                 />
               </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="setupKey">Admin Setup Key</Label>
-                <Input
-                  id="setupKey"
-                  type="password"
-                  placeholder="Enter setup key"
-                  value={setupKey}
-                  onChange={(e) => setSetupKey(e.target.value)}
-                  required
-                />
-                <p className="text-sm text-muted-foreground">
-                  Default key: <code className="bg-muted px-1 py-0.5 rounded">admin123</code>
-                </p>
-              </div>
-
-              <Button type="submit" className="w-full" disabled={loading}>
-                {loading ? "Setting up..." : "Login & Become Admin"}
+              <Button type="submit" className="w-full" disabled={isLoading}>
+                {isLoading ? "Creating Admin..." : "Create Admin User"}
               </Button>
 
               <div className="text-center">
-                <Button type="button" variant="link" onClick={() => router.push("/dashboard")} className="text-sm">
-                  Back to Dashboard
-                </Button>
+                <Link href="/login" className="text-sm text-muted-foreground hover:text-primary">
+                  Already have an account? Login
+                </Link>
               </div>
             </form>
           )}

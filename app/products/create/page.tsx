@@ -14,6 +14,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { ImagePlus, ArrowLeft, Plus, Trash2, Loader2 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { useRouter, useSearchParams } from "next/navigation"
+import { X } from "lucide-react" // Import X icon
 
 type ProductType = "digital" | "event" | "physical" | "appointment"
 
@@ -31,6 +32,8 @@ export default function CreateProductPage() {
   const productType = (searchParams.get("type") as ProductType) || "physical"
 
   const [images, setImages] = useState<string[]>([])
+  const [digitalFiles, setDigitalFiles] = useState<{ url: string; name: string }[]>([]) // Added state for digital files
+  const [isUploadingDigitalFile, setIsUploadingDigitalFile] = useState(false) // Added state for uploading status
   const [isAutomatedDelivery, setIsAutomatedDelivery] = useState(false)
   const [isPaidTicket, setIsPaidTicket] = useState(true)
   const [licenseType, setLicenseType] = useState<"standard" | "extended">("standard")
@@ -221,7 +224,12 @@ export default function CreateProductPage() {
         product_type: productType,
         title: formData.title || formData.serviceName,
         description: formData.description,
-        price: formData.price ? Number.parseFloat(formData.price) : null,
+        price:
+          productType === "event" && isPaidTicket
+            ? Math.min(...ticketTypes.filter((t) => t.name && t.price).map((t) => Number.parseFloat(t.price)))
+            : formData.price
+              ? Number.parseFloat(formData.price)
+              : 0,
         category: formData.category,
         status: "published",
         images: images.filter(Boolean),
@@ -231,6 +239,7 @@ export default function CreateProductPage() {
       if (productType === "digital") {
         productData.license_type = licenseType
         productData.download_limit = formData.downloadLimit ? Number.parseInt(formData.downloadLimit) : null
+        productData.file_urls = digitalFiles.map((f) => f.url) // Add digital file URLs
       } else if (productType === "event") {
         productData.event_date = formData.eventDate
         productData.event_location = formData.eventLocation
@@ -268,7 +277,7 @@ export default function CreateProductPage() {
 
       console.log("[v0] Product created successfully:", result.product)
       console.log("[v0] Product images saved:", result.product.images)
-      router.push("/products/success")
+      router.push("/products-list")
     } catch (err: any) {
       console.error("[v0] Error creating product:", err)
       setError(err.message || "Failed to create product. Please try again.")
@@ -354,6 +363,45 @@ export default function CreateProductPage() {
         fileInputRef.current.value = ""
       }
     }
+  }
+
+  // Added handler for digital file uploads
+  const handleDigitalFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files
+    if (!files || files.length === 0) return
+
+    setIsUploadingDigitalFile(true)
+
+    try {
+      for (const file of Array.from(files)) {
+        const formData = new FormData()
+        formData.append("file", file)
+
+        const response = await fetch("/api/upload-digital", {
+          method: "POST",
+          body: formData,
+        })
+
+        const result = await response.json()
+
+        if (!response.ok) {
+          throw new Error(result.error || "Failed to upload file")
+        }
+
+        console.log("[v0] Digital file uploaded successfully:", result.url)
+        setDigitalFiles((prev) => [...prev, { url: result.url, name: file.name }])
+      }
+    } catch (err: any) {
+      console.error("[v0] Error uploading digital file:", err)
+      setError(err.message || "Failed to upload digital file")
+    } finally {
+      setIsUploadingDigitalFile(false)
+    }
+  }
+
+  // Added function to remove a digital file
+  const removeDigitalFile = (index: number) => {
+    setDigitalFiles((prev) => prev.filter((_, i) => i !== index))
   }
 
   const removeImage = (index: number) => {
@@ -574,16 +622,53 @@ export default function CreateProductPage() {
                     />
                   </div>
 
+                  {/* Updated Digital Files Section */}
                   <div className="space-y-2">
-                    <Label htmlFor="files">File Upload</Label>
-                    <Input
-                      id="files"
-                      type="file"
-                      multiple
-                      accept=".pdf,.zip,.mp4,.mov,.avi"
-                      className="transition-all duration-200 focus:scale-[1.01]"
-                    />
-                    <p className="text-xs text-muted-foreground">Supported: PDF, ZIP, MP4, MOV, AVI</p>
+                    <Label htmlFor="files">Digital Files</Label>
+                    <div className="border-2 border-dashed rounded-lg p-4 space-y-3">
+                      <Input
+                        id="files"
+                        type="file"
+                        multiple
+                        accept=".pdf,.zip,.mp4,.mov,.avi,.mp3,.epub,.doc,.docx"
+                        onChange={handleDigitalFileUpload}
+                        disabled={isUploadingDigitalFile}
+                        className="transition-all duration-200 focus:scale-[1.01]"
+                      />
+                      <p className="text-xs text-muted-foreground">
+                        Supported: PDF, ZIP, MP4, MOV, AVI, MP3, EPUB, DOC, DOCX (max 100MB each)
+                      </p>
+
+                      {isUploadingDigitalFile && (
+                        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                          <div className="animate-spin rounded-full h-4 w-4 border-2 border-primary border-t-transparent" />
+                          Uploading...
+                        </div>
+                      )}
+
+                      {digitalFiles.length > 0 && (
+                        <div className="space-y-2 mt-3">
+                          <p className="text-sm font-medium">Uploaded Files:</p>
+                          {digitalFiles.map((file, index) => (
+                            <div
+                              key={index}
+                              className="flex items-center justify-between bg-muted/50 rounded-md px-3 py-2"
+                            >
+                              <span className="text-sm truncate max-w-[200px]">{file.name}</span>
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => removeDigitalFile(index)}
+                                className="h-6 w-6 p-0 text-destructive hover:text-destructive"
+                              >
+                                <X className="h-4 w-4" />
+                              </Button>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
                   </div>
 
                   <div className="grid md:grid-cols-2 gap-4">

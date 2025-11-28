@@ -23,7 +23,7 @@ export function Logo() {
           </svg>
         </div>
       </div>
-      <span className="text-2xl font-bold tracking-tight">Culters</span>
+      <span className="text-2xl font-bold tracking-tight">Blaqora</span>
     </div>
   )
 }

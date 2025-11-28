@@ -10,6 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { cartStore } from "@/lib/cart-store"
 import { useRouter } from "next/navigation"
 import { ProductDetailModal } from "@/components/store/product-detail-modal"
+import { useToast } from "@/components/ui/use-toast"
 
 interface Product {
   id: string
@@ -54,6 +55,7 @@ export function ObsidianGlassStorefront({ storeInfo, products, categories, store
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null)
   const [isModalOpen, setIsModalOpen] = useState(false)
   const router = useRouter()
+  const { toast } = useToast()
 
   const categoryMap = new Map(categories.map((c) => [c.id, c.name]))
 
@@ -110,6 +112,24 @@ export function ObsidianGlassStorefront({ storeInfo, products, categories, store
 
   const handleCartClick = () => {
     router.push(`/store/${storeId}/cart`)
+  }
+
+  const handleAddToCart = (product: Product, quantity: number) => {
+    cartStore.addItem(
+      {
+        id: product.id,
+        title: product.title,
+        price: product.price,
+        product_type: product.product_type,
+        images: product.images,
+      },
+      quantity,
+    )
+    setCartCount(cartStore.getItemCount())
+    toast({
+      title: "Added to cart",
+      description: `${quantity}x ${product.title} added to your cart`,
+    })
   }
 
   return (
@@ -346,14 +366,14 @@ export function ObsidianGlassStorefront({ storeInfo, products, categories, store
       {/* Product Detail Modal */}
       {selectedProduct && (
         <ProductDetailModal
-          product={selectedProduct as any}
-          isOpen={isModalOpen}
-          onClose={() => {
-            setIsModalOpen(false)
-            setSelectedProduct(null)
+          product={selectedProduct}
+          open={isModalOpen}
+          onOpenChange={(open) => {
+            setIsModalOpen(open)
+            if (!open) setSelectedProduct(null)
           }}
-          storeId={storeId}
-          onCartUpdate={() => setCartCount(cartStore.getItemCount())}
+          onAddToCart={handleAddToCart}
+          storeName={storeInfo?.business_name || storeInfo?.full_name}
         />
       )}
     </div>

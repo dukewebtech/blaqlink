@@ -1,7 +1,7 @@
 "use client"
 
 import type React from "react"
-
+import { useToast } from "@/hooks/use-toast"
 import { useState } from "react"
 import Image from "next/image"
 import { Mail, Phone, MapPin, ShoppingCart, Search, Calendar, Download, Ticket, Package, Heart } from "lucide-react"
@@ -57,6 +57,7 @@ export function AuroraFrostStorefront({ storeInfo, products, categories, storeId
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [favorites, setFavorites] = useState<string[]>([])
   const router = useRouter()
+  const { toast } = useToast()
 
   const categoryMap = new Map(categories.map((c) => [c.id, c.name]))
 
@@ -118,6 +119,24 @@ export function AuroraFrostStorefront({ storeInfo, products, categories, storeId
 
   const handleCartClick = () => {
     router.push(`/store/${storeId}/cart`)
+  }
+
+  const handleAddToCart = (product: Product, quantity: number) => {
+    cartStore.addItem(
+      {
+        id: product.id,
+        title: product.title,
+        price: product.price,
+        product_type: product.product_type,
+        images: product.images,
+      },
+      quantity,
+    )
+    setCartCount(cartStore.getItemCount())
+    toast({
+      title: "Added to cart",
+      description: `${quantity}x ${product.title} added to your cart`,
+    })
   }
 
   return (
@@ -361,14 +380,14 @@ export function AuroraFrostStorefront({ storeInfo, products, categories, storeId
       {/* Product Detail Modal */}
       {selectedProduct && (
         <ProductDetailModal
-          product={selectedProduct as any}
-          isOpen={isModalOpen}
-          onClose={() => {
-            setIsModalOpen(false)
-            setSelectedProduct(null)
+          product={selectedProduct}
+          open={isModalOpen}
+          onOpenChange={(open) => {
+            setIsModalOpen(open)
+            if (!open) setSelectedProduct(null)
           }}
-          storeId={storeId}
-          onCartUpdate={() => setCartCount(cartStore.getItemCount())}
+          onAddToCart={handleAddToCart}
+          storeName={storeInfo?.business_name || storeInfo?.full_name}
         />
       )}
     </div>

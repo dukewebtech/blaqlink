@@ -82,11 +82,16 @@ export default function PayoutsPage() {
 
       const profileResponse = await fetch("/api/users/me")
       const profileData = await profileResponse.json()
-      if (profileResponse.ok && profileData.user) {
+      if (profileResponse.ok && profileData.data?.user) {
         setUserBankDetails({
-          bank_name: profileData.user.bank_name,
-          account_number: profileData.user.account_number,
-          account_name: profileData.user.account_name,
+          bank_name: profileData.data.user.bank_name,
+          account_number: profileData.data.user.account_number,
+          account_name: profileData.data.user.account_name,
+        })
+        console.log("[v0] Bank details loaded:", {
+          bank_name: profileData.data.user.bank_name,
+          account_number: profileData.data.user.account_number,
+          account_name: profileData.data.user.account_name,
         })
       }
 

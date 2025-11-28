@@ -55,7 +55,12 @@ export function ObsidianGlassStorefront({ storeInfo, products, categories, store
   const [isModalOpen, setIsModalOpen] = useState(false)
   const router = useRouter()
 
-  const categoryNames = ["all", ...new Set(categories.map((c) => c.name))]
+  const categoryMap = new Map(categories.map((c) => [c.id, c.name]))
+
+  const categoryOptions = [
+    { id: "all", name: "All Categories" },
+    ...categories.map((c) => ({ id: c.id, name: c.name })),
+  ]
 
   const filteredProducts = products.filter((product) => {
     const matchesSearch = product.title.toLowerCase().includes(searchQuery.toLowerCase())
@@ -220,9 +225,13 @@ export function ObsidianGlassStorefront({ storeInfo, products, categories, store
                   <SelectValue placeholder="Category" />
                 </SelectTrigger>
                 <SelectContent className="bg-zinc-900 border-zinc-800">
-                  {categoryNames.map((cat) => (
-                    <SelectItem key={cat} value={cat} className="text-zinc-100 focus:bg-zinc-800 focus:text-zinc-100">
-                      {cat === "all" ? "All Categories" : cat}
+                  {categoryOptions.map((cat) => (
+                    <SelectItem
+                      key={cat.id}
+                      value={cat.id}
+                      className="text-zinc-100 focus:bg-zinc-800 focus:text-zinc-100"
+                    >
+                      {cat.name}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -300,7 +309,9 @@ export function ObsidianGlassStorefront({ storeInfo, products, categories, store
 
                   <div className="p-5">
                     <div className="flex items-center gap-2 mb-2">
-                      <span className="text-xs text-violet-400 font-medium">{product.category}</span>
+                      <span className="text-xs text-violet-400 font-medium">
+                        {categoryMap.get(product.category) || product.category}
+                      </span>
                       <div className="flex items-center gap-0.5">
                         {[...Array(5)].map((_, i) => (
                           <Star key={i} className="w-3 h-3 fill-amber-400 text-amber-400" />

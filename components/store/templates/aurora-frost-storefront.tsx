@@ -58,7 +58,12 @@ export function AuroraFrostStorefront({ storeInfo, products, categories, storeId
   const [favorites, setFavorites] = useState<string[]>([])
   const router = useRouter()
 
-  const categoryNames = ["all", ...new Set(categories.map((c) => c.name))]
+  const categoryMap = new Map(categories.map((c) => [c.id, c.name]))
+
+  const categoryOptions = [
+    { id: "all", name: "All Categories" },
+    ...categories.map((c) => ({ id: c.id, name: c.name })),
+  ]
 
   const filteredProducts = products.filter((product) => {
     const matchesSearch = product.title.toLowerCase().includes(searchQuery.toLowerCase())
@@ -234,9 +239,9 @@ export function AuroraFrostStorefront({ storeInfo, products, categories, storeId
                   <SelectValue placeholder="Category" />
                 </SelectTrigger>
                 <SelectContent className="rounded-2xl">
-                  {categoryNames.map((cat) => (
-                    <SelectItem key={cat} value={cat} className="rounded-xl">
-                      {cat === "all" ? "All Categories" : cat}
+                  {categoryOptions.map((cat) => (
+                    <SelectItem key={cat.id} value={cat.id} className="rounded-xl">
+                      {cat.name}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -315,7 +320,9 @@ export function AuroraFrostStorefront({ storeInfo, products, categories, storeId
                   </div>
 
                   <div className="p-5">
-                    <p className="text-xs text-rose-500 font-medium mb-1 tracking-wide uppercase">{product.category}</p>
+                    <p className="text-xs text-rose-500 font-medium mb-1 tracking-wide uppercase">
+                      {categoryMap.get(product.category) || product.category}
+                    </p>
                     <h3 className="font-medium text-stone-800 mb-2 line-clamp-1 text-lg">{product.title}</h3>
                     <p className="text-sm text-stone-500 mb-4 line-clamp-2 leading-relaxed">{product.description}</p>
 

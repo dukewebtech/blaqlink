@@ -55,7 +55,12 @@ export function CrystalClearStorefront({ storeInfo, products, categories, storeI
   const [isModalOpen, setIsModalOpen] = useState(false)
   const router = useRouter()
 
-  const categoryNames = ["all", ...new Set(categories.map((c) => c.name))]
+  const categoryMap = new Map(categories.map((c) => [c.id, c.name]))
+
+  const categoryOptions = [
+    { id: "all", name: "All Categories" },
+    ...categories.map((c) => ({ id: c.id, name: c.name })),
+  ]
 
   const filteredProducts = products.filter((product) => {
     const matchesSearch = product.title.toLowerCase().includes(searchQuery.toLowerCase())
@@ -212,9 +217,9 @@ export function CrystalClearStorefront({ storeInfo, products, categories, storeI
                   <SelectValue placeholder="Category" />
                 </SelectTrigger>
                 <SelectContent>
-                  {categoryNames.map((cat) => (
-                    <SelectItem key={cat} value={cat}>
-                      {cat === "all" ? "All Categories" : cat}
+                  {categoryOptions.map((cat) => (
+                    <SelectItem key={cat.id} value={cat.id}>
+                      {cat.name}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -272,7 +277,9 @@ export function CrystalClearStorefront({ storeInfo, products, categories, storeI
                   </div>
 
                   <div className="p-5">
-                    <p className="text-xs text-blue-600 font-medium mb-1">{product.category}</p>
+                    <p className="text-xs text-blue-600 font-medium mb-1">
+                      {categoryMap.get(product.category) || product.category}
+                    </p>
                     <h3 className="font-semibold text-slate-800 mb-2 line-clamp-1">{product.title}</h3>
                     <p className="text-sm text-slate-500 mb-4 line-clamp-2">{product.description}</p>
 

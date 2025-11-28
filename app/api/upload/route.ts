@@ -45,10 +45,10 @@ export async function POST(request: NextRequest) {
     console.log("[v0] File received:", file.name, file.type, file.size)
 
     // Validate file type
-    const allowedTypes = ["image/jpeg", "image/jpg", "image/png", "image/svg+xml", "image/webp"]
+    const allowedTypes = ["image/jpeg", "image/jpg", "image/png", "image/svg+xml", "image/webp", "image/avif"]
     if (!allowedTypes.includes(file.type)) {
       return NextResponse.json(
-        { error: "Invalid file type. Only JPG, PNG, SVG, and WebP are allowed" },
+        { error: "Invalid file type. Only JPG, PNG, SVG, WebP, and AVIF are allowed" },
         { status: 400 },
       )
     }

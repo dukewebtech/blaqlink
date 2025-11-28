@@ -80,7 +80,7 @@ export default function PayoutsPage() {
         console.log("[v0] Platform settings loaded:", settingsData.settings)
       }
 
-      const profileResponse = await fetch("/api/profile")
+      const profileResponse = await fetch("/api/users/me")
       const profileData = await profileResponse.json()
       if (profileResponse.ok && profileData.user) {
         setUserBankDetails({

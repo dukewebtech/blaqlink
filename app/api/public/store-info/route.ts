@@ -12,15 +12,11 @@ export async function GET(request: Request) {
 
     const supabase = createPublicClient()
 
-    console.log("[v0] Fetching store info for storeId:", storeId)
-
     const { data: user, error } = await supabase
       .from("users")
-      .select("id, business_name, full_name, email, phone, location, profile_image")
+      .select("id, business_name, full_name, email, phone, location, profile_image, store_template")
       .eq("id", storeId)
       .maybeSingle()
-
-    console.log("[v0] Store info query result:", { user, error })
 
     if (error) {
       console.error("[v0] Error fetching store info:", error)
@@ -28,7 +24,6 @@ export async function GET(request: Request) {
     }
 
     if (!user) {
-      console.log("[v0] User not found, returning default store info")
       return NextResponse.json({
         storeInfo: {
           id: storeId,
@@ -38,11 +33,11 @@ export async function GET(request: Request) {
           email: null,
           phone: null,
           profile_image: null,
+          store_template: null,
         },
       })
     }
 
-    console.log("[v0] Store info fetched for store:", storeId)
     return NextResponse.json({ storeInfo: user })
   } catch (error) {
     console.error("[v0] Error in store info API:", error)

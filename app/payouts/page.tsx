@@ -18,6 +18,12 @@ import { Label } from "@/components/ui/label"
 import { Search, TrendingUp, ArrowUpRight, Wallet, CheckCircle2, Clock, XCircle } from "lucide-react"
 import { useRouter } from "next/navigation"
 
+interface UserBankDetails {
+  bank_name: string | null
+  account_number: string | null
+  account_name: string | null
+}
+
 interface PayoutStats {
   totalRevenue: number
   availableToWithdraw: number
@@ -50,10 +56,19 @@ export default function PayoutsPage() {
   const [accountName, setAccountName] = useState("")
   const [submitting, setSubmitting] = useState(false)
   const [platformSettings, setPlatformSettings] = useState<any>(null)
+  const [userBankDetails, setUserBankDetails] = useState<UserBankDetails | null>(null)
 
   useEffect(() => {
     fetchData()
   }, [])
+
+  useEffect(() => {
+    if (showRequestModal && userBankDetails) {
+      setBankName(userBankDetails.bank_name || "")
+      setAccountNumber(userBankDetails.account_number || "")
+      setAccountName(userBankDetails.account_name || "")
+    }
+  }, [showRequestModal, userBankDetails])
 
   const fetchData = async () => {
     try {
@@ -63,6 +78,16 @@ export default function PayoutsPage() {
       if (settingsData.ok) {
         setPlatformSettings(settingsData.settings)
         console.log("[v0] Platform settings loaded:", settingsData.settings)
+      }
+
+      const profileResponse = await fetch("/api/profile")
+      const profileData = await profileResponse.json()
+      if (profileResponse.ok && profileData.user) {
+        setUserBankDetails({
+          bank_name: profileData.user.bank_name,
+          account_number: profileData.user.account_number,
+          account_name: profileData.user.account_name,
+        })
       }
 
       const ordersResponse = await fetch("/api/orders")
@@ -403,9 +428,10 @@ export default function PayoutsPage() {
                 <Input
                   id="bank_name"
                   type="text"
-                  placeholder="e.g., GTBank, Access Bank"
                   value={bankName}
-                  onChange={(e) => setBankName(e.target.value)}
+                  readOnly
+                  disabled
+                  className="bg-muted cursor-not-allowed"
                 />
               </div>
 
@@ -414,9 +440,10 @@ export default function PayoutsPage() {
                 <Input
                   id="account_number"
                   type="text"
-                  placeholder="0123456789"
                   value={accountNumber}
-                  onChange={(e) => setAccountNumber(e.target.value)}
+                  readOnly
+                  disabled
+                  className="bg-muted cursor-not-allowed"
                 />
               </div>
 
@@ -425,11 +452,31 @@ export default function PayoutsPage() {
                 <Input
                   id="account_name"
                   type="text"
-                  placeholder="Account holder name"
                   value={accountName}
-                  onChange={(e) => setAccountName(e.target.value)}
+                  readOnly
+                  disabled
+                  className="bg-muted cursor-not-allowed"
                 />
               </div>
+
+              {(!userBankDetails?.bank_name || !userBankDetails?.account_number || !userBankDetails?.account_name) && (
+                <div className="p-4 bg-amber-500/10 border border-amber-500/20 rounded-lg">
+                  <p className="text-sm text-amber-700">
+                    Your bank details are incomplete. Please update them in{" "}
+                    <Button
+                      variant="link"
+                      className="p-0 h-auto text-amber-700 underline"
+                      onClick={() => {
+                        setShowRequestModal(false)
+                        router.push("/settings/payout")
+                      }}
+                    >
+                      Bank Settings
+                    </Button>{" "}
+                    before requesting a withdrawal.
+                  </p>
+                </div>
+              )}
 
               <div className="p-4 bg-accent rounded-lg">
                 <p className="text-sm text-muted-foreground">
@@ -442,7 +489,15 @@ export default function PayoutsPage() {
               <Button variant="outline" onClick={() => setShowRequestModal(false)} disabled={submitting}>
                 Cancel
               </Button>
-              <Button onClick={handleRequestWithdrawal} disabled={submitting}>
+              <Button
+                onClick={handleRequestWithdrawal}
+                disabled={
+                  submitting ||
+                  !userBankDetails?.bank_name ||
+                  !userBankDetails?.account_number ||
+                  !userBankDetails?.account_name
+                }
+              >
                 {submitting ? "Submitting..." : "Submit Request"}
               </Button>
             </DialogFooter>

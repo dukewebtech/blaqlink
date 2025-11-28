@@ -47,6 +47,12 @@ type Product = {
   booking_link?: string | null
 }
 
+type Category = {
+  id: string
+  name: string
+  product_type: string
+}
+
 export default function EditProductPage() {
   const router = useRouter()
   const params = useParams()
@@ -62,6 +68,7 @@ export default function EditProductPage() {
   const [uploadingDigitalFile, setUploadingDigitalFile] = useState(false)
   const [currentUploadIndex, setCurrentUploadIndex] = useState<number>(0)
   const [uploadingIndex, setUploadingIndex] = useState<number | null>(null)
+  const [categories, setCategories] = useState<Array<Category>>([])
 
   // Form state
   const [formData, setFormData] = useState<Partial<Product>>({})
@@ -77,8 +84,11 @@ export default function EditProductPage() {
   const [availableDays, setAvailableDays] = useState<string[]>([])
 
   useEffect(() => {
-    fetchProduct()
-  }, [productId])
+    if (params.id) {
+      fetchProduct()
+      fetchCategories()
+    }
+  }, [params.id])
 
   const fetchProduct = async () => {
     try {
@@ -114,6 +124,18 @@ export default function EditProductPage() {
       console.error("[v0] Error fetching product:", err)
     } finally {
       setLoading(false)
+    }
+  }
+
+  const fetchCategories = async () => {
+    try {
+      const response = await fetch("/api/categories")
+      const data = await response.json()
+      if (data.categories) {
+        setCategories(data.categories)
+      }
+    } catch (error) {
+      console.error("[v0] Error fetching categories:", error)
     }
   }
 
@@ -384,11 +406,23 @@ export default function EditProductPage() {
                     </div>
                     <div>
                       <Label htmlFor="category">Category</Label>
-                      <Input
-                        id="category"
+                      <Select
                         value={formData.category || ""}
-                        onChange={(e) => setFormData({ ...formData, category: e.target.value })}
-                      />
+                        onValueChange={(value) => setFormData({ ...formData, category: value })}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select a category" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {categories
+                            .filter((cat) => cat.product_type === formData.product_type)
+                            .map((cat) => (
+                              <SelectItem key={cat.id} value={cat.id}>
+                                {cat.name}
+                              </SelectItem>
+                            ))}
+                        </SelectContent>
+                      </Select>
                     </div>
                   </div>
 
@@ -540,11 +574,23 @@ export default function EditProductPage() {
                     </div>
                     <div>
                       <Label htmlFor="category">Category</Label>
-                      <Input
-                        id="category"
+                      <Select
                         value={formData.category || ""}
-                        onChange={(e) => setFormData({ ...formData, category: e.target.value })}
-                      />
+                        onValueChange={(value) => setFormData({ ...formData, category: value })}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select a category" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {categories
+                            .filter((cat) => cat.product_type === formData.product_type)
+                            .map((cat) => (
+                              <SelectItem key={cat.id} value={cat.id}>
+                                {cat.name}
+                              </SelectItem>
+                            ))}
+                        </SelectContent>
+                      </Select>
                     </div>
                   </div>
 

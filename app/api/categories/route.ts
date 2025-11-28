@@ -23,12 +23,7 @@ export async function GET(request: NextRequest) {
 
     let query = supabase
       .from("categories")
-      .select(
-        `
-        *,
-        products:products(count)
-      `,
-      )
+      .select("*")
       .eq("user_id", userProfile.id)
       .order("created_at", { ascending: false })
 
@@ -43,7 +38,21 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: error.message }, { status: 500 })
     }
 
-    return NextResponse.json({ categories })
+    const categoriesWithCounts = await Promise.all(
+      (categories || []).map(async (category) => {
+        const { count } = await supabase
+          .from("products")
+          .select("*", { count: "exact", head: true })
+          .eq("category", category.id)
+
+        return {
+          ...category,
+          products: [{ count: count || 0 }],
+        }
+      }),
+    )
+
+    return NextResponse.json({ categories: categoriesWithCounts })
   } catch (error) {
     console.error("[v0] Categories API error:", error)
     return NextResponse.json({ error: "Internal server error" }, { status: 500 })

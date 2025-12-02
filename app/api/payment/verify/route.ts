@@ -1,5 +1,6 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { createAdminClient } from "@/lib/supabase/server"
+import { sendEmail, getNewOrderEmailForVendor, getOrderConfirmationEmailForCustomer } from "@/lib/email"
 
 export async function GET(request: NextRequest) {
   try {
@@ -47,7 +48,7 @@ export async function GET(request: NextRequest) {
       if (vendorUserId) {
         const { data: vendor } = await supabase
           .from("users")
-          .select("store_name, business_name, store_logo_url, email, phone, business_address")
+          .select("store_name, business_name, store_logo_url, email, phone, business_address, full_name")
           .eq("id", vendorUserId)
           .single()
         vendorInfo = vendor
@@ -119,6 +120,53 @@ export async function GET(request: NextRequest) {
         appointment_time: item.appointment_time,
       }
     })
+
+    const emailItems = orderItems.map((item: any) => ({
+      product_title: item.product_title,
+      quantity: item.quantity,
+      price: item.price,
+      subtotal: item.subtotal,
+    }))
+
+    // Send email to vendor about new order
+    if (vendorInfo?.email) {
+      const vendorEmail = getNewOrderEmailForVendor({
+        vendorName: vendorInfo.full_name || vendorInfo.business_name || "Vendor",
+        orderId: order.id,
+        customerName: order.customer_name,
+        customerEmail: order.customer_email,
+        customerPhone: order.customer_phone,
+        items: emailItems,
+        totalAmount: order.total_amount,
+        shippingAddress: order.shipping_address,
+      })
+
+      sendEmail({
+        to: vendorInfo.email,
+        subject: vendorEmail.subject,
+        html: vendorEmail.html,
+      }).catch((err) => console.error("[v0] Failed to send vendor email:", err))
+    }
+
+    // Send confirmation email to customer
+    if (order.customer_email) {
+      const customerEmail = getOrderConfirmationEmailForCustomer({
+        customerName: order.customer_name,
+        orderId: order.id,
+        items: emailItems,
+        totalAmount: order.total_amount,
+        vendorName: vendorInfo?.store_name || vendorInfo?.business_name || "Seller",
+        vendorEmail: vendorInfo?.email,
+        paymentReference: reference,
+        shippingAddress: order.shipping_address,
+      })
+
+      sendEmail({
+        to: order.customer_email,
+        subject: customerEmail.subject,
+        html: customerEmail.html,
+      }).catch((err) => console.error("[v0] Failed to send customer email:", err))
+    }
 
     return NextResponse.json({
       success: true,

@@ -5,10 +5,9 @@ export async function GET() {
   try {
     const adminClient = createAdminClient()
 
-    // Fetch all users
     const { data: users, error: usersError } = await adminClient
       .from("users")
-      .select("id, full_name, business_name, email, phone, role, is_admin, created_at")
+      .select("id, full_name, business_name, email, phone, role, is_admin, created_at, kyc_status, admin_kyc_approved")
       .order("created_at", { ascending: false })
 
     if (usersError) throw usersError

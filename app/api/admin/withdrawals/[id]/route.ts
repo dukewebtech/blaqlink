@@ -1,6 +1,7 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { createClient } from "@/lib/supabase/server"
 import { createAdminClient } from "@/lib/supabase/server"
+import { sendEmail, getWithdrawalUpdateEmailForVendor } from "@/lib/email"
 
 export async function PATCH(request: NextRequest, { params }: { params: { id: string } }) {
   try {
@@ -24,6 +25,13 @@ export async function PATCH(request: NextRequest, { params }: { params: { id: st
 
     // Use admin client to update withdrawal status
     const adminClient = createAdminClient()
+
+    const { data: withdrawal } = await adminClient
+      .from("withdrawal_requests")
+      .select("*, users:user_id(email, full_name, business_name)")
+      .eq("id", params.id)
+      .single()
+
     const { data, error } = await adminClient
       .from("withdrawal_requests")
       .update({
@@ -38,6 +46,23 @@ export async function PATCH(request: NextRequest, { params }: { params: { id: st
     if (error) {
       console.error("[v0] Failed to update withdrawal:", error)
       return NextResponse.json({ error: "Failed to update withdrawal" }, { status: 500 })
+    }
+
+    if (withdrawal?.users?.email && (status === "approved" || status === "rejected")) {
+      const vendorEmail = getWithdrawalUpdateEmailForVendor({
+        vendorName: withdrawal.users.full_name || withdrawal.users.business_name || "Vendor",
+        amount: withdrawal.amount,
+        status: status as "approved" | "rejected",
+        bankName: withdrawal.bank_name,
+        accountNumber: withdrawal.account_number,
+        adminNotes: admin_notes,
+      })
+
+      sendEmail({
+        to: withdrawal.users.email,
+        subject: vendorEmail.subject,
+        html: vendorEmail.html,
+      }).catch((err) => console.error("[v0] Failed to send withdrawal email:", err))
     }
 
     return NextResponse.json({ data })

@@ -89,23 +89,18 @@ export async function POST(request: Request, { params }: { params: { id: string 
     const body = await request.json()
     const { approved, rejection_reason } = body
 
-    // Update KYC status using admin client to bypass RLS
+    // Removed kyc_approved_at and kyc_rejection_reason as they don't exist in the schema
     const updates: Record<string, any> = {
       admin_kyc_approved: approved,
       kyc_status: approved ? "approved" : "rejected",
-    }
-
-    if (approved) {
-      updates.kyc_approved_at = new Date().toISOString()
-    } else if (rejection_reason) {
-      updates.kyc_rejection_reason = rejection_reason
+      updated_at: new Date().toISOString(),
     }
 
     const { error: updateError } = await adminClient.from("users").update(updates).eq("id", userId)
 
     if (updateError) {
-      console.error("[v0] Error updating KYC status:", updateError)
-      return NextResponse.json({ error: "Failed to update KYC status" }, { status: 500 })
+      console.error("[v0] Error updating KYC status:", updateError.message)
+      return NextResponse.json({ error: "Failed to update KYC status: " + updateError.message }, { status: 500 })
     }
 
     console.log("[v0] KYC status updated for user:", userId, "approved:", approved)

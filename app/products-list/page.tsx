@@ -26,6 +26,7 @@ import {
   FolderPlus,
   Upload,
   Loader2,
+  FileUp,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { useRouter, useSearchParams } from "next/navigation"
@@ -191,7 +192,7 @@ export default function ProductListPage() {
               onChange={(e) => setSearchQuery(e.target.value)}
             />
           </div>
-          <div className="flex gap-2">
+          <div className="flex gap-2 flex-wrap">
             <Button variant="outline" className="gap-2 transition-all duration-300 hover:scale-105 bg-transparent">
               <SlidersHorizontal className="h-4 w-4" />
               Filter
@@ -199,6 +200,14 @@ export default function ProductListPage() {
             <Button variant="outline" className="gap-2 transition-all duration-300 hover:scale-105 bg-transparent">
               <Download className="h-4 w-4" />
               Export
+            </Button>
+            <Button
+              variant="outline"
+              className="gap-2 transition-all duration-300 hover:scale-105 bg-transparent"
+              onClick={() => router.push("/products/import")}
+            >
+              <FileUp className="h-4 w-4" />
+              Import CSV
             </Button>
             <Sheet open={open} onOpenChange={setOpen}>
               <SheetTrigger asChild>

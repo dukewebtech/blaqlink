@@ -4,7 +4,19 @@ import type React from "react"
 import { useToast } from "@/hooks/use-toast"
 import { useState } from "react"
 import Image from "next/image"
-import { Mail, Phone, MapPin, ShoppingCart, Search, Calendar, Download, Ticket, Package, Heart } from "lucide-react"
+import {
+  Mail,
+  Phone,
+  MapPin,
+  ShoppingCart,
+  Search,
+  Calendar,
+  Download,
+  Ticket,
+  Package,
+  Heart,
+  Eye,
+} from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
@@ -37,6 +49,7 @@ interface StoreInfo {
   full_name: string
   location: string
   profile_image?: string
+  store_logo_url?: string // Added store_logo_url field
   phone?: string
   email?: string
 }
@@ -139,6 +152,16 @@ export function AuroraFrostStorefront({ storeInfo, products, categories, storeId
     })
   }
 
+  const handleQuickView = (product: Product, e: React.MouseEvent) => {
+    e.stopPropagation()
+    setSelectedProduct(product)
+    setIsModalOpen(true)
+  }
+
+  const handleProductPageClick = (product: Product) => {
+    router.push(`/store/${storeId}/product/${product.id}`)
+  }
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-rose-50 via-amber-50/30 to-teal-50">
       {/* Decorative background shapes */}
@@ -155,13 +178,13 @@ export function AuroraFrostStorefront({ storeInfo, products, categories, storeId
             <div className="flex items-center gap-3">
               <div className="w-11 h-11 rounded-2xl bg-gradient-to-br from-rose-400 via-amber-300 to-teal-400 p-0.5 shadow-lg shadow-rose-200/50">
                 <div className="w-full h-full rounded-2xl bg-white/80 backdrop-blur flex items-center justify-center overflow-hidden">
-                  {storeInfo.profile_image ? (
+                  {storeInfo.store_logo_url || storeInfo.profile_image ? (
                     <Image
-                      src={storeInfo.profile_image || "/placeholder.svg"}
+                      src={storeInfo.store_logo_url || storeInfo.profile_image || "/placeholder.svg"}
                       alt={storeInfo.business_name}
                       width={36}
                       height={36}
-                      className="object-cover"
+                      className="object-cover w-full h-full"
                     />
                   ) : (
                     <span className="text-sm font-bold text-rose-600">{storeInfo.business_name?.charAt(0)}</span>
@@ -309,10 +332,12 @@ export function AuroraFrostStorefront({ storeInfo, products, categories, storeId
               {filteredProducts.map((product) => (
                 <div
                   key={product.id}
-                  onClick={() => handleProductClick(product)}
-                  className="group cursor-pointer rounded-3xl bg-white/50 backdrop-blur-xl border border-white/60 overflow-hidden shadow-lg shadow-stone-100/50 hover:shadow-xl hover:shadow-rose-100/50 transition-all duration-500 hover:-translate-y-1"
+                  className="group rounded-3xl bg-white/50 backdrop-blur-xl border border-white/60 overflow-hidden shadow-lg shadow-stone-100/50 hover:shadow-xl hover:shadow-rose-100/50 transition-all duration-500 hover:-translate-y-1"
                 >
-                  <div className="relative aspect-[4/3] overflow-hidden">
+                  <div
+                    className="relative aspect-[4/3] overflow-hidden cursor-pointer"
+                    onClick={() => handleProductPageClick(product)}
+                  >
                     <Image
                       src={product.images?.[0] || "/placeholder.svg"}
                       alt={product.title}
@@ -321,14 +346,23 @@ export function AuroraFrostStorefront({ storeInfo, products, categories, storeId
                     />
                     <div className="absolute inset-0 bg-gradient-to-t from-white/20 via-transparent to-transparent" />
 
-                    <button
-                      onClick={(e) => toggleFavorite(product.id, e)}
-                      className="absolute top-3 right-3 p-2.5 rounded-2xl bg-white/70 backdrop-blur-sm hover:bg-white/90 transition-colors shadow-md"
-                    >
-                      <Heart
-                        className={`w-4 h-4 transition-colors ${favorites.includes(product.id) ? "fill-rose-500 text-rose-500" : "text-stone-400"}`}
-                      />
-                    </button>
+                    <div className="absolute top-3 right-3 flex gap-2">
+                      <button
+                        onClick={(e) => handleQuickView(product, e)}
+                        className="p-2.5 rounded-2xl bg-white/70 backdrop-blur-sm hover:bg-white/90 transition-colors shadow-md opacity-0 group-hover:opacity-100"
+                        title="Quick View"
+                      >
+                        <Eye className="w-4 h-4 text-stone-600" />
+                      </button>
+                      <button
+                        onClick={(e) => toggleFavorite(product.id, e)}
+                        className="p-2.5 rounded-2xl bg-white/70 backdrop-blur-sm hover:bg-white/90 transition-colors shadow-md"
+                      >
+                        <Heart
+                          className={`w-4 h-4 transition-colors ${favorites.includes(product.id) ? "fill-rose-500 text-rose-500" : "text-stone-400"}`}
+                        />
+                      </button>
+                    </div>
 
                     <div className="absolute bottom-3 left-3">
                       <Badge className="bg-white/70 backdrop-blur-sm text-stone-700 border-0 gap-1.5 rounded-xl shadow-sm">
@@ -342,7 +376,12 @@ export function AuroraFrostStorefront({ storeInfo, products, categories, storeId
                     <p className="text-xs text-rose-500 font-medium mb-1 tracking-wide uppercase">
                       {categoryMap.get(product.category) || product.category}
                     </p>
-                    <h3 className="font-medium text-stone-800 mb-2 line-clamp-1 text-lg">{product.title}</h3>
+                    <h3
+                      className="font-medium text-stone-800 mb-2 line-clamp-1 text-lg cursor-pointer hover:text-rose-600 transition-colors"
+                      onClick={() => handleProductPageClick(product)}
+                    >
+                      {product.title}
+                    </h3>
                     <p className="text-sm text-stone-500 mb-4 line-clamp-2 leading-relaxed">{product.description}</p>
 
                     <div className="flex items-center justify-between">
@@ -350,6 +389,10 @@ export function AuroraFrostStorefront({ storeInfo, products, categories, storeId
                       <Button
                         size="sm"
                         className="rounded-2xl bg-gradient-to-r from-rose-500 via-amber-500 to-teal-500 hover:from-rose-600 hover:via-amber-600 hover:to-teal-600 text-white border-0 shadow-md shadow-rose-200/50 px-5"
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          handleAddToCart(product, 1)
+                        }}
                       >
                         {product.product_type === "digital"
                           ? "Get"

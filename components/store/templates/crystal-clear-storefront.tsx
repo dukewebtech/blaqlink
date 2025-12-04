@@ -1,8 +1,10 @@
 "use client"
 
+import type React from "react"
+
 import { useState } from "react"
 import Image from "next/image"
-import { Mail, Phone, MapPin, ShoppingCart, Search, Calendar, Download, Ticket, Package } from "lucide-react"
+import { Mail, Phone, MapPin, ShoppingCart, Search, Calendar, Download, Ticket, Package, Eye } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
@@ -36,6 +38,7 @@ interface StoreInfo {
   full_name: string
   location: string
   profile_image?: string
+  store_logo_url?: string // Added store_logo_url field
   phone?: string
   email?: string
 }
@@ -132,6 +135,16 @@ export function CrystalClearStorefront({ storeInfo, products, categories, storeI
     })
   }
 
+  const handleQuickView = (product: Product, e: React.MouseEvent) => {
+    e.stopPropagation()
+    setSelectedProduct(product)
+    setIsModalOpen(true)
+  }
+
+  const handleProductPageClick = (product: Product) => {
+    router.push(`/store/${storeId}/product/${product.id}`)
+  }
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-blue-50">
       {/* Header */}
@@ -141,13 +154,13 @@ export function CrystalClearStorefront({ storeInfo, products, categories, storeI
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 to-cyan-400 p-0.5">
                 <div className="w-full h-full rounded-xl bg-white flex items-center justify-center overflow-hidden">
-                  {storeInfo.profile_image ? (
+                  {storeInfo.store_logo_url || storeInfo.profile_image ? (
                     <Image
-                      src={storeInfo.profile_image || "/placeholder.svg"}
+                      src={storeInfo.store_logo_url || storeInfo.profile_image || "/placeholder.svg"}
                       alt={storeInfo.business_name}
                       width={32}
                       height={32}
-                      className="object-cover"
+                      className="object-cover w-full h-full"
                     />
                   ) : (
                     <span className="text-sm font-bold text-blue-600">{storeInfo.business_name?.charAt(0)}</span>
@@ -278,10 +291,12 @@ export function CrystalClearStorefront({ storeInfo, products, categories, storeI
               {filteredProducts.map((product) => (
                 <div
                   key={product.id}
-                  onClick={() => handleProductClick(product)}
-                  className="group cursor-pointer rounded-3xl bg-white/60 backdrop-blur-lg border border-white/30 overflow-hidden shadow-lg shadow-slate-200/50 hover:shadow-xl hover:shadow-blue-200/50 transition-all duration-300 hover:-translate-y-1"
+                  className="group rounded-3xl bg-white/60 backdrop-blur-lg border border-white/30 overflow-hidden shadow-lg shadow-slate-200/50 hover:shadow-xl hover:shadow-blue-200/50 transition-all duration-300 hover:-translate-y-1"
                 >
-                  <div className="relative aspect-square overflow-hidden bg-gradient-to-br from-slate-100 to-slate-50">
+                  <div
+                    className="relative aspect-square overflow-hidden bg-gradient-to-br from-slate-100 to-slate-50 cursor-pointer"
+                    onClick={() => handleProductPageClick(product)}
+                  >
                     <Image
                       src={product.images?.[0] || "/placeholder.svg"}
                       alt={product.title}
@@ -294,13 +309,25 @@ export function CrystalClearStorefront({ storeInfo, products, categories, storeI
                         {getProductTypeLabel(product.product_type)}
                       </Badge>
                     </div>
+                    <button
+                      onClick={(e) => handleQuickView(product, e)}
+                      className="absolute top-3 right-3 p-2.5 rounded-xl bg-white/80 backdrop-blur-sm hover:bg-white shadow-md opacity-0 group-hover:opacity-100 transition-all"
+                      title="Quick View"
+                    >
+                      <Eye className="h-4 w-4 text-slate-600" />
+                    </button>
                   </div>
 
                   <div className="p-5">
                     <p className="text-xs text-blue-600 font-medium mb-1">
                       {categoryMap.get(product.category) || product.category}
                     </p>
-                    <h3 className="font-semibold text-slate-800 mb-2 line-clamp-1">{product.title}</h3>
+                    <h3
+                      className="font-semibold text-slate-800 mb-2 line-clamp-1 cursor-pointer hover:text-blue-600 transition-colors"
+                      onClick={() => handleProductPageClick(product)}
+                    >
+                      {product.title}
+                    </h3>
                     <p className="text-sm text-slate-500 mb-4 line-clamp-2">{product.description}</p>
 
                     <div className="flex items-center justify-between">
@@ -308,6 +335,10 @@ export function CrystalClearStorefront({ storeInfo, products, categories, storeI
                       <Button
                         size="sm"
                         className="rounded-xl bg-gradient-to-r from-blue-500 to-cyan-500 hover:from-blue-600 hover:to-cyan-600 text-white border-0"
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          handleAddToCart(product, 1)
+                        }}
                       >
                         {product.product_type === "digital"
                           ? "Buy Now"

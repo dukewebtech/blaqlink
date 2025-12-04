@@ -1,11 +1,13 @@
 "use client"
 
+import type React from "react"
+
 import { useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
 import { Card } from "@/components/ui/card"
-import { Search, ShoppingCart, Heart, User, Star } from "lucide-react"
+import { Search, ShoppingCart, Heart, User, Star, Eye } from "lucide-react"
 import Link from "next/link"
 import { ProductDetailModal } from "@/components/store/product-detail-modal"
 import { useToast } from "@/hooks/use-toast"
@@ -38,6 +40,7 @@ interface StoreInfo {
   full_name: string
   location: string
   profile_image?: string
+  store_logo_url?: string // Added store_logo_url field
   phone?: string
   email?: string
   store_template?: string
@@ -124,6 +127,16 @@ export function DefaultStorefront({
     })
   }
 
+  const handleQuickView = (product: Product, e: React.MouseEvent) => {
+    e.stopPropagation()
+    setSelectedProduct(product)
+    setIsModalOpen(true)
+  }
+
+  const handleProductPageClick = (product: Product) => {
+    router.push(`/store/${storeId}/product/${product.id}`)
+  }
+
   return (
     <div className="min-h-screen bg-background">
       {/* Top Banner */}
@@ -135,8 +148,17 @@ export function DefaultStorefront({
       <header className="border-b sticky top-0 bg-background/95 backdrop-blur-sm z-50">
         <div className="container mx-auto px-4">
           <div className="flex items-center justify-between h-16">
-            <Link href={`/store/${storeId}`} className="text-2xl font-bold">
-              {storeInfo?.business_name || "Store"}
+            <Link href={`/store/${storeId}`} className="flex items-center gap-3">
+              {(storeInfo?.store_logo_url || storeInfo?.profile_image) && (
+                <div className="w-10 h-10 rounded-full overflow-hidden bg-muted">
+                  <img
+                    src={storeInfo.store_logo_url || storeInfo.profile_image || "/placeholder.svg"}
+                    alt={storeInfo?.business_name || "Store"}
+                    className="w-full h-full object-cover"
+                  />
+                </div>
+              )}
+              <span className="text-2xl font-bold">{storeInfo?.business_name || "Store"}</span>
             </Link>
             <div className="flex items-center gap-6">
               <div className="relative hidden md:block">
@@ -296,11 +318,13 @@ export function DefaultStorefront({
               {featuredProducts.map((product, index) => (
                 <Card
                   key={product.id}
-                  className="group overflow-hidden hover:shadow-lg transition-all duration-300 animate-in fade-in slide-in-from-bottom cursor-pointer"
+                  className="group overflow-hidden hover:shadow-lg transition-all duration-300 animate-in fade-in slide-in-from-bottom"
                   style={{ animationDelay: `${index * 100}ms` }}
-                  onClick={() => handleProductClick(product)}
                 >
-                  <div className="aspect-square overflow-hidden bg-muted">
+                  <div
+                    className="relative aspect-square overflow-hidden bg-muted cursor-pointer"
+                    onClick={() => handleProductPageClick(product)}
+                  >
                     {product.images?.[0] ? (
                       <img
                         src={product.images[0] || "/placeholder.svg"}
@@ -312,9 +336,21 @@ export function DefaultStorefront({
                         No Image
                       </div>
                     )}
+                    <button
+                      onClick={(e) => handleQuickView(product, e)}
+                      className="absolute top-3 right-3 p-2 rounded-full bg-white/90 hover:bg-white shadow-lg opacity-0 group-hover:opacity-100 transition-all hover:scale-110"
+                      title="Quick View"
+                    >
+                      <Eye className="h-4 w-4" />
+                    </button>
                   </div>
                   <div className="p-4 space-y-3">
-                    <h3 className="font-semibold text-sm line-clamp-2">{product.title}</h3>
+                    <h3
+                      className="font-semibold text-sm line-clamp-2 cursor-pointer hover:text-emerald-600 transition-colors"
+                      onClick={() => handleProductPageClick(product)}
+                    >
+                      {product.title}
+                    </h3>
                     <div className="flex items-center gap-1">
                       {Array.from({ length: 5 }).map((_, i) => (
                         <Star
@@ -354,11 +390,13 @@ export function DefaultStorefront({
               {bestsellerProducts.map((product, index) => (
                 <Card
                   key={product.id}
-                  className="group overflow-hidden hover:shadow-lg transition-all duration-300 animate-in fade-in zoom-in-95 cursor-pointer"
+                  className="group overflow-hidden hover:shadow-lg transition-all duration-300 animate-in fade-in zoom-in-95"
                   style={{ animationDelay: `${index * 100}ms` }}
-                  onClick={() => handleProductClick(product)}
                 >
-                  <div className="relative aspect-square overflow-hidden bg-muted">
+                  <div
+                    className="relative aspect-square overflow-hidden bg-muted cursor-pointer"
+                    onClick={() => handleProductPageClick(product)}
+                  >
                     <Badge className="absolute top-3 left-3 bg-yellow-400 text-yellow-900 hover:bg-yellow-500 z-10">
                       BESTSELLER
                     </Badge>
@@ -373,9 +411,21 @@ export function DefaultStorefront({
                         No Image
                       </div>
                     )}
+                    <button
+                      onClick={(e) => handleQuickView(product, e)}
+                      className="absolute top-3 right-3 p-2 rounded-full bg-white/90 hover:bg-white shadow-lg opacity-0 group-hover:opacity-100 transition-all hover:scale-110"
+                      title="Quick View"
+                    >
+                      <Eye className="h-4 w-4" />
+                    </button>
                   </div>
                   <div className="p-4 space-y-3">
-                    <h3 className="font-semibold text-sm line-clamp-2">{product.title}</h3>
+                    <h3
+                      className="font-semibold text-sm line-clamp-2 cursor-pointer hover:text-emerald-600 transition-colors"
+                      onClick={() => handleProductPageClick(product)}
+                    >
+                      {product.title}
+                    </h3>
                     <p className="text-xs text-muted-foreground line-clamp-2">{product.description}</p>
                     <div className="flex items-center justify-between">
                       <span className="font-bold text-lg">₦{Number(product.price).toLocaleString()}</span>

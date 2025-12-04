@@ -34,6 +34,7 @@ interface StoreInfo {
   full_name: string
   location: string
   profile_image?: string
+  store_logo_url?: string // Added store_logo_url field
   phone?: string
   email?: string
   store_template?: string // Added store_template field

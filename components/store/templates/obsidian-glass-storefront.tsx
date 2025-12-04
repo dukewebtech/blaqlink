@@ -1,8 +1,10 @@
 "use client"
 
+import type React from "react"
+
 import { useState } from "react"
 import Image from "next/image"
-import { Mail, Phone, MapPin, ShoppingCart, Search, Calendar, Download, Ticket, Package, Star } from "lucide-react"
+import { Mail, Phone, MapPin, ShoppingCart, Search, Calendar, Download, Ticket, Package, Star, Eye } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
@@ -36,6 +38,7 @@ interface StoreInfo {
   full_name: string
   location: string
   profile_image?: string
+  store_logo_url?: string // Added store_logo_url field
   phone?: string
   email?: string
 }
@@ -132,6 +135,16 @@ export function ObsidianGlassStorefront({ storeInfo, products, categories, store
     })
   }
 
+  const handleQuickView = (product: Product, e: React.MouseEvent) => {
+    e.stopPropagation()
+    setSelectedProduct(product)
+    setIsModalOpen(true)
+  }
+
+  const handleProductPageClick = (product: Product) => {
+    router.push(`/store/${storeId}/product/${product.id}`)
+  }
+
   return (
     <div className="min-h-screen bg-zinc-950 text-zinc-100">
       {/* Header */}
@@ -141,13 +154,13 @@ export function ObsidianGlassStorefront({ storeInfo, products, categories, store
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-violet-600 to-fuchsia-600 p-0.5">
                 <div className="w-full h-full rounded-xl bg-zinc-900 flex items-center justify-center overflow-hidden">
-                  {storeInfo.profile_image ? (
+                  {storeInfo.store_logo_url || storeInfo.profile_image ? (
                     <Image
-                      src={storeInfo.profile_image || "/placeholder.svg"}
+                      src={storeInfo.store_logo_url || storeInfo.profile_image || "/placeholder.svg"}
                       alt={storeInfo.business_name}
                       width={32}
                       height={32}
-                      className="object-cover"
+                      className="object-cover w-full h-full"
                     />
                   ) : (
                     <span className="text-sm font-bold text-violet-400">{storeInfo.business_name?.charAt(0)}</span>
@@ -300,10 +313,12 @@ export function ObsidianGlassStorefront({ storeInfo, products, categories, store
               {filteredProducts.map((product) => (
                 <div
                   key={product.id}
-                  onClick={() => handleProductClick(product)}
-                  className="group cursor-pointer rounded-2xl bg-zinc-900/60 backdrop-blur-xl border border-zinc-800/50 overflow-hidden hover:border-violet-500/50 transition-all duration-300 hover:shadow-xl hover:shadow-violet-500/10"
+                  className="group rounded-2xl bg-zinc-900/60 backdrop-blur-xl border border-zinc-800/50 overflow-hidden hover:border-violet-500/50 transition-all duration-300 hover:shadow-xl hover:shadow-violet-500/10"
                 >
-                  <div className="relative aspect-square overflow-hidden bg-zinc-800">
+                  <div
+                    className="relative aspect-square overflow-hidden bg-zinc-800 cursor-pointer"
+                    onClick={() => handleProductPageClick(product)}
+                  >
                     <Image
                       src={product.images?.[0] || "/placeholder.svg"}
                       alt={product.title}
@@ -317,13 +332,14 @@ export function ObsidianGlassStorefront({ storeInfo, products, categories, store
                         {getProductTypeLabel(product.product_type)}
                       </Badge>
                     </div>
-                    <div className="absolute bottom-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity">
-                      <Button
-                        size="sm"
-                        className="rounded-xl bg-gradient-to-r from-violet-600 to-fuchsia-600 hover:from-violet-500 hover:to-fuchsia-500 text-white border-0 shadow-lg shadow-violet-500/25"
+                    <div className="absolute bottom-3 right-3 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <button
+                        onClick={(e) => handleQuickView(product, e)}
+                        className="p-2.5 rounded-xl bg-zinc-900/80 backdrop-blur-sm hover:bg-zinc-800 border border-violet-500/30 transition-all"
+                        title="Quick View"
                       >
-                        Quick View
-                      </Button>
+                        <Eye className="h-4 w-4 text-violet-400" />
+                      </button>
                     </div>
                   </div>
 
@@ -338,7 +354,12 @@ export function ObsidianGlassStorefront({ storeInfo, products, categories, store
                         ))}
                       </div>
                     </div>
-                    <h3 className="font-semibold text-zinc-100 mb-1 line-clamp-1">{product.title}</h3>
+                    <h3
+                      className="font-semibold text-zinc-100 mb-1 line-clamp-1 cursor-pointer hover:text-violet-400 transition-colors"
+                      onClick={() => handleProductPageClick(product)}
+                    >
+                      {product.title}
+                    </h3>
                     <p className="text-sm text-zinc-500 mb-4 line-clamp-2">{product.description}</p>
 
                     <div className="flex items-center justify-between">

@@ -7,6 +7,9 @@ export interface CartItem {
   quantity: number
   product_type: string
   image: string
+  appointment_date?: string // ISO date string for selected appointment
+  appointment_time?: string // Time slot like "10:00 AM"
+  ticket_type?: string // For event tickets
 }
 
 export interface Cart {
@@ -48,19 +51,21 @@ export const cartStore = {
       images: string[]
     },
     quantity = 1,
+    metadata?: {
+      appointment_date?: string
+      appointment_time?: string
+      ticket_type?: string
+    },
   ): void {
-    console.log("[v0] cartStore.addItem called:", { productId: product.id, title: product.title, quantity })
-
     const cart = this.getCart()
-    console.log("[v0] Current cart before adding:", { itemCount: cart.items.length, total: cart.total })
 
-    const existingItem = cart.items.find((item) => item.product_id === product.id)
+    // For other products, check if item already exists
+    const existingItem =
+      product.product_type === "appointment" ? null : cart.items.find((item) => item.product_id === product.id)
 
     if (existingItem) {
-      console.log("[v0] Product already in cart, updating quantity")
       existingItem.quantity += quantity
     } else {
-      console.log("[v0] Adding new product to cart")
       cart.items.push({
         id: crypto.randomUUID(),
         product_id: product.id,
@@ -69,14 +74,14 @@ export const cartStore = {
         quantity,
         product_type: product.product_type,
         image: product.images[0] || "/placeholder.svg?height=100&width=100",
+        ...(metadata?.appointment_date && { appointment_date: metadata.appointment_date }),
+        ...(metadata?.appointment_time && { appointment_time: metadata.appointment_time }),
+        ...(metadata?.ticket_type && { ticket_type: metadata.ticket_type }),
       })
     }
 
     cart.total = cart.items.reduce((sum, item) => sum + item.price * item.quantity, 0)
-    console.log("[v0] Cart after adding:", { itemCount: cart.items.length, total: cart.total })
-
     this.saveCart(cart)
-    console.log("[v0] Cart saved to localStorage")
   },
 
   updateQuantity(itemId: string, quantity: number): void {

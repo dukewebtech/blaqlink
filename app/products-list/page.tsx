@@ -26,9 +26,10 @@ import {
   FolderPlus,
   Upload,
   Loader2,
+  FileUp,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
-import { useRouter } from "next/navigation"
+import { useRouter, useSearchParams } from "next/navigation"
 import { useState, useEffect } from "react"
 
 type Product = {
@@ -55,6 +56,7 @@ const categories = [
 
 export default function ProductListPage() {
   const router = useRouter()
+  const searchParams = useSearchParams()
   const [open, setOpen] = useState(false)
   const [categoryName, setCategoryName] = useState("")
   const [categoryDescription, setCategoryDescription] = useState("")
@@ -74,24 +76,11 @@ export default function ProductListPage() {
     try {
       setLoading(true)
       setError(null)
-      console.log("[v0] Fetching products...")
       const url = selectedType ? `/api/products?type=${selectedType}` : "/api/products"
-      console.log("[v0] Fetch URL:", url)
-
       const response = await fetch(url)
-      console.log("[v0] Response status:", response.status)
 
       if (!response.ok) {
-        const errorData = await response.json().catch(() => ({ error: "Failed to fetch products" }))
-        console.error("[v0] API error:", errorData)
-
-        if (response.status === 401) {
-          console.error("[v0] Unauthorized - redirecting to login")
-          window.location.href = "/login"
-          return
-        }
-
-        throw new Error(errorData.details || errorData.error || "Failed to fetch products")
+        throw new Error("Failed to fetch products")
       }
 
       const data = await response.json()
@@ -101,9 +90,8 @@ export default function ProductListPage() {
       }
       setProducts(data.products || [])
     } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : "Failed to load products"
-      setError(errorMessage)
-      console.error("[v0] Error fetching products:", errorMessage)
+      setError(err instanceof Error ? err.message : "Failed to load products")
+      console.error("[v0] Error fetching products:", err)
     } finally {
       setLoading(false)
     }
@@ -204,7 +192,7 @@ export default function ProductListPage() {
               onChange={(e) => setSearchQuery(e.target.value)}
             />
           </div>
-          <div className="flex gap-2">
+          <div className="flex gap-2 flex-wrap">
             <Button variant="outline" className="gap-2 transition-all duration-300 hover:scale-105 bg-transparent">
               <SlidersHorizontal className="h-4 w-4" />
               Filter
@@ -212,6 +200,14 @@ export default function ProductListPage() {
             <Button variant="outline" className="gap-2 transition-all duration-300 hover:scale-105 bg-transparent">
               <Download className="h-4 w-4" />
               Export
+            </Button>
+            <Button
+              variant="outline"
+              className="gap-2 transition-all duration-300 hover:scale-105 bg-transparent"
+              onClick={() => router.push("/products/import")}
+            >
+              <FileUp className="h-4 w-4" />
+              Import CSV
             </Button>
             <Sheet open={open} onOpenChange={setOpen}>
               <SheetTrigger asChild>

@@ -46,19 +46,11 @@ export default function OrderDetailPage() {
   const fetchOrder = async () => {
     try {
       setLoading(true)
-      console.log("[v0] Fetching order with ID:", params.id)
       const response = await fetch("/api/orders")
       const data = await response.json()
 
-      console.log("[v0] Orders API response:", data)
-
       if (response.ok) {
         const foundOrder = data.orders.find((o: Order) => o.id === params.id)
-        console.log("[v0] Found order:", foundOrder)
-        console.log("[v0] Order items count:", foundOrder?.order_items?.length || 0)
-        if (foundOrder?.order_items) {
-          console.log("[v0] Order items:", foundOrder.order_items)
-        }
         setOrder(foundOrder || null)
       }
     } catch (error) {
@@ -156,31 +148,23 @@ export default function OrderDetailPage() {
                 <Package className="h-5 w-5" />
                 Order Items
               </h2>
-              {!order.order_items || order.order_items.length === 0 ? (
-                <div className="text-center py-8 text-muted-foreground">
-                  <Package className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                  <p>No items found for this order</p>
-                  <p className="text-sm mt-2">This may be due to a data sync issue</p>
-                </div>
-              ) : (
-                <div className="space-y-4">
-                  {order.order_items.map((item) => (
-                    <div key={item.id} className="flex justify-between items-start pb-4 border-b last:border-0">
-                      <div>
-                        <h3 className="font-semibold">{item.product_title}</h3>
-                        <p className="text-sm text-muted-foreground capitalize">Type: {item.product_type}</p>
-                        <p className="text-sm text-muted-foreground">Quantity: {item.quantity}</p>
-                        <p className="text-sm font-medium mt-1">NGN {item.price.toLocaleString()} each</p>
-                      </div>
-                      <p className="text-lg font-bold">NGN {item.subtotal.toLocaleString()}</p>
+              <div className="space-y-4">
+                {order.order_items.map((item) => (
+                  <div key={item.id} className="flex justify-between items-start pb-4 border-b last:border-0">
+                    <div>
+                      <h3 className="font-semibold">{item.product_title}</h3>
+                      <p className="text-sm text-muted-foreground capitalize">Type: {item.product_type}</p>
+                      <p className="text-sm text-muted-foreground">Quantity: {item.quantity}</p>
+                      <p className="text-sm font-medium mt-1">NGN {item.price.toLocaleString()} each</p>
                     </div>
-                  ))}
-                  <div className="flex justify-between items-center pt-4 border-t">
-                    <span className="text-xl font-bold">Total</span>
-                    <span className="text-2xl font-bold">NGN {order.total_amount.toLocaleString()}</span>
+                    <p className="text-lg font-bold">NGN {item.subtotal.toLocaleString()}</p>
                   </div>
+                ))}
+                <div className="flex justify-between items-center pt-4 border-t">
+                  <span className="text-xl font-bold">Total</span>
+                  <span className="text-2xl font-bold">NGN {order.total_amount.toLocaleString()}</span>
                 </div>
-              )}
+              </div>
             </div>
 
             {/* Shipping Address */}

@@ -3,7 +3,7 @@
 import type React from "react"
 import { useState, useEffect } from "react"
 import Link from "next/link"
-import { usePathname } from "next/navigation"
+import { usePathname, useRouter } from "next/navigation"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -44,17 +44,12 @@ const navigation = [
     name: "Product",
     href: "/products-list",
     icon: Package,
-    count: 119,
-    children: [
-      { name: "All Products", href: "/products-list" },
-      { name: "Create Product", href: "/products/choose-type" },
-    ],
   },
   { name: "Categories", href: "/categories", icon: FolderTree },
-  { name: "Transaction", href: "/transactions", icon: Receipt, count: 441 },
+  { name: "Transaction", href: "/transactions", icon: Receipt },
   { name: "Payouts", href: "/payouts", icon: Wallet },
   { name: "Customers", href: "/customers", icon: Users },
-  { name: "Sales Report", href: "/sales-report", icon: BarChart3 },
+  { name: "Sales Report", href: "/sales", icon: BarChart3 },
 ]
 
 const tools = [
@@ -77,6 +72,7 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
   const [productOpen, setProductOpen] = useState(false)
   const [settingsOpen, setSettingsOpen] = useState(false)
   const pathname = usePathname()
+  const router = useRouter()
 
   const [userData, setUserData] = useState<{
     full_name: string
@@ -114,6 +110,16 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
       return `${names[0][0]}${names[1][0]}`.toUpperCase()
     }
     return userData.full_name.substring(0, 2).toUpperCase()
+  }
+
+  const handleLogout = async () => {
+    try {
+      await fetch("/api/auth/logout", { method: "POST" })
+      router.push("/logout")
+    } catch (error) {
+      console.error("[v0] Logout error:", error)
+      router.push("/logout")
+    }
   }
 
   return (
@@ -313,7 +319,7 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
               <DropdownMenuTrigger asChild>
                 <Button variant="ghost" className="w-full justify-between hover:bg-sidebar-accent">
                   <div className="flex items-center gap-3">
-                    <Avatar className="h-9 w-9 ring-2 ring-primary/10">
+                    <Avatar className="h-9 w-9">
                       <AvatarImage src={userData?.profile_image || "/placeholder.svg?height=36&width=36"} />
                       <AvatarFallback>{getUserInitials()}</AvatarFallback>
                     </Avatar>
@@ -328,10 +334,19 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
               <DropdownMenuContent align="start" className="w-56">
                 <DropdownMenuLabel>My Account</DropdownMenuLabel>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem>Profile</DropdownMenuItem>
-                <DropdownMenuItem>Settings</DropdownMenuItem>
+                <DropdownMenuItem asChild>
+                  <Link href="/settings/account">Profile</Link>
+                </DropdownMenuItem>
+                <DropdownMenuItem asChild>
+                  <Link href="/settings/account">Settings</Link>
+                </DropdownMenuItem>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem>Log out</DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={handleLogout}
+                  className="text-destructive focus:text-destructive cursor-pointer"
+                >
+                  Log out
+                </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
           </div>
@@ -353,18 +368,8 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
             </div>
 
             <div className="flex items-center gap-2">
-              <Button variant="ghost" size="icon" className="relative">
-                <ShoppingCart className="h-5 w-5" />
-                <Badge className="absolute -top-1 -right-1 h-5 w-5 flex items-center justify-center p-0 bg-primary text-[10px]">
-                  3
-                </Badge>
-              </Button>
-              <Button variant="ghost" size="icon" className="relative">
-                <Bell className="h-5 w-5" />
-                <Badge className="absolute -top-1 -right-1 h-5 w-5 flex items-center justify-center p-0 bg-destructive text-[10px]">
-                  4
-                </Badge>
-              </Button>
+
+
               <div className="hidden md:flex items-center gap-3 ml-2">
                 <Avatar className="h-9 w-9 ring-2 ring-primary/10">
                   <AvatarImage src={userData?.profile_image || "/placeholder.svg?height=36&width=36"} />

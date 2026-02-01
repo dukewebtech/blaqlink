@@ -67,7 +67,7 @@ export default function ProductSuccessPage() {
               🎉
             </div>
             <h1 className="text-4xl md:text-5xl font-bold tracking-tight bg-gradient-to-r from-foreground to-foreground/70 bg-clip-text text-transparent">
-              Your product has been created and is now live!
+              Your first product has been created and is now live!
             </h1>
             <p className="text-lg text-muted-foreground max-w-md mx-auto">
               Congratulations! Your product is now available for customers to purchase. Start promoting it to drive
@@ -92,6 +92,22 @@ export default function ProductSuccessPage() {
             >
               Create Another Product
             </Button>
+          </div>
+
+          {/* Stats Preview */}
+          <div className="grid grid-cols-3 gap-4 max-w-md mx-auto pt-8 animate-in fade-in slide-in-from-bottom-4 duration-700 delay-700">
+            <div className="p-4 rounded-lg bg-muted/50 backdrop-blur transition-all duration-300 hover:scale-105">
+              <p className="text-2xl font-bold text-primary">1</p>
+              <p className="text-xs text-muted-foreground">Product Created</p>
+            </div>
+            <div className="p-4 rounded-lg bg-muted/50 backdrop-blur transition-all duration-300 hover:scale-105">
+              <p className="text-2xl font-bold text-success">Live</p>
+              <p className="text-xs text-muted-foreground">Status</p>
+            </div>
+            <div className="p-4 rounded-lg bg-muted/50 backdrop-blur transition-all duration-300 hover:scale-105">
+              <p className="text-2xl font-bold">0</p>
+              <p className="text-xs text-muted-foreground">Sales</p>
+            </div>
           </div>
         </div>
       </div>

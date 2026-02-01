@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { DashboardLayout } from "@/components/dashboard/dashboard-layout"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -14,14 +14,62 @@ export default function PayoutSettingsPage() {
   const [isAutomatic, setIsAutomatic] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
   const [saved, setSaved] = useState(false)
+  const [bankDetails, setBankDetails] = useState({
+    bankName: "",
+    accountNumber: "",
+    accountHolder: "",
+  })
+  const [isLoading, setIsLoading] = useState(true)
+
+  useEffect(() => {
+    fetchBankDetails()
+  }, [])
+
+  const fetchBankDetails = async () => {
+    try {
+      const response = await fetch("/api/users/me")
+      if (response.ok) {
+        const { data } = await response.json()
+        if (data?.user) {
+          setBankDetails({
+            bankName: data.user.bank_name || "",
+            accountNumber: data.user.account_number || "",
+            accountHolder: data.user.account_name || "",
+          })
+        }
+      }
+    } catch (error) {
+      console.error("Error fetching bank details:", error)
+    } finally {
+      setIsLoading(false)
+    }
+  }
 
   const handleSave = async () => {
     setIsSaving(true)
-    // Simulate API call
-    await new Promise((resolve) => setTimeout(resolve, 1000))
-    setIsSaving(false)
-    setSaved(true)
-    setTimeout(() => setSaved(false), 3000)
+    try {
+      const response = await fetch("/api/users/bank-details", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          bank_name: bankDetails.bankName,
+          account_number: bankDetails.accountNumber,
+          account_name: bankDetails.accountHolder,
+        }),
+      })
+
+      if (response.ok) {
+        setSaved(true)
+        setTimeout(() => setSaved(false), 3000)
+      } else {
+        alert("Failed to save bank details")
+      }
+    } catch (error) {
+      console.error("Error saving bank details:", error)
+      alert("Failed to save bank details")
+    } finally {
+      setIsSaving(false)
+    }
   }
 
   return (
@@ -90,7 +138,9 @@ export default function PayoutSettingsPage() {
                   id="bankName"
                   placeholder="e.g., Chase Bank, Bank of America"
                   className="transition-all duration-200 focus:ring-2 focus:ring-primary/20"
-                  defaultValue="Chase Bank"
+                  value={bankDetails.bankName}
+                  onChange={(e) => setBankDetails({ ...bankDetails, bankName: e.target.value })}
+                  disabled={isLoading}
                 />
               </div>
 
@@ -105,7 +155,9 @@ export default function PayoutSettingsPage() {
                   placeholder="Enter your account number"
                   type="text"
                   className="transition-all duration-200 focus:ring-2 focus:ring-primary/20"
-                  defaultValue="****1234"
+                  value={bankDetails.accountNumber}
+                  onChange={(e) => setBankDetails({ ...bankDetails, accountNumber: e.target.value })}
+                  disabled={isLoading}
                 />
                 <p className="text-xs text-muted-foreground">
                   Your account number will be encrypted and stored securely
@@ -122,7 +174,9 @@ export default function PayoutSettingsPage() {
                   id="accountHolder"
                   placeholder="Full name as it appears on your account"
                   className="transition-all duration-200 focus:ring-2 focus:ring-primary/20"
-                  defaultValue="Guy Hawkins"
+                  value={bankDetails.accountHolder}
+                  onChange={(e) => setBankDetails({ ...bankDetails, accountHolder: e.target.value })}
+                  disabled={isLoading}
                 />
               </div>
             </div>
@@ -145,7 +199,7 @@ export default function PayoutSettingsPage() {
             size="lg"
             className="min-w-[200px] transition-all duration-200 hover:scale-105"
             onClick={handleSave}
-            disabled={isSaving || saved}
+            disabled={isSaving || saved || isLoading}
           >
             {isSaving ? (
               <>

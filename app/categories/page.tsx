@@ -69,25 +69,13 @@ export default function CategoriesPage() {
   const [searchQuery, setSearchQuery] = useState("")
   const [selectedType, setSelectedType] = useState<string>("all")
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false)
-  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false)
-  const [isViewDialogOpen, setIsViewDialogOpen] = useState(false)
-  const [selectedCategory, setSelectedCategory] = useState<Category | null>(null)
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
   const [categoryToDelete, setCategoryToDelete] = useState<string | null>(null)
   const [selectedCategories, setSelectedCategories] = useState<string[]>([])
   const [uploadingImage, setUploadingImage] = useState(false)
   const [categoryImage, setCategoryImage] = useState<string>("")
-  const [editCategoryImage, setEditCategoryImage] = useState<string>("")
-  const [updatingCategory, setUpdatingCategory] = useState(false)
 
   const [newCategory, setNewCategory] = useState({
-    name: "",
-    product_type: "digital",
-    description: "",
-    status: "active",
-  })
-
-  const [editCategory, setEditCategory] = useState({
     name: "",
     product_type: "digital",
     description: "",
@@ -229,112 +217,6 @@ export default function CategoriesPage() {
 
   const handleRemoveImage = () => {
     setCategoryImage("")
-  }
-
-  const handleViewCategory = async (categoryId: string) => {
-    try {
-      const response = await fetch(`/api/categories/${categoryId}`)
-      const data = await response.json()
-
-      if (data.category) {
-        setSelectedCategory(data.category)
-        setIsViewDialogOpen(true)
-      }
-    } catch (error) {
-      console.error("[v0] Error fetching category:", error)
-    }
-  }
-
-  const handleEditCategory = async (categoryId: string) => {
-    try {
-      const response = await fetch(`/api/categories/${categoryId}`)
-      const data = await response.json()
-
-      if (data.category) {
-        setSelectedCategory(data.category)
-        setEditCategory({
-          name: data.category.name,
-          product_type: data.category.product_type,
-          description: data.category.description || "",
-          status: data.category.status,
-        })
-        setEditCategoryImage(data.category.image_url || "")
-        setIsEditDialogOpen(true)
-      }
-    } catch (error) {
-      console.error("[v0] Error fetching category:", error)
-    }
-  }
-
-  const handleUpdateCategory = async () => {
-    if (!selectedCategory) return
-
-    try {
-      setUpdatingCategory(true)
-      const response = await fetch(`/api/categories/${selectedCategory.id}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          ...editCategory,
-          image_url: editCategoryImage || null,
-        }),
-      })
-
-      if (response.ok) {
-        setIsEditDialogOpen(false)
-        setSelectedCategory(null)
-        setEditCategory({ name: "", product_type: "digital", description: "", status: "active" })
-        setEditCategoryImage("")
-        fetchCategories()
-      }
-    } catch (error) {
-      console.error("[v0] Error updating category:", error)
-    } finally {
-      setUpdatingCategory(false)
-    }
-  }
-
-  const handleEditImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]
-    if (!file) return
-
-    if (!file.type.startsWith("image/")) {
-      alert("Please upload an image file")
-      return
-    }
-
-    if (file.size > 5 * 1024 * 1024) {
-      alert("Image size should be less than 5MB")
-      return
-    }
-
-    try {
-      setUploadingImage(true)
-      const formData = new FormData()
-      formData.append("file", file)
-
-      const response = await fetch("/api/upload", {
-        method: "POST",
-        body: formData,
-      })
-
-      if (!response.ok) {
-        throw new Error("Failed to upload image")
-      }
-
-      const data = await response.json()
-      setEditCategoryImage(data.url)
-      console.log("[v0] Category image uploaded:", data.url)
-    } catch (error) {
-      console.error("[v0] Error uploading image:", error)
-      alert("Failed to upload image. Please try again.")
-    } finally {
-      setUploadingImage(false)
-    }
-  }
-
-  const handleRemoveEditImage = () => {
-    setEditCategoryImage("")
   }
 
   return (
@@ -493,10 +375,14 @@ export default function CategoriesPage() {
                     </TableCell>
                     <TableCell>
                       <div className="flex items-center justify-end gap-2">
-                        <Button variant="ghost" size="icon" onClick={() => handleViewCategory(category.id)}>
+                        <Button variant="ghost" size="icon" onClick={() => router.push(`/categories/${category.id}`)}>
                           <Eye className="h-4 w-4" />
                         </Button>
-                        <Button variant="ghost" size="icon" onClick={() => handleEditCategory(category.id)}>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => router.push(`/categories/edit/${category.id}`)}
+                        >
                           <Pencil className="h-4 w-4" />
                         </Button>
                         <Button
@@ -634,217 +520,6 @@ export default function CategoriesPage() {
             </Button>
             <Button onClick={handleCreateCategory} disabled={!newCategory.name}>
               Create Category
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
-        <DialogContent className="max-w-2xl">
-          <DialogHeader>
-            <DialogTitle>Edit Category</DialogTitle>
-            <DialogDescription>Update the category details and image.</DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4 py-4">
-            <div className="space-y-2">
-              <Label>Category Image (Optional)</Label>
-              <div className="flex items-start gap-4">
-                {editCategoryImage ? (
-                  <div className="relative w-32 h-32 rounded-lg border overflow-hidden group">
-                    <img
-                      src={editCategoryImage || "/placeholder.svg"}
-                      alt="Category"
-                      className="w-full h-full object-cover"
-                    />
-                    <button
-                      onClick={handleRemoveEditImage}
-                      className="absolute top-2 right-2 p-1 bg-red-500 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
-                    >
-                      <X className="h-4 w-4" />
-                    </button>
-                  </div>
-                ) : (
-                  <label className="w-32 h-32 border-2 border-dashed rounded-lg flex flex-col items-center justify-center cursor-pointer hover:border-primary transition-colors">
-                    <input
-                      type="file"
-                      accept="image/*"
-                      onChange={handleEditImageUpload}
-                      className="hidden"
-                      disabled={uploadingImage}
-                    />
-                    {uploadingImage ? (
-                      <Loader2 className="h-8 w-8 text-muted-foreground animate-spin" />
-                    ) : (
-                      <>
-                        <ImageIcon className="h-8 w-8 text-muted-foreground mb-2" />
-                        <span className="text-xs text-muted-foreground text-center px-2">Click to upload</span>
-                      </>
-                    )}
-                  </label>
-                )}
-                <div className="flex-1 text-sm text-muted-foreground">
-                  <p>Upload a category image to make it more recognizable.</p>
-                  <p className="mt-1">Recommended: Square image, max 5MB</p>
-                </div>
-              </div>
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="edit-name">Category Name</Label>
-              <Input
-                id="edit-name"
-                value={editCategory.name}
-                onChange={(e) => setEditCategory({ ...editCategory, name: e.target.value })}
-                placeholder="Enter category name"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="edit-product_type">Product Type</Label>
-              <Select
-                value={editCategory.product_type}
-                onValueChange={(value) => setEditCategory({ ...editCategory, product_type: value })}
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="digital">Digital Product</SelectItem>
-                  <SelectItem value="physical">Physical Product</SelectItem>
-                  <SelectItem value="event">Event Tickets</SelectItem>
-                  <SelectItem value="appointment">Appointments</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="edit-description">Description</Label>
-              <Textarea
-                id="edit-description"
-                value={editCategory.description}
-                onChange={(e) => setEditCategory({ ...editCategory, description: e.target.value })}
-                placeholder="Enter category description"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="edit-status">Status</Label>
-              <Select
-                value={editCategory.status}
-                onValueChange={(value) => setEditCategory({ ...editCategory, status: value })}
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="active">Active</SelectItem>
-                  <SelectItem value="inactive">Inactive</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setIsEditDialogOpen(false)}>
-              Cancel
-            </Button>
-            <Button onClick={handleUpdateCategory} disabled={!editCategory.name || updatingCategory}>
-              {updatingCategory ? (
-                <>
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  Updating...
-                </>
-              ) : (
-                "Update Category"
-              )}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      <Dialog open={isViewDialogOpen} onOpenChange={setIsViewDialogOpen}>
-        <DialogContent className="max-w-2xl">
-          <DialogHeader>
-            <DialogTitle>Category Details</DialogTitle>
-            <DialogDescription>View category information.</DialogDescription>
-          </DialogHeader>
-          {selectedCategory && (
-            <div className="space-y-4 py-4">
-              {selectedCategory.image_url && (
-                <div className="space-y-2">
-                  <Label>Category Image</Label>
-                  <div className="w-full h-48 rounded-lg border overflow-hidden">
-                    <img
-                      src={selectedCategory.image_url || "/placeholder.svg"}
-                      alt={selectedCategory.name}
-                      className="w-full h-full object-cover"
-                    />
-                  </div>
-                </div>
-              )}
-
-              <div className="space-y-2">
-                <Label>Category Name</Label>
-                <p className="text-sm font-medium">{selectedCategory.name}</p>
-              </div>
-
-              <div className="space-y-2">
-                <Label>Product Type</Label>
-                <Badge
-                  variant="outline"
-                  className={productTypeColors[selectedCategory.product_type as keyof typeof productTypeColors]}
-                >
-                  {productTypeLabels[selectedCategory.product_type as keyof typeof productTypeLabels]}
-                </Badge>
-              </div>
-
-              <div className="space-y-2">
-                <Label>Description</Label>
-                <p className="text-sm text-muted-foreground">
-                  {selectedCategory.description || "No description provided"}
-                </p>
-              </div>
-
-              <div className="space-y-2">
-                <Label>Status</Label>
-                <Badge
-                  variant="outline"
-                  className={
-                    selectedCategory.status === "active"
-                      ? "bg-purple-100 text-purple-700 border-purple-200"
-                      : "bg-red-100 text-red-700 border-red-200"
-                  }
-                >
-                  {selectedCategory.status === "active" ? "Active" : "Inactive"}
-                </Badge>
-              </div>
-
-              <div className="space-y-2">
-                <Label>Linked Products</Label>
-                <p className="text-sm font-medium">{selectedCategory.products?.[0]?.count || 0} products</p>
-              </div>
-
-              <div className="space-y-2">
-                <Label>Created At</Label>
-                <p className="text-sm text-muted-foreground">
-                  {new Date(selectedCategory.created_at).toLocaleDateString("en-US", {
-                    year: "numeric",
-                    month: "long",
-                    day: "numeric",
-                  })}
-                </p>
-              </div>
-            </div>
-          )}
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setIsViewDialogOpen(false)}>
-              Close
-            </Button>
-            <Button
-              onClick={() => {
-                setIsViewDialogOpen(false)
-                if (selectedCategory) {
-                  handleEditCategory(selectedCategory.id)
-                }
-              }}
-            >
-              Edit Category
             </Button>
           </DialogFooter>
         </DialogContent>

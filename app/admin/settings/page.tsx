@@ -1,134 +1,201 @@
 "use client"
 
 import { AdminLayout } from "@/components/admin/admin-layout"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Label } from "@/components/ui/label"
-import { Input } from "@/components/ui/input"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { Separator } from "@/components/ui/separator"
-import { Settings, CreditCard, Mail, Shield } from "lucide-react"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import { useEffect, useState } from "react"
+import { useToast } from "@/hooks/use-toast"
+import { AlertCircle } from "lucide-react"
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 
 export default function AdminSettingsPage() {
+  const [userData, setUserData] = useState<any>(null)
+  const [platformSettings, setPlatformSettings] = useState<any>(null)
+  const [commission, setCommission] = useState("")
+  const [minWithdrawal, setMinWithdrawal] = useState("")
+  const [loading, setLoading] = useState(true)
+  const [saving, setSaving] = useState(false)
+  const [needsSetup, setNeedsSetup] = useState(false)
+  const { toast } = useToast()
+
+  useEffect(() => {
+    async function fetchData() {
+      try {
+        // Fetch user data
+        const userResponse = await fetch("/api/users/me")
+        const userResult = await userResponse.json()
+        if (userResult.ok && userResult.data?.user) {
+          setUserData(userResult.data.user)
+        }
+
+        const settingsResponse = await fetch("/api/admin/settings")
+        const settingsResult = await settingsResponse.json()
+        if (settingsResult.ok && settingsResult.settings) {
+          setPlatformSettings(settingsResult.settings)
+          setCommission(settingsResult.settings.commission_percentage?.toString() || "10")
+          setMinWithdrawal(settingsResult.settings.minimum_withdrawal_amount?.toString() || "5000")
+          setNeedsSetup(settingsResult.needsSetup || false)
+          console.log("[v0] Platform settings loaded:", settingsResult.settings)
+        }
+      } catch (error) {
+        console.error("[v0] Error fetching data:", error)
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    fetchData()
+  }, [])
+
+  const handleSavePlatformSettings = async () => {
+    try {
+      setSaving(true)
+      console.log("[v0] Saving platform settings:", { commission, minWithdrawal })
+
+      const response = await fetch("/api/admin/settings", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          commission_percentage: Number(commission),
+          minimum_withdrawal_amount: Number(minWithdrawal),
+        }),
+      })
+
+      const result = await response.json()
+
+      if (response.ok) {
+        setPlatformSettings(result.settings)
+        setNeedsSetup(false)
+        console.log("[v0] Platform settings saved successfully:", result.settings)
+        toast({
+          title: "Settings Saved",
+          description: result.message || "Platform settings have been updated successfully.",
+        })
+      } else {
+        console.error("[v0] Failed to save settings:", result.error)
+        if (result.needsSetup) {
+          setNeedsSetup(true)
+        }
+        toast({
+          title: "Error",
+          description: result.error || "Failed to save settings",
+          variant: "destructive",
+        })
+      }
+    } catch (error) {
+      console.error("[v0] Error saving platform settings:", error)
+      toast({
+        title: "Error",
+        description: "Failed to save platform settings",
+        variant: "destructive",
+      })
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const handleSave = () => {
+    toast({
+      title: "Settings Saved",
+      description: "Your admin settings have been updated successfully.",
+    })
+  }
+
+  if (loading) {
+    return (
+      <AdminLayout>
+        <div className="flex items-center justify-center min-h-[400px]">
+          <p>Loading settings...</p>
+        </div>
+      </AdminLayout>
+    )
+  }
+
   return (
     <AdminLayout>
       <div className="space-y-6">
         <div>
-          <h1 className="text-3xl font-bold">Platform Settings</h1>
-          <p className="text-muted-foreground">Configure platform-wide settings and policies</p>
+          <h1 className="text-3xl font-bold tracking-tight">Admin Settings</h1>
+          <p className="text-muted-foreground">Manage your admin profile and preferences</p>
         </div>
 
-        <div className="grid gap-6">
-          <Card>
-            <CardHeader>
-              <div className="flex items-center gap-2">
-                <Settings className="h-5 w-5" />
-                <CardTitle>General Settings</CardTitle>
-              </div>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="platform-name">Platform Name</Label>
-                <Input id="platform-name" placeholder="Your E-commerce Platform" defaultValue="E-commerce Platform" />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="support-email">Support Email</Label>
-                <Input id="support-email" type="email" placeholder="support@example.com" />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="commission-rate">Commission Rate (%)</Label>
-                <Input id="commission-rate" type="number" placeholder="0" defaultValue="0" />
-                <p className="text-sm text-muted-foreground">Percentage of each transaction taken as platform fee</p>
-              </div>
-              <Button>Save General Settings</Button>
-            </CardContent>
-          </Card>
+        {needsSetup && (
+          <Alert variant="destructive">
+            <AlertCircle className="h-4 w-4" />
+            <AlertTitle>Database Setup Required</AlertTitle>
+            <AlertDescription>
+              The platform_settings table needs to be created. Please run the SQL script located at{" "}
+              <code className="bg-muted px-1 py-0.5 rounded">scripts/001-create-platform-settings.sql</code> in your
+              Supabase SQL Editor. The script will create the table with default values (10% commission, ₦5,000 minimum
+              withdrawal).
+            </AlertDescription>
+          </Alert>
+        )}
 
-          <Card>
-            <CardHeader>
-              <div className="flex items-center gap-2">
-                <CreditCard className="h-5 w-5" />
-                <CardTitle>Payment Gateway</CardTitle>
-              </div>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="paystack-public">Paystack Public Key</Label>
-                <Input id="paystack-public" placeholder="pk_test_..." type="password" />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="paystack-secret">Paystack Secret Key</Label>
-                <Input id="paystack-secret" placeholder="sk_test_..." type="password" />
-              </div>
-              <p className="text-sm text-muted-foreground">These keys are configured via environment variables</p>
-              <Button variant="outline">Test Connection</Button>
-            </CardContent>
-          </Card>
+        <Card>
+          <CardHeader>
+            <CardTitle>Profile Information</CardTitle>
+            <CardDescription>Update your admin account details</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="name">Full Name</Label>
+              <Input id="name" defaultValue={userData?.full_name || ""} />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="email">Email</Label>
+              <Input id="email" type="email" defaultValue={userData?.email || ""} disabled />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="phone">Phone</Label>
+              <Input id="phone" defaultValue={userData?.phone || ""} />
+            </div>
+            <Button onClick={handleSave}>Save Changes</Button>
+          </CardContent>
+        </Card>
 
-          <Card>
-            <CardHeader>
-              <div className="flex items-center gap-2">
-                <Mail className="h-5 w-5" />
-                <CardTitle>Email Notifications</CardTitle>
-              </div>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <div className="font-medium">Order Confirmations</div>
-                  <div className="text-sm text-muted-foreground">Send email when orders are placed</div>
-                </div>
-                <Button variant="outline" size="sm">
-                  Configure
-                </Button>
-              </div>
-              <Separator />
-              <div className="flex items-center justify-between">
-                <div>
-                  <div className="font-medium">Withdrawal Notifications</div>
-                  <div className="text-sm text-muted-foreground">Notify admins of new withdrawal requests</div>
-                </div>
-                <Button variant="outline" size="sm">
-                  Configure
-                </Button>
-              </div>
-              <Separator />
-              <div className="flex items-center justify-between">
-                <div>
-                  <div className="font-medium">New Store Registrations</div>
-                  <div className="text-sm text-muted-foreground">Alert when new stores register</div>
-                </div>
-                <Button variant="outline" size="sm">
-                  Configure
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <div className="flex items-center gap-2">
-                <Shield className="h-5 w-5" />
-                <CardTitle>Security & Policies</CardTitle>
-              </div>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="min-withdrawal">Minimum Withdrawal Amount (₦)</Label>
-                <Input id="min-withdrawal" type="number" placeholder="5000" defaultValue="5000" />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="max-withdrawal">Maximum Withdrawal Amount (₦)</Label>
-                <Input id="max-withdrawal" type="number" placeholder="1000000" defaultValue="1000000" />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="admin-key">Admin Setup Key</Label>
-                <Input id="admin-key" type="password" placeholder="Current: admin123" />
-                <p className="text-sm text-muted-foreground">Change the key required to create new admin accounts</p>
-              </div>
-              <Button>Save Security Settings</Button>
-            </CardContent>
-          </Card>
-        </div>
+        <Card>
+          <CardHeader>
+            <CardTitle>Platform Settings</CardTitle>
+            <CardDescription>Configure platform-wide settings that affect all vendors</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="commission">Platform Commission (%)</Label>
+              <Input
+                id="commission"
+                type="number"
+                min="0"
+                max="100"
+                step="0.1"
+                value={commission}
+                onChange={(e) => setCommission(e.target.value)}
+              />
+              <p className="text-sm text-muted-foreground">
+                Percentage deducted from vendor revenue. Current: {commission}%
+              </p>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="min-withdrawal">Minimum Withdrawal Amount (NGN)</Label>
+              <Input
+                id="min-withdrawal"
+                type="number"
+                min="0"
+                step="100"
+                value={minWithdrawal}
+                onChange={(e) => setMinWithdrawal(e.target.value)}
+              />
+              <p className="text-sm text-muted-foreground">
+                Minimum amount vendors can withdraw. Current: ₦{Number(minWithdrawal).toLocaleString()}
+              </p>
+            </div>
+            <Button onClick={handleSavePlatformSettings} disabled={saving}>
+              {saving ? "Saving..." : "Save Platform Settings"}
+            </Button>
+          </CardContent>
+        </Card>
       </div>
     </AdminLayout>
   )

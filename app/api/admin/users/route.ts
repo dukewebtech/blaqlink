@@ -1,71 +1,53 @@
 import { NextResponse } from "next/server"
-import { createServerClient } from "@/lib/supabase/server"
+import { createAdminClient } from "@/lib/supabase/server"
 
 export async function GET() {
   try {
-    const supabase = await createServerClient()
+    const adminClient = createAdminClient()
 
-    // Check authentication
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser()
-
-    if (authError || !user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-    }
-
-    // Check if user is admin
-    const { data: userData, error: userError } = await supabase
+    const { data: users, error: usersError } = await adminClient
       .from("users")
-      .select("is_admin")
-      .eq("auth_id", user.id)
-      .single()
-
-    if (userError || !userData?.is_admin) {
-      return NextResponse.json({ error: "Forbidden - Admin access required" }, { status: 403 })
-    }
-
-    // Fetch all users with their statistics
-    const { data: users, error: usersError } = await supabase
-      .from("users")
-      .select("*")
+      .select("id, full_name, business_name, email, phone, role, is_admin, created_at, kyc_status, admin_kyc_approved")
       .order("created_at", { ascending: false })
 
-    if (usersError) {
-      console.error("[v0] Error fetching users:", usersError)
-      return NextResponse.json({ error: "Failed to fetch users" }, { status: 500 })
-    }
+    if (usersError) throw usersError
 
-    // Fetch product counts and revenue for each user
+    // Fetch stats for each user
     const usersWithStats = await Promise.all(
       (users || []).map(async (user) => {
-        const [productsResult, ordersResult] = await Promise.all([
-          supabase.from("products").select("id", { count: "exact", head: true }).eq("user_id", user.id),
-          supabase.from("orders").select("total_amount, payment_status").eq("user_id", user.id),
-        ])
+        // Count products
+        const { count: productCount } = await adminClient
+          .from("products")
+          .select("*", { count: "exact", head: true })
+          .eq("user_id", user.id)
 
-        const productCount = productsResult.count || 0
-        const successfulOrders =
-          ordersResult.data?.filter((order) => order.payment_status === "success" || order.payment_status === "paid") ||
-          []
-        const totalRevenue = successfulOrders.reduce((sum, order) => sum + Number(order.total_amount || 0), 0)
-        const orderCount = successfulOrders.length
+        // Count orders
+        const { count: orderCount } = await adminClient
+          .from("orders")
+          .select("*", { count: "exact", head: true })
+          .eq("user_id", user.id)
+
+        // Calculate total revenue
+        const { data: orders } = await adminClient
+          .from("orders")
+          .select("total_amount")
+          .eq("user_id", user.id)
+          .in("payment_status", ["paid", "success"])
+
+        const totalRevenue = orders?.reduce((sum, order) => sum + Number(order.total_amount || 0), 0) || 0
 
         return {
           ...user,
-          productCount,
-          orderCount,
-          totalRevenue,
+          total_products: productCount || 0,
+          total_orders: orderCount || 0,
+          total_revenue: totalRevenue,
         }
       }),
     )
 
-    console.log("[v0] Admin users fetched:", usersWithStats.length)
-
     return NextResponse.json({ users: usersWithStats })
   } catch (error) {
-    console.error("[v0] Error in admin users API:", error)
+    console.error("[v0] Admin users API error:", error)
     return NextResponse.json({ error: "Failed to fetch users" }, { status: 500 })
   }
 }

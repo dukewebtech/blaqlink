@@ -1,26 +1,23 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useEffect, useState } from "react"
 import { DashboardLayout } from "@/components/dashboard/dashboard-layout"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Badge } from "@/components/ui/badge"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import {
   Search,
   SlidersHorizontal,
   Download,
-  Plus,
-  Eye,
-  Pencil,
-  Trash2,
   ChevronLeft,
   ChevronRight,
   ChevronDown,
+  Eye,
+  Pencil,
+  Trash2,
 } from "lucide-react"
-import Image from "next/image"
 import Link from "next/link"
 
 interface OrderItem {
@@ -38,55 +35,59 @@ interface Order {
   customer_email: string
   customer_phone: string
   total_amount: number
-  payment_status: string
   status: string
+  payment_status: string
+  payment_reference: string
   created_at: string
   order_items: OrderItem[]
 }
 
-interface StatusCounts {
-  all: number
-  shipping: number
-  completed: number
-  cancelled: number
-}
-
 export default function TransactionsPage() {
+  const [orders, setOrders] = useState<Order[]>([])
+  const [loading, setLoading] = useState(true)
   const [activeTab, setActiveTab] = useState("all")
   const [selectedOrders, setSelectedOrders] = useState<string[]>([])
   const [searchQuery, setSearchQuery] = useState("")
-  const [orders, setOrders] = useState<Order[]>([])
-  const [statusCounts, setStatusCounts] = useState<StatusCounts>({
-    all: 0,
-    shipping: 0,
-    completed: 0,
-    cancelled: 0,
-  })
-  const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     fetchOrders()
-  }, [activeTab])
+  }, [])
 
   const fetchOrders = async () => {
     try {
       setLoading(true)
-      const response = await fetch(`/api/transactions?status=${activeTab}`)
+      const response = await fetch("/api/orders")
       const data = await response.json()
-      setOrders(data.orders || [])
-      setStatusCounts(data.statusCounts || { all: 0, shipping: 0, completed: 0, cancelled: 0 })
+
+      if (response.ok) {
+        setOrders(data.orders || [])
+      }
     } catch (error) {
-      console.error("[v0] Error fetching orders:", error)
+      console.error("[v0] Failed to fetch orders:", error)
     } finally {
       setLoading(false)
     }
   }
 
+  const filteredOrders = orders.filter((order) => {
+    const matchesTab = activeTab === "all" || order.status === activeTab
+    const matchesSearch =
+      searchQuery === "" ||
+      order.id.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      order.customer_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      order.customer_email.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      order.payment_reference.toLowerCase().includes(searchQuery.toLowerCase())
+
+    return matchesTab && matchesSearch
+  })
+
   const tabs = [
-    { id: "all", label: "All Orders", count: statusCounts.all },
-    { id: "shipping", label: "Shipping", count: statusCounts.shipping },
-    { id: "completed", label: "Completed", count: statusCounts.completed },
-    { id: "cancelled", label: "Cancel", count: statusCounts.cancelled },
+    { id: "all", label: "All Orders", count: orders.length },
+    { id: "confirmed", label: "Confirmed", count: orders.filter((o) => o.status === "confirmed").length },
+    { id: "processing", label: "Processing", count: orders.filter((o) => o.status === "processing").length },
+    { id: "shipped", label: "Shipped", count: orders.filter((o) => o.status === "shipped").length },
+    { id: "delivered", label: "Delivered", count: orders.filter((o) => o.status === "delivered").length },
+    { id: "cancelled", label: "Cancelled", count: orders.filter((o) => o.status === "cancelled").length },
   ]
 
   const toggleOrder = (id: string) => {
@@ -94,12 +95,34 @@ export default function TransactionsPage() {
   }
 
   const toggleAll = () => {
-    setSelectedOrders((prev) => (prev.length === orders.length ? [] : orders.map((o) => o.id)))
+    setSelectedOrders((prev) => (prev.length === filteredOrders.length ? [] : filteredOrders.map((o) => o.id)))
   }
 
-  const formatDate = (dateString: string) => {
-    const date = new Date(dateString)
-    return date.toLocaleDateString("en-US", { month: "2-digit", day: "2-digit", year: "2-digit" })
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case "confirmed":
+        return "bg-green-100 text-green-700 hover:bg-green-100 dark:bg-green-900/30 dark:text-green-400"
+      case "processing":
+        return "bg-blue-100 text-blue-700 hover:bg-blue-100 dark:bg-blue-900/30 dark:text-blue-400"
+      case "shipped":
+        return "bg-purple-100 text-purple-700 hover:bg-purple-100 dark:bg-purple-900/30 dark:text-purple-400"
+      case "delivered":
+        return "bg-emerald-100 text-emerald-700 hover:bg-emerald-100 dark:bg-emerald-900/30 dark:text-emerald-400"
+      case "cancelled":
+        return "bg-red-100 text-red-700 hover:bg-red-100 dark:bg-red-900/30 dark:text-red-400"
+      default:
+        return "bg-gray-100 text-gray-700 hover:bg-gray-100 dark:bg-gray-900/30 dark:text-gray-400"
+    }
+  }
+
+  if (loading) {
+    return (
+      <DashboardLayout>
+        <div className="flex items-center justify-center h-96">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+        </div>
+      </DashboardLayout>
+    )
   }
 
   return (
@@ -107,13 +130,11 @@ export default function TransactionsPage() {
       <div className="flex flex-col gap-6">
         {/* Header */}
         <div>
-          <h1 className="text-2xl font-semibold text-foreground">Orders</h1>
+          <h1 className="text-2xl font-semibold text-foreground">Transactions</h1>
           <div className="flex items-center gap-2 text-sm text-muted-foreground mt-1">
             <span>Dashboard</span>
             <span>›</span>
-            <span>Orders</span>
-            <span>›</span>
-            <span className="text-primary font-medium">All Orders</span>
+            <span className="text-foreground font-medium">Transactions</span>
           </div>
         </div>
 
@@ -122,7 +143,7 @@ export default function TransactionsPage() {
           <div className="relative flex-1 max-w-md">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
             <Input
-              placeholder="Search for id, name product"
+              placeholder="Search by ID, customer, or reference..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="pl-9 h-10"
@@ -137,22 +158,18 @@ export default function TransactionsPage() {
               <Download className="size-4" />
               Export
             </Button>
-            <Button className="gap-2">
-              <Plus className="size-4" />
-              New Order
-            </Button>
           </div>
         </div>
 
         {/* Tabs with sliding indicator */}
         <div className="relative bg-card rounded-xl border border-border p-1">
-          <div className="flex items-center gap-1 relative">
+          <div className="flex items-center gap-1 relative overflow-x-auto">
             {tabs.map((tab) => (
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
                 className={`
-                  relative flex-1 px-4 py-2.5 rounded-lg text-sm font-medium transition-all duration-200
+                  relative flex-shrink-0 px-4 py-2.5 rounded-lg text-sm font-medium transition-all duration-200
                   ${activeTab === tab.id ? "text-primary" : "text-muted-foreground hover:text-foreground"}
                 `}
               >
@@ -165,188 +182,163 @@ export default function TransactionsPage() {
               </button>
             ))}
           </div>
-          {/* Sliding underline indicator */}
-          <div
-            className="absolute bottom-0 h-0.5 bg-primary transition-all duration-300 ease-out"
-            style={{
-              left: `${(tabs.findIndex((t) => t.id === activeTab) / tabs.length) * 100}%`,
-              width: `${100 / tabs.length}%`,
-            }}
-          />
         </div>
 
         {/* Table */}
         <div className="bg-card rounded-xl border border-border overflow-hidden">
-          {loading ? (
-            <div className="flex items-center justify-center py-12">
-              <div className="text-muted-foreground">Loading orders...</div>
-            </div>
-          ) : orders.length === 0 ? (
-            <div className="flex items-center justify-center py-12">
-              <div className="text-muted-foreground">No orders found</div>
+          {filteredOrders.length === 0 ? (
+            <div className="text-center py-12">
+              <p className="text-muted-foreground">
+                {searchQuery || activeTab !== "all" ? "No orders match your filters" : "No transactions yet"}
+              </p>
             </div>
           ) : (
-            <Table>
-              <TableHeader>
-                <TableRow className="hover:bg-transparent border-b border-border">
-                  <TableHead className="w-12">
-                    <Checkbox checked={selectedOrders.length === orders.length} onCheckedChange={toggleAll} />
-                  </TableHead>
-                  <TableHead className="font-semibold">
-                    <div className="flex items-center gap-1">
-                      Orders
-                      <ChevronDown className="size-4 text-muted-foreground" />
-                    </div>
-                  </TableHead>
-                  <TableHead className="font-semibold">
-                    <div className="flex items-center gap-1">
-                      Customer
-                      <ChevronDown className="size-4 text-muted-foreground" />
-                    </div>
-                  </TableHead>
-                  <TableHead className="font-semibold">
-                    <div className="flex items-center gap-1">
-                      Price
-                      <ChevronDown className="size-4 text-muted-foreground" />
-                    </div>
-                  </TableHead>
-                  <TableHead className="font-semibold">
-                    <div className="flex items-center gap-1">
-                      Date
-                      <ChevronDown className="size-4 text-muted-foreground" />
-                    </div>
-                  </TableHead>
-                  <TableHead className="font-semibold">
-                    <div className="flex items-center gap-1">
-                      Payment
-                      <ChevronDown className="size-4 text-muted-foreground" />
-                    </div>
-                  </TableHead>
-                  <TableHead className="font-semibold">
-                    <div className="flex items-center gap-1">
-                      Status
-                      <ChevronDown className="size-4 text-muted-foreground" />
-                    </div>
-                  </TableHead>
-                  <TableHead className="font-semibold text-right">
-                    <div className="flex items-center justify-end gap-1">
-                      Action
-                      <ChevronDown className="size-4 text-muted-foreground" />
-                    </div>
-                  </TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {orders.map((order) => (
-                  <TableRow key={order.id} className="group hover:bg-muted/50 transition-colors">
-                    <TableCell>
+            <>
+              <Table>
+                <TableHeader>
+                  <TableRow className="hover:bg-transparent border-b border-border">
+                    <TableHead className="w-12">
                       <Checkbox
-                        checked={selectedOrders.includes(order.id)}
-                        onCheckedChange={() => toggleOrder(order.id)}
+                        checked={selectedOrders.length === filteredOrders.length && filteredOrders.length > 0}
+                        onCheckedChange={toggleAll}
                       />
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex items-center gap-3">
-                        <div className="relative size-10 rounded-lg overflow-hidden bg-muted flex-shrink-0">
-                          <Image
-                            src="/placeholder.svg?height=40&width=40"
-                            alt={order.order_items[0]?.product_title || "Product"}
-                            fill
-                            className="object-cover"
-                          />
-                        </div>
-                        <div className="flex flex-col">
-                          <span className="text-xs text-primary font-medium">{order.id.slice(0, 8).toUpperCase()}</span>
-                          <span className="text-sm font-medium text-foreground">
-                            {order.order_items[0]?.product_title || "Multiple Items"}
-                          </span>
-                        </div>
+                    </TableHead>
+                    <TableHead className="font-semibold">
+                      <div className="flex items-center gap-1">
+                        Order ID
+                        <ChevronDown className="size-4 text-muted-foreground" />
                       </div>
-                    </TableCell>
-                    <TableCell className="text-foreground">{order.customer_name}</TableCell>
-                    <TableCell className="text-foreground">NGN {Number(order.total_amount).toLocaleString()}</TableCell>
-                    <TableCell className="text-foreground">{formatDate(order.created_at)}</TableCell>
-                    <TableCell>
-                      <Badge
-                        variant={
-                          order.payment_status === "success" || order.payment_status === "paid"
-                            ? "default"
-                            : "secondary"
-                        }
-                        className={
-                          order.payment_status === "success" || order.payment_status === "paid"
-                            ? "bg-green-100 text-green-700 hover:bg-green-100 dark:bg-green-900/30 dark:text-green-400"
-                            : "bg-yellow-100 text-yellow-700 hover:bg-yellow-100 dark:bg-yellow-900/30 dark:text-yellow-400"
-                        }
-                      >
-                        {order.payment_status === "success" || order.payment_status === "paid" ? "Paid" : "Unpaid"}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>
-                      <Badge
-                        variant="secondary"
-                        className={
-                          order.status === "shipping"
-                            ? "bg-purple-100 text-purple-700 hover:bg-purple-100 dark:bg-purple-900/30 dark:text-purple-400"
-                            : order.status === "completed"
-                              ? "bg-blue-100 text-blue-700 hover:bg-blue-100 dark:bg-blue-900/30 dark:text-blue-400"
-                              : "bg-red-100 text-red-700 hover:bg-red-100 dark:bg-red-900/30 dark:text-red-400"
-                        }
-                      >
-                        {order.status.charAt(0).toUpperCase() + order.status.slice(1)}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                        <Link href={`/orders/${order.id}`}>
-                          <Button variant="ghost" size="icon" className="size-8 hover:bg-muted">
-                            <Eye className="size-4" />
-                          </Button>
-                        </Link>
-                        <Button variant="ghost" size="icon" className="size-8 hover:bg-muted">
-                          <Pencil className="size-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="size-8 hover:bg-destructive/10 hover:text-destructive"
-                        >
-                          <Trash2 className="size-4" />
-                        </Button>
+                    </TableHead>
+                    <TableHead className="font-semibold">
+                      <div className="flex items-center gap-1">
+                        Customer
+                        <ChevronDown className="size-4 text-muted-foreground" />
                       </div>
-                    </TableCell>
+                    </TableHead>
+                    <TableHead className="font-semibold">
+                      <div className="flex items-center gap-1">
+                        Amount
+                        <ChevronDown className="size-4 text-muted-foreground" />
+                      </div>
+                    </TableHead>
+                    <TableHead className="font-semibold">
+                      <div className="flex items-center gap-1">
+                        Date
+                        <ChevronDown className="size-4 text-muted-foreground" />
+                      </div>
+                    </TableHead>
+                    <TableHead className="font-semibold">
+                      <div className="flex items-center gap-1">
+                        Payment
+                        <ChevronDown className="size-4 text-muted-foreground" />
+                      </div>
+                    </TableHead>
+                    <TableHead className="font-semibold">
+                      <div className="flex items-center gap-1">
+                        Status
+                        <ChevronDown className="size-4 text-muted-foreground" />
+                      </div>
+                    </TableHead>
+                    <TableHead className="font-semibold text-right">
+                      <div className="flex items-center justify-end gap-1">
+                        Action
+                        <ChevronDown className="size-4 text-muted-foreground" />
+                      </div>
+                    </TableHead>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          )}
+                </TableHeader>
+                <TableBody>
+                  {filteredOrders.map((order) => (
+                    <TableRow key={order.id} className="group hover:bg-muted/50 transition-colors">
+                      <TableCell>
+                        <Checkbox
+                          checked={selectedOrders.includes(order.id)}
+                          onCheckedChange={() => toggleOrder(order.id)}
+                        />
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex flex-col">
+                          <span className="text-xs text-primary font-medium">#{order.id.slice(0, 8)}</span>
+                          <span className="text-xs text-muted-foreground font-mono">{order.payment_reference}</span>
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex flex-col">
+                          <span className="text-sm font-medium text-foreground">{order.customer_name}</span>
+                          <span className="text-xs text-muted-foreground">{order.customer_email}</span>
+                        </div>
+                      </TableCell>
+                      <TableCell className="text-foreground font-semibold">
+                        NGN {order.total_amount.toLocaleString()}
+                      </TableCell>
+                      <TableCell className="text-foreground">
+                        {new Date(order.created_at).toLocaleDateString("en-US", {
+                          month: "2-digit",
+                          day: "2-digit",
+                          year: "2-digit",
+                        })}
+                      </TableCell>
+                      <TableCell>
+                        <Badge
+                          variant={
+                            order.payment_status === "paid" || order.payment_status === "success"
+                              ? "default"
+                              : "secondary"
+                          }
+                          className={
+                            order.payment_status === "paid" || order.payment_status === "success"
+                              ? "bg-green-100 text-green-700 hover:bg-green-100 dark:bg-green-900/30 dark:text-green-400"
+                              : "bg-yellow-100 text-yellow-700 hover:bg-yellow-100 dark:bg-yellow-900/30 dark:text-yellow-400"
+                          }
+                        >
+                          {order.payment_status === "paid" || order.payment_status === "success" ? "Paid" : "Unpaid"}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant="secondary" className={getStatusColor(order.status)}>
+                          {order.status.charAt(0).toUpperCase() + order.status.slice(1)}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                          <Link href={`/orders/${order.id}`}>
+                            <Button variant="ghost" size="icon" className="size-8 hover:bg-muted">
+                              <Eye className="size-4" />
+                            </Button>
+                          </Link>
+                          <Button variant="ghost" size="icon" className="size-8 hover:bg-muted">
+                            <Pencil className="size-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="size-8 hover:bg-destructive/10 hover:text-destructive"
+                          >
+                            <Trash2 className="size-4" />
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
 
-          {/* Pagination */}
-          <div className="flex items-center justify-between px-6 py-4 border-t border-border">
-            <div className="text-sm text-muted-foreground">1 - 10 of 13 Pages</div>
-            <div className="flex items-center gap-2">
-              <span className="text-sm text-muted-foreground">The page on</span>
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="outline" size="sm" className="h-8 w-12 gap-1 bg-transparent">
-                    1
-                    <ChevronDown className="size-3" />
+              {/* Pagination */}
+              <div className="flex items-center justify-between px-6 py-4 border-t border-border">
+                <div className="text-sm text-muted-foreground">
+                  Showing {filteredOrders.length} of {orders.length} orders
+                </div>
+                <div className="flex items-center gap-2">
+                  <Button variant="outline" size="icon" className="size-8 bg-transparent" disabled>
+                    <ChevronLeft className="size-4" />
                   </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end">
-                  <DropdownMenuItem>1</DropdownMenuItem>
-                  <DropdownMenuItem>2</DropdownMenuItem>
-                  <DropdownMenuItem>3</DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
-              <Button variant="outline" size="icon" className="size-8 bg-transparent">
-                <ChevronLeft className="size-4" />
-              </Button>
-              <Button variant="outline" size="icon" className="size-8 bg-transparent">
-                <ChevronRight className="size-4" />
-              </Button>
-            </div>
-          </div>
+                  <Button variant="outline" size="icon" className="size-8 bg-transparent" disabled>
+                    <ChevronRight className="size-4" />
+                  </Button>
+                </div>
+              </div>
+            </>
+          )}
         </div>
       </div>
     </DashboardLayout>

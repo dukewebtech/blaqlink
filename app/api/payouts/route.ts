@@ -41,6 +41,7 @@ export async function GET() {
 
     const storeName = userProfile.business_name || "Your Store"
     const userId = userProfile.id
+
     console.log("[v0] Store name:", storeName)
     console.log("[v0] User record ID:", userId)
 

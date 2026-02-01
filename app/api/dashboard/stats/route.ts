@@ -5,10 +5,25 @@ export async function GET() {
   try {
     const supabase = await createServerClient()
 
-    // Get total revenue from successful orders
+    const {
+      data: { user },
+      error: authError,
+    } = await supabase.auth.getUser()
+
+    if (authError || !user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+    }
+
+    const { data: userProfile } = await supabase.from("users").select("id").eq("auth_id", user.id).single()
+
+    if (!userProfile) {
+      return NextResponse.json({ error: "User profile not found" }, { status: 404 })
+    }
+
     const { data: orders, error: ordersError } = await supabase
       .from("orders")
       .select("total_amount, payment_status, created_at")
+      .eq("user_id", userProfile.id)
       .in("payment_status", ["success", "paid"])
 
     console.log("[v0] Dashboard stats - Orders with success/paid status:", orders?.length || 0)
@@ -22,10 +37,10 @@ export async function GET() {
     const totalRevenue = orders?.reduce((sum, order) => sum + Number(order.total_amount || 0), 0) || 0
     console.log("[v0] Dashboard stats - Total revenue:", totalRevenue)
 
-    // Get total unique customers
     const { data: customers, error: customersError } = await supabase
       .from("orders")
       .select("customer_email")
+      .eq("user_id", userProfile.id)
       .not("customer_email", "is", null)
 
     if (customersError) throw customersError
@@ -33,19 +48,19 @@ export async function GET() {
     const uniqueCustomers = new Set(customers?.map((c) => c.customer_email)).size
     console.log("[v0] Dashboard stats - Unique customers:", uniqueCustomers)
 
-    // Get total transactions
     const { count: totalTransactions, error: transactionsError } = await supabase
       .from("orders")
       .select("*", { count: "exact", head: true })
+      .eq("user_id", userProfile.id)
 
     console.log("[v0] Dashboard stats - Total transactions:", totalTransactions)
 
     if (transactionsError) throw transactionsError
 
-    // Get total products
     const { count: totalProducts, error: productsError } = await supabase
       .from("products")
       .select("*", { count: "exact", head: true })
+      .eq("user_id", user.id)
 
     console.log("[v0] Dashboard stats - Total products:", totalProducts)
 
@@ -56,16 +71,17 @@ export async function GET() {
     const lastWeek = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000)
     const twoWeeksAgo = new Date(now.getTime() - 14 * 24 * 60 * 60 * 1000)
 
-    // Revenue change
     const { data: lastWeekOrders } = await supabase
       .from("orders")
       .select("total_amount")
+      .eq("user_id", userProfile.id)
       .in("payment_status", ["success", "paid"])
       .gte("created_at", lastWeek.toISOString())
 
     const { data: previousWeekOrders } = await supabase
       .from("orders")
       .select("total_amount")
+      .eq("user_id", userProfile.id)
       .in("payment_status", ["success", "paid"])
       .gte("created_at", twoWeeksAgo.toISOString())
       .lt("created_at", lastWeek.toISOString())

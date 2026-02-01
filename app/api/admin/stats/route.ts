@@ -1,70 +1,67 @@
+import { createAdminClient } from "@/lib/supabase/server"
 import { NextResponse } from "next/server"
-import { createServerClient } from "@/lib/supabase/server"
 
 export async function GET() {
   try {
-    const supabase = await createServerClient()
+    const supabase = await createAdminClient()
 
-    // Check authentication
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser()
-
-    if (authError || !user) {
-      console.log("[v0] Admin stats: User not authenticated")
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-    }
-
-    // Check if user is admin
-    const { data: userData, error: userError } = await supabase
-      .from("users")
-      .select("is_admin")
-      .eq("auth_id", user.id)
-      .single()
-
-    if (userError || !userData?.is_admin) {
-      console.log("[v0] Admin stats: User is not admin")
-      return NextResponse.json({ error: "Forbidden - Admin access required" }, { status: 403 })
-    }
-
-    // Fetch platform-wide statistics
-    const [usersResult, ordersResult, productsResult, withdrawalsResult] = await Promise.all([
-      supabase.from("users").select("id", { count: "exact", head: true }),
-      supabase.from("orders").select("total_amount, payment_status"),
-      supabase.from("products").select("id", { count: "exact", head: true }),
-      supabase.from("withdrawal_requests").select("amount, status"),
-    ])
+    const [usersResult, productsResult, ordersResult, pendingWithdrawalsResult, approvedWithdrawalsResult] =
+      await Promise.all([
+        // Total users count
+        supabase
+          .from("users")
+          .select("id", { count: "exact", head: true }),
+        // Total products count
+        supabase
+          .from("products")
+          .select("id", { count: "exact", head: true }),
+        // Total orders and revenue
+        supabase
+          .from("orders")
+          .select("total_amount", { count: "exact" }),
+        // Pending withdrawals
+        supabase
+          .from("withdrawal_requests")
+          .select("amount")
+          .eq("status", "pending"),
+        // Approved withdrawals
+        supabase
+          .from("withdrawal_requests")
+          .select("amount")
+          .eq("status", "approved"),
+      ])
 
     const totalUsers = usersResult.count || 0
     const totalProducts = productsResult.count || 0
+    const totalOrders = ordersResult.count || 0
+    const totalRevenue = ordersResult.data?.reduce((sum, order) => sum + Number(order.total_amount || 0), 0) || 0
+    const pendingWithdrawalsCount = pendingWithdrawalsResult.data?.length || 0
+    const totalPendingWithdrawals =
+      pendingWithdrawalsResult.data?.reduce((sum, w) => sum + Number(w.amount || 0), 0) || 0
+    const totalApprovedWithdrawals =
+      approvedWithdrawalsResult.data?.reduce((sum, w) => sum + Number(w.amount || 0), 0) || 0
 
-    // Calculate revenue from successful orders
-    const successfulOrders =
-      ordersResult.data?.filter((order) => order.payment_status === "success" || order.payment_status === "paid") || []
-    const totalRevenue = successfulOrders.reduce((sum, order) => sum + Number(order.total_amount || 0), 0)
-    const totalOrders = successfulOrders.length
-
-    // Calculate withdrawal statistics
-    const pendingWithdrawals = withdrawalsResult.data?.filter((w) => w.status === "pending") || []
-    const approvedWithdrawals = withdrawalsResult.data?.filter((w) => w.status === "approved") || []
-
-    const totalPendingWithdrawals = pendingWithdrawals.reduce((sum, w) => sum + Number(w.amount || 0), 0)
-    const totalApprovedWithdrawals = approvedWithdrawals.reduce((sum, w) => sum + Number(w.amount || 0), 0)
-
-    console.log("[v0] Admin stats fetched successfully")
+    console.log("[v0] Admin stats calculated:", {
+      totalUsers,
+      totalProducts,
+      totalOrders,
+      totalRevenue,
+      pendingWithdrawalsCount,
+      totalPendingWithdrawals,
+      totalApprovedWithdrawals,
+    })
 
     return NextResponse.json({
       totalUsers,
       totalProducts,
-      totalRevenue,
       totalOrders,
-      pendingWithdrawalsCount: pendingWithdrawals.length,
+      totalRevenue,
+      pendingWithdrawalsCount,
       totalPendingWithdrawals,
       totalApprovedWithdrawals,
     })
   } catch (error) {
-    console.error("[v0] Error fetching admin stats:", error)
+    console.error("[v0] Admin stats error:", error)
     return NextResponse.json({ error: "Failed to fetch admin stats" }, { status: 500 })
   }
 }

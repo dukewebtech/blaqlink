@@ -1,7 +1,7 @@
 "use client"
 
 import type React from "react"
-
+import { ArrowLeft, Package, MapPin, CreditCard } from "lucide-react"
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import { cartStore, type CartItem } from "@/lib/cart-store"
@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
-import { ArrowLeft, CreditCard, Package, MapPin } from "lucide-react"
+import { NigerianLocationSelect } from "@/components/checkout/nigerian-location-select"
 import Image from "next/image"
 
 export default function CheckoutPage() {
@@ -175,46 +175,28 @@ export default function CheckoutPage() {
                   </div>
 
                   <div className="space-y-4">
-                    <div>
-                      <Label htmlFor="address">
-                        Street Address <span className="text-destructive">*</span>
-                      </Label>
-                      <Input
-                        id="address"
-                        value={address}
-                        onChange={(e) => setAddress(e.target.value)}
-                        placeholder="123 Main Street"
-                        required={hasPhysicalProducts}
-                      />
-                    </div>
-
                     <div className="grid md:grid-cols-2 gap-4">
                       <div>
-                        <Label htmlFor="city">
-                          City <span className="text-destructive">*</span>
+                        <Label htmlFor="address">
+                          Street Address <span className="text-destructive">*</span>
                         </Label>
                         <Input
-                          id="city"
-                          value={city}
-                          onChange={(e) => setCity(e.target.value)}
-                          placeholder="Lagos"
-                          required={hasPhysicalProducts}
-                        />
-                      </div>
-
-                      <div>
-                        <Label htmlFor="state">
-                          State <span className="text-destructive">*</span>
-                        </Label>
-                        <Input
-                          id="state"
-                          value={state}
-                          onChange={(e) => setState(e.target.value)}
-                          placeholder="Lagos State"
+                          id="address"
+                          value={address}
+                          onChange={(e) => setAddress(e.target.value)}
+                          placeholder="123 Main Street"
                           required={hasPhysicalProducts}
                         />
                       </div>
                     </div>
+
+                    <NigerianLocationSelect
+                      state={state}
+                      city={city}
+                      onStateChange={setState}
+                      onCityChange={setCity}
+                      required={hasPhysicalProducts}
+                    />
 
                     <div>
                       <Label htmlFor="zipCode">Postal Code</Label>

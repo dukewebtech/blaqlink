@@ -4,7 +4,6 @@ import { Button } from "@/components/ui/button"
 import Link from "next/link"
 import { ArrowRight, BarChart3, Users, TrendingUp, Lock, Smartphone, Globe } from "lucide-react"
 import Image from "next/image"
-import { SellerJourneyVideo } from "@/components/seller-journey-video"
 
 export default function Home() {
   return (
@@ -51,9 +50,6 @@ export default function Home() {
             </Button>
           </Link>
         </div>
-
-        {/* Seller Journey Video Section */}
-        <SellerJourneyVideo />
 
         {/* Dashboard Cards Mockup - Complex Grid Layout */}
         <div className="mx-auto max-w-7xl mt-20 relative px-4">

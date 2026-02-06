@@ -15,8 +15,8 @@ const geistMono = Geist_Mono({
 })
 
 export const metadata: Metadata = {
-  title: "v0 App",
-  description: "Created with v0",
+  title: "Blaqora - All-in-One SaaS E-Commerce Platform",
+  description: "Get paid early and save automatically. All-in-one e-commerce platform to sell products, services, and digital goods. Join 10K+ sellers in 150+ countries.",
   generator: "v0.app",
 }
 

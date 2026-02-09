@@ -25,22 +25,36 @@ export async function DELETE(request: Request, { params }: { params: { id: strin
 
     const userId = (await params).id
 
-    // Verify user exists
+    // Verify user exists in database
     const { data: userData, error: userError } = await adminClient.from("users").select("id").eq("id", userId).single()
 
     if (userError || !userData) {
       return NextResponse.json({ error: "User not found" }, { status: 404 })
     }
 
-    // Delete user from Supabase auth
+    // Try to delete user from Supabase auth
     const { error: deleteAuthError } = await adminClient.auth.admin.deleteUser(userId)
 
-    if (deleteAuthError) {
-      console.error("[v0] Error deleting user auth:", deleteAuthError)
+    // If user doesn't exist in auth (404), that's okay - still delete from database
+    if (deleteAuthError && deleteAuthError.message !== "User not found") {
+      console.error("[v0] Error deleting user auth:", deleteAuthError.message)
       return NextResponse.json({ error: "Failed to delete user: " + deleteAuthError.message }, { status: 500 })
     }
 
-    console.log("[v0] User deleted:", userId)
+    // If user doesn't exist in auth, log it but continue
+    if (deleteAuthError?.message === "User not found") {
+      console.log("[v0] User not found in auth (may have been deleted), continuing with database deletion:", userId)
+    }
+
+    // Delete user from database
+    const { error: dbDeleteError } = await adminClient.from("users").delete().eq("id", userId)
+
+    if (dbDeleteError) {
+      console.error("[v0] Error deleting user from database:", dbDeleteError)
+      return NextResponse.json({ error: "Failed to delete user from database" }, { status: 500 })
+    }
+
+    console.log("[v0] User permanently deleted from auth and database:", userId)
 
     return NextResponse.json({ success: true, message: "User permanently deleted" })
   } catch (error) {

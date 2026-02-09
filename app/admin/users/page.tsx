@@ -49,6 +49,8 @@ export default function AdminUsersPage() {
   const [processingKyc, setProcessingKyc] = useState(false)
   const [loadingKyc, setLoadingKyc] = useState(false)
   const [activeTab, setActiveTab] = useState("all")
+  const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null)
+  const [deleting, setDeleting] = useState(false)
 
   useEffect(() => {
     fetchUsers()
@@ -126,6 +128,29 @@ export default function AdminUsersPage() {
     })
   }
 
+  async function handleDeleteUser(userId: string) {
+    setDeleting(true)
+    try {
+      const response = await fetch(`/api/admin/users/${userId}/delete`, {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+      })
+
+      if (response.ok) {
+        setDeleteConfirm(null)
+        fetchUsers()
+      } else {
+        const data = await response.json()
+        alert("Failed to delete user: " + (data.error || "Unknown error"))
+      }
+    } catch (error) {
+      console.error("[v0] Failed to delete user:", error)
+      alert("Failed to delete user")
+    } finally {
+      setDeleting(false)
+    }
+  }
+
   const getKycBadge = (user: UserData) => {
     if (user.admin_kyc_approved) {
       return (
@@ -168,16 +193,6 @@ export default function AdminUsersPage() {
   })
 
   const pendingCount = users.filter((u) => u.kyc_status === "pending_review").length
-
-  if (loading) {
-    return (
-      <AdminLayout>
-        <div className="flex items-center justify-center min-h-[400px]">
-          <p>Loading users...</p>
-        </div>
-      </AdminLayout>
-    )
-  }
 
   return (
     <AdminLayout>
@@ -272,6 +287,15 @@ export default function AdminUsersPage() {
                             View Details
                           </Button>
                         )}
+                        <Button
+                          onClick={() => setDeleteConfirm(user.id)}
+                          size="sm"
+                          variant="destructive"
+                          className="gap-2"
+                        >
+                          <XCircle className="h-4 w-4" />
+                          Delete
+                        </Button>
                       </div>
                     </div>
                   </CardHeader>
@@ -471,6 +495,32 @@ export default function AdminUsersPage() {
               <p className="text-muted-foreground">No KYC data available for this user</p>
             </div>
           )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Confirmation Dialog */}
+      <Dialog open={deleteConfirm !== null} onOpenChange={() => !deleting && setDeleteConfirm(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Delete User</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to permanently delete this user from the system? This action cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex gap-3 pt-4">
+            <Button onClick={() => setDeleteConfirm(null)} disabled={deleting} variant="outline" className="flex-1">
+              Cancel
+            </Button>
+            <Button
+              onClick={() => deleteConfirm && handleDeleteUser(deleteConfirm)}
+              disabled={deleting}
+              variant="destructive"
+              className="flex-1 gap-2"
+            >
+              <XCircle className="h-4 w-4" />
+              {deleting ? "Deleting..." : "Confirm Delete"}
+            </Button>
+          </div>
         </DialogContent>
       </Dialog>
     </AdminLayout>

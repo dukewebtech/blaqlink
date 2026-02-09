@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button"
 import { User, Mail, Phone, Calendar, Shield, CheckCircle2, XCircle, Clock, Eye, AlertCircle } from "lucide-react"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { useToast } from "@/hooks/use-toast"
 
 interface UserData {
   id: string
@@ -51,6 +52,7 @@ export default function AdminUsersPage() {
   const [activeTab, setActiveTab] = useState("all")
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null)
   const [deleting, setDeleting] = useState(false)
+  const { toast } = useToast()
 
   useEffect(() => {
     fetchUsers()
@@ -138,14 +140,28 @@ export default function AdminUsersPage() {
 
       if (response.ok) {
         setDeleteConfirm(null)
-        fetchUsers()
+        // Immediately remove the user from the state
+        setUsers((prevUsers) => prevUsers.filter((user) => user.id !== userId))
+        toast({
+          title: "User Deleted",
+          description: "User has been permanently deleted from the system.",
+        })
       } else {
         const data = await response.json()
-        alert("Failed to delete user: " + (data.error || "Unknown error"))
+        const errorMsg = data.error || "Unknown error"
+        toast({
+          title: "Error",
+          description: `Failed to delete user: ${errorMsg}`,
+          variant: "destructive",
+        })
       }
     } catch (error) {
       console.error("[v0] Failed to delete user:", error)
-      alert("Failed to delete user")
+      toast({
+        title: "Error",
+        description: "Failed to delete user",
+        variant: "destructive",
+      })
     } finally {
       setDeleting(false)
     }

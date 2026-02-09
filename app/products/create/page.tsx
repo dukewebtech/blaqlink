@@ -414,22 +414,22 @@ export default function CreateProductPage() {
 
   return (
     <DashboardLayout>
-      <div className="max-w-6xl space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
+      <div className="max-w-6xl space-y-6 md:space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
         {/* Header */}
         <div>
-          <div className="flex items-center gap-2 text-sm text-muted-foreground mb-2">
+          <div className="flex items-center gap-2 text-xs md:text-sm text-muted-foreground mb-2 flex-wrap">
             <span>Dashboard</span>
             <span>›</span>
             <span>Product</span>
             <span>›</span>
             <span className="text-primary font-medium">{getProductTypeTitle()}</span>
           </div>
-          <div className="flex items-center justify-between">
-            <h1 className="text-3xl font-bold tracking-tight">Product</h1>
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+            <h1 className="text-2xl md:text-3xl font-bold tracking-tight">Product</h1>
             <Button
               variant="outline"
               onClick={() => router.push("/products/choose-type")}
-              className="gap-2 transition-all duration-300 hover:scale-105"
+              className="gap-2 transition-all duration-300 hover:scale-105 self-start sm:self-auto"
             >
               <ArrowLeft className="h-4 w-4" />
               Back to Categories

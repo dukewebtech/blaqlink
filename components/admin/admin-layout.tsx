@@ -218,19 +218,19 @@ export function AdminLayout({ children }: { children: React.ReactNode }) {
       </aside>
 
       <div className="flex flex-1 flex-col overflow-hidden">
-        <header className="flex h-16 items-center justify-between border-b bg-white px-6 shadow-sm">
-          <Button variant="ghost" size="icon" className="lg:hidden" onClick={() => setSidebarOpen(true)}>
+        <header className="flex h-16 items-center justify-between border-b bg-white px-3 md:px-6 shadow-sm gap-2">
+          <Button variant="ghost" size="icon" className="lg:hidden flex-shrink-0" onClick={() => setSidebarOpen(true)}>
             <Menu className="h-5 w-5" />
           </Button>
 
-          <div className="flex flex-1 items-center gap-4 lg:ml-0">
-            <div className="relative flex-1 max-w-md">
-              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-              <Input placeholder="Search..." className="pl-10" />
+          <div className="flex flex-1 items-center gap-2 md:gap-4 min-w-0">
+            <div className="relative flex-1 max-w-md hidden sm:block">
+              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground flex-shrink-0" />
+              <Input placeholder="Search..." className="pl-10 text-sm" />
             </div>
           </div>
 
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-2 md:gap-4 flex-shrink-0">
             <Button variant="ghost" size="icon" className="relative">
               <Bell className="h-5 w-5" />
               <span className="absolute right-1 top-1 flex h-4 w-4 items-center justify-center rounded-full bg-red-600 text-[10px] font-bold text-white">
@@ -240,16 +240,16 @@ export function AdminLayout({ children }: { children: React.ReactNode }) {
 
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="ghost" className="gap-2">
+                <Button variant="ghost" className="gap-2 px-2 md:px-3">
                   <Avatar className="h-8 w-8">
                     <AvatarImage src={userData?.profile_image || "/placeholder.svg"} />
                     <AvatarFallback>{getUserInitials()}</AvatarFallback>
                   </Avatar>
-                  <div className="hidden text-left lg:block">
+                  <div className="hidden text-left md:block">
                     <p className="text-sm font-medium">{userData?.full_name || "Admin"}</p>
                     <p className="text-xs text-muted-foreground">Administrator</p>
                   </div>
-                  <ChevronDown className="h-4 w-4" />
+                  <ChevronDown className="h-4 w-4 hidden md:block" />
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
@@ -264,7 +264,7 @@ export function AdminLayout({ children }: { children: React.ReactNode }) {
           </div>
         </header>
 
-        <main className="flex-1 overflow-y-auto p-6">{children}</main>
+        <main className="flex-1 overflow-y-auto p-4 md:p-6">{children}</main>
       </div>
     </div>
   )

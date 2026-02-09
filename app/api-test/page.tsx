@@ -167,11 +167,11 @@ export default function APITestPage() {
   }
 
   return (
-    <div className="min-h-screen bg-background p-8">
-      <div className="mx-auto max-w-4xl space-y-8">
+    <div className="min-h-screen bg-background p-4 md:p-8">
+      <div className="mx-auto max-w-4xl space-y-6 md:space-y-8">
         <div>
-          <h1 className="text-4xl font-bold">API Test Page</h1>
-          <p className="mt-2 text-muted-foreground">Test your API endpoints directly from the browser</p>
+          <h1 className="text-2xl md:text-4xl font-bold">API Test Page</h1>
+          <p className="mt-2 text-xs md:text-base text-muted-foreground">Test your API endpoints directly from the browser</p>
         </div>
 
         <Alert>

@@ -254,43 +254,43 @@ export default function CategoriesPage() {
           </div>
         </div>
 
-        <div className="flex gap-2 border-b overflow-x-auto">
-          <Button
-            variant={selectedType === "all" ? "default" : "ghost"}
-            onClick={() => setSelectedType("all")}
-            className="rounded-b-none whitespace-nowrap"
-          >
-            All Categories
-          </Button>
-          <Button
-            variant={selectedType === "digital" ? "default" : "ghost"}
-            onClick={() => setSelectedType("digital")}
-            className="rounded-b-none whitespace-nowrap"
-          >
-            Digital Product
-          </Button>
-          <Button
-            variant={selectedType === "physical" ? "default" : "ghost"}
-            onClick={() => setSelectedType("physical")}
-            className="rounded-b-none whitespace-nowrap"
-          >
-            Physical Product
-          </Button>
-          <Button
-            variant={selectedType === "appointment" ? "default" : "ghost"}
-            onClick={() => setSelectedType("appointment")}
-            className="rounded-b-none whitespace-nowrap"
-          >
-            Appointments
-          </Button>
-          <Button
-            variant={selectedType === "event" ? "default" : "ghost"}
-            onClick={() => setSelectedType("event")}
-            className="rounded-b-none whitespace-nowrap"
-          >
-            Event Tickets
-          </Button>
-        </div>
+  <div className="flex gap-2 border-b overflow-x-auto md:overflow-x-visible pb-0 md:pb-0">
+    <Button
+    variant={selectedType === "all" ? "default" : "ghost"}
+    onClick={() => setSelectedType("all")}
+    className="rounded-b-none whitespace-nowrap text-xs md:text-sm px-2 md:px-4"
+    >
+    All
+    </Button>
+    <Button
+    variant={selectedType === "digital" ? "default" : "ghost"}
+    onClick={() => setSelectedType("digital")}
+    className="rounded-b-none whitespace-nowrap text-xs md:text-sm px-2 md:px-4"
+    >
+    Digital
+    </Button>
+    <Button
+    variant={selectedType === "physical" ? "default" : "ghost"}
+    onClick={() => setSelectedType("physical")}
+    className="rounded-b-none whitespace-nowrap text-xs md:text-sm px-2 md:px-4"
+    >
+    Physical
+    </Button>
+    <Button
+    variant={selectedType === "event" ? "default" : "ghost"}
+    onClick={() => setSelectedType("event")}
+    className="rounded-b-none whitespace-nowrap text-xs md:text-sm px-2 md:px-4"
+    >
+    Events
+    </Button>
+    <Button
+    variant={selectedType === "appointment" ? "default" : "ghost"}
+    onClick={() => setSelectedType("appointment")}
+    className="rounded-b-none whitespace-nowrap text-xs md:text-sm px-2 md:px-4"
+    >
+    Appointments
+    </Button>
+  </div>
 
         <div className="border rounded-lg">
           <Table>

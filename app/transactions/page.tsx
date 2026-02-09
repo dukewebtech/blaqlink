@@ -139,37 +139,37 @@ export default function TransactionsPage() {
         </div>
 
         {/* Search and Actions */}
-        <div className="flex items-center justify-between gap-4">
-          <div className="relative flex-1 max-w-md">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 md:gap-4">
+          <div className="relative flex-1 max-w-md min-w-0">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground flex-shrink-0" />
             <Input
               placeholder="Search by ID, customer, or reference..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-9 h-10"
+              className="pl-9 h-10 text-sm"
             />
           </div>
-          <div className="flex items-center gap-3">
-            <Button variant="outline" className="gap-2 bg-transparent">
-              <SlidersHorizontal className="size-4" />
-              Filter
+          <div className="flex items-center gap-2 flex-shrink-0">
+            <Button variant="outline" className="gap-2 bg-transparent text-xs md:text-sm px-2 md:px-4">
+              <SlidersHorizontal className="size-4 flex-shrink-0" />
+              <span className="hidden sm:inline">Filter</span>
             </Button>
-            <Button variant="outline" className="gap-2 bg-transparent">
-              <Download className="size-4" />
-              Export
+            <Button variant="outline" className="gap-2 bg-transparent text-xs md:text-sm px-2 md:px-4">
+              <Download className="size-4 flex-shrink-0" />
+              <span className="hidden sm:inline">Export</span>
             </Button>
           </div>
         </div>
 
         {/* Tabs with sliding indicator */}
-        <div className="relative bg-card rounded-xl border border-border p-1">
-          <div className="flex items-center gap-1 relative overflow-x-auto">
+        <div className="relative bg-card rounded-xl border border-border p-1 overflow-x-auto md:overflow-x-visible">
+          <div className="flex items-center gap-1 relative min-w-max md:flex-wrap">
             {tabs.map((tab) => (
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
                 className={`
-                  relative flex-shrink-0 px-4 py-2.5 rounded-lg text-sm font-medium transition-all duration-200
+                  relative flex-shrink-0 px-3 md:px-4 py-2 md:py-2.5 rounded-lg text-xs md:text-sm font-medium transition-all duration-200 whitespace-nowrap
                   ${activeTab === tab.id ? "text-primary" : "text-muted-foreground hover:text-foreground"}
                 `}
               >
@@ -177,7 +177,7 @@ export default function TransactionsPage() {
                   <div className="absolute inset-0 bg-primary/10 rounded-lg transition-all duration-200" />
                 )}
                 <span className="relative z-10">
-                  {tab.label} ({tab.count})
+                  {tab.label} <span className="hidden md:inline">({tab.count})</span>
                 </span>
               </button>
             ))}

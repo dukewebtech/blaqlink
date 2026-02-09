@@ -50,14 +50,14 @@ export default function AdminLoginPage() {
   return (
     <div className="flex min-h-screen">
       {/* Left side - Login Form */}
-      <div className="flex w-full flex-col justify-center px-8 lg:w-1/2 lg:px-16">
+      <div className="flex w-full flex-col justify-center px-4 md:px-8 lg:w-1/2 lg:px-16">
         <div className="mx-auto w-full max-w-md space-y-8">
           <div className="space-y-2">
             <div className="flex items-center gap-2">
-              <Shield className="h-8 w-8 text-primary" />
-              <h1 className="text-3xl font-bold tracking-tight">Admin Portal</h1>
+              <Shield className="h-7 md:h-8 w-7 md:w-8 text-primary flex-shrink-0" />
+              <h1 className="text-2xl md:text-3xl font-bold tracking-tight">Admin Portal</h1>
             </div>
-            <p className="text-muted-foreground">Sign in with your admin credentials</p>
+            <p className="text-sm md:text-base text-muted-foreground">Sign in with your admin credentials</p>
           </div>
 
           <form onSubmit={handleLogin} className="space-y-6">

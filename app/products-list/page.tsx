@@ -311,21 +311,20 @@ export default function ProductListPage() {
           </div>
         </div>
 
-        <div className="flex gap-2 overflow-x-auto pb-2">
-          {categories.map((category) => (
-            <Button
-              key={category.name}
-              variant={selectedType === category.type ? "default" : "ghost"}
-              className={cn(
-                "rounded-full whitespace-nowrap transition-all duration-300",
-                selectedType === category.type && "bg-primary/10 text-primary hover:bg-primary/20",
-              )}
-              onClick={() => setSelectedType(category.type)}
-            >
-              {category.name} ({products.filter((p) => !category.type || p.product_type === category.type).length})
-            </Button>
-          ))}
-        </div>
+  <div className="flex gap-2 overflow-x-auto md:overflow-x-visible pb-2 md:pb-0">
+    {categories.map((category) => (
+    <Button
+    key={category.name}
+    variant={selectedType === category.type ? "default" : "ghost"}
+    className={cn(
+      "rounded-b-none whitespace-nowrap text-xs md:text-sm px-2 md:px-4",
+    )}
+    onClick={() => setSelectedType(category.type)}
+    >
+    {category.name}
+    </Button>
+    ))}
+  </div>
 
         {/* Products Table */}
         <Card className="overflow-hidden animate-in fade-in slide-in-from-bottom-4 duration-700 delay-100">

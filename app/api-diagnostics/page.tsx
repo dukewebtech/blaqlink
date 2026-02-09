@@ -171,11 +171,11 @@ export default function APIDiagnosticsPage() {
   }
 
   return (
-    <div className="min-h-screen bg-background p-8">
-      <div className="mx-auto max-w-6xl space-y-8">
+    <div className="min-h-screen bg-background p-4 md:p-8">
+      <div className="mx-auto max-w-6xl space-y-6 md:space-y-8">
         <div>
-          <h1 className="text-4xl font-bold">API Diagnostics</h1>
-          <p className="mt-2 text-muted-foreground">Comprehensive test of all API endpoints to identify issues</p>
+          <h1 className="text-2xl md:text-4xl font-bold">API Diagnostics</h1>
+          <p className="mt-2 text-xs md:text-base text-muted-foreground">Comprehensive test of all API endpoints to identify issues</p>
         </div>
 
         <Alert>

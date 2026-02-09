@@ -105,13 +105,13 @@ export default function CheckoutPage({ params }: { params: { storeId: string } }
 
   return (
     <div className="min-h-screen bg-background">
-      <div className="max-w-7xl mx-auto px-4 py-12">
-        <Button variant="ghost" onClick={() => router.push(`/store/${params.storeId}/cart`)} className="mb-8">
+      <div className="max-w-7xl mx-auto px-4 py-8 md:py-12">
+        <Button variant="ghost" onClick={() => router.push(`/store/${params.storeId}/cart`)} className="mb-6 md:mb-8 p-0 h-auto">
           <ArrowLeft className="w-4 h-4 mr-2" />
           Back to Cart
         </Button>
 
-        <h1 className="text-4xl font-bold mb-8">Checkout</h1>
+        <h1 className="text-2xl md:text-4xl font-bold mb-6 md:mb-8">Checkout</h1>
 
         <form onSubmit={handleSubmit}>
           <div className="grid lg:grid-cols-3 gap-8">

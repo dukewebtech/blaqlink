@@ -225,56 +225,56 @@ export default function AdminDashboard() {
         {activeSection === "dashboard" && (
           <div className="space-y-6">
             <div>
-              <h2 className="text-3xl font-bold text-red-900 dark:text-red-100">Dashboard Overview</h2>
-              <p className="text-red-700 dark:text-red-200">Platform statistics and insights</p>
+              <h2 className="text-2xl md:text-3xl font-bold text-red-900 dark:text-red-100">Dashboard Overview</h2>
+              <p className="text-xs md:text-base text-red-700 dark:text-red-200">Platform statistics and insights</p>
             </div>
 
             {/* Stats Grid */}
             <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
-              <Card className="p-6 bg-white dark:bg-red-900/20 border-red-200 dark:border-red-800">
-                <div className="flex items-center justify-between">
+              <Card className="p-4 md:p-6 bg-white dark:bg-red-900/20 border-red-200 dark:border-red-800">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                   <div>
-                    <p className="text-sm text-red-600 dark:text-red-300 font-medium">Total Vendors</p>
-                    <p className="text-3xl font-bold text-red-900 dark:text-red-100 mt-2">{stats?.totalVendors || 0}</p>
+                    <p className="text-xs md:text-sm text-red-600 dark:text-red-300 font-medium">Total Vendors</p>
+                    <p className="text-2xl md:text-3xl font-bold text-red-900 dark:text-red-100 mt-2">{stats?.totalVendors || 0}</p>
                   </div>
-                  <Users className="h-12 w-12 text-red-500" />
+                  <Users className="h-8 md:h-12 w-8 md:w-12 text-red-500 flex-shrink-0" />
                 </div>
               </Card>
 
-              <Card className="p-6 bg-white dark:bg-red-900/20 border-red-200 dark:border-red-800">
-                <div className="flex items-center justify-between">
+              <Card className="p-4 md:p-6 bg-white dark:bg-red-900/20 border-red-200 dark:border-red-800">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                   <div>
-                    <p className="text-sm text-red-600 dark:text-red-300 font-medium">Total Orders</p>
-                    <p className="text-3xl font-bold text-red-900 dark:text-red-100 mt-2">{stats?.totalOrders || 0}</p>
+                    <p className="text-xs md:text-sm text-red-600 dark:text-red-300 font-medium">Total Orders</p>
+                    <p className="text-2xl md:text-3xl font-bold text-red-900 dark:text-red-100 mt-2">{stats?.totalOrders || 0}</p>
                   </div>
-                  <ShoppingBag className="h-12 w-12 text-red-500" />
+                  <ShoppingBag className="h-8 md:h-12 w-8 md:w-12 text-red-500 flex-shrink-0" />
                 </div>
               </Card>
 
-              <Card className="p-6 bg-white dark:bg-red-900/20 border-red-200 dark:border-red-800">
-                <div className="flex items-center justify-between">
+              <Card className="p-4 md:p-6 bg-white dark:bg-red-900/20 border-red-200 dark:border-red-800">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                   <div>
-                    <p className="text-sm text-red-600 dark:text-red-300 font-medium">Total Revenue</p>
-                    <p className="text-3xl font-bold text-red-900 dark:text-red-100 mt-2">
+                    <p className="text-xs md:text-sm text-red-600 dark:text-red-300 font-medium">Total Revenue</p>
+                    <p className="text-2xl md:text-3xl font-bold text-red-900 dark:text-red-100 mt-2">
                       ₦{stats?.totalRevenue?.toLocaleString() || 0}
                     </p>
                   </div>
-                  <TrendingUp className="h-12 w-12 text-red-500" />
+                  <TrendingUp className="h-8 md:h-12 w-8 md:w-12 text-red-500 flex-shrink-0" />
                 </div>
               </Card>
 
-              <Card className="p-6 bg-white dark:bg-red-900/20 border-red-200 dark:border-red-800">
-                <div className="flex items-center justify-between">
+              <Card className="p-4 md:p-6 bg-white dark:bg-red-900/20 border-red-200 dark:border-red-800">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                   <div>
-                    <p className="text-sm text-red-600 dark:text-red-300 font-medium">Pending Withdrawals</p>
-                    <p className="text-3xl font-bold text-red-900 dark:text-red-100 mt-2">
+                    <p className="text-xs md:text-sm text-red-600 dark:text-red-300 font-medium">Pending Withdrawals</p>
+                    <p className="text-2xl md:text-3xl font-bold text-red-900 dark:text-red-100 mt-2">
                       {stats?.pendingWithdrawals || 0}
                     </p>
                     <p className="text-xs text-red-600 dark:text-red-300 mt-1">
                       ₦{stats?.pendingWithdrawalAmount?.toLocaleString() || 0}
                     </p>
                   </div>
-                  <DollarSign className="h-12 w-12 text-red-500" />
+                  <DollarSign className="h-8 md:h-12 w-8 md:w-12 text-red-500 flex-shrink-0" />
                 </div>
               </Card>
             </div>
@@ -310,8 +310,8 @@ export default function AdminDashboard() {
         {activeSection === "withdrawals" && (
           <div className="space-y-6">
             <div>
-              <h2 className="text-3xl font-bold text-red-900 dark:text-red-100">Withdrawal Requests</h2>
-              <p className="text-red-700 dark:text-red-200">Review and manage vendor withdrawal requests</p>
+              <h2 className="text-2xl md:text-3xl font-bold text-red-900 dark:text-red-100">Withdrawal Requests</h2>
+              <p className="text-xs md:text-base text-red-700 dark:text-red-200">Review and manage vendor withdrawal requests</p>
             </div>
 
             <Card className="p-6 bg-white dark:bg-red-900/20 border-red-200 dark:border-red-800">
@@ -386,8 +386,8 @@ export default function AdminDashboard() {
         {activeSection === "vendors" && (
           <div className="space-y-6">
             <div>
-              <h2 className="text-3xl font-bold text-red-900 dark:text-red-100">Vendor Management</h2>
-              <p className="text-red-700 dark:text-red-200">View and manage all platform vendors</p>
+              <h2 className="text-2xl md:text-3xl font-bold text-red-900 dark:text-red-100">Vendor Management</h2>
+              <p className="text-xs md:text-base text-red-700 dark:text-red-200">View and manage all platform vendors</p>
             </div>
 
             <Card className="p-6 bg-white dark:bg-red-900/20 border-red-200 dark:border-red-800">

@@ -68,24 +68,24 @@ const MarketplaceLayout = ({ isFullScreen = false }: { isFullScreen?: boolean })
       </div>
 
       {/* Filters */}
-      <div className="px-4 py-3 border-t border-border overflow-x-auto">
-        <div className="flex items-center gap-2 min-w-max">
-          <button className="px-3 py-1.5 text-sm border border-border rounded-lg hover:bg-accent transition-colors">
+      <div className="px-4 py-3 border-t border-border overflow-x-auto md:overflow-x-visible pb-2 md:pb-3">
+        <div className="flex items-center gap-2 min-w-max md:min-w-0 md:flex-wrap">
+          <button className="px-2 md:px-3 py-1.5 text-xs md:text-sm border border-border rounded-lg hover:bg-accent transition-colors whitespace-nowrap flex-shrink-0">
             Category
           </button>
-          <button className="px-3 py-1.5 text-sm border border-border rounded-lg hover:bg-accent transition-colors">
+          <button className="px-2 md:px-3 py-1.5 text-xs md:text-sm border border-border rounded-lg hover:bg-accent transition-colors whitespace-nowrap flex-shrink-0">
             Color
           </button>
-          <button className="px-3 py-1.5 text-sm border border-border rounded-lg hover:bg-accent transition-colors">
+          <button className="px-2 md:px-3 py-1.5 text-xs md:text-sm border border-border rounded-lg hover:bg-accent transition-colors whitespace-nowrap flex-shrink-0">
             Size
           </button>
-          <button className="px-3 py-1.5 text-sm border border-border rounded-lg hover:bg-accent transition-colors">
+          <button className="px-2 md:px-3 py-1.5 text-xs md:text-sm border border-border rounded-lg hover:bg-accent transition-colors whitespace-nowrap flex-shrink-0">
             Price
           </button>
-          <button className="px-3 py-1.5 text-sm border border-border rounded-lg hover:bg-accent transition-colors">
+          <button className="px-2 md:px-3 py-1.5 text-xs md:text-sm border border-border rounded-lg hover:bg-accent transition-colors whitespace-nowrap flex-shrink-0">
             Brand
           </button>
-          <button className="px-3 py-1.5 text-sm border border-border rounded-lg hover:bg-accent transition-colors">
+          <button className="px-2 md:px-3 py-1.5 text-xs md:text-sm border border-border rounded-lg hover:bg-accent transition-colors whitespace-nowrap flex-shrink-0">
             Rating
           </button>
         </div>
@@ -95,14 +95,14 @@ const MarketplaceLayout = ({ isFullScreen = false }: { isFullScreen?: boolean })
     <main className="px-4 py-6 space-y-8">
       {/* Featured Brands */}
       <section>
-        <h2 className="text-lg font-semibold mb-4">Featured Brands</h2>
-        <div className="flex gap-4 overflow-x-auto pb-2">
+        <h2 className="text-base md:text-lg font-semibold mb-4">Featured Brands</h2>
+        <div className="flex gap-3 md:gap-4 overflow-x-auto md:overflow-x-visible pb-2 md:pb-0">
           {["Nike", "Adidas", "Puma", "Reebok", "New Balance", "Converse"].map((brand) => (
             <div
               key={brand}
-              className="flex-shrink-0 w-24 h-24 bg-accent rounded-lg flex items-center justify-center border border-border hover:border-primary transition-colors cursor-pointer"
+              className="flex-shrink-0 w-20 h-20 md:w-24 md:h-24 bg-accent rounded-lg flex items-center justify-center border border-border hover:border-primary transition-colors cursor-pointer"
             >
-              <span className="text-sm font-semibold">{brand}</span>
+              <span className="text-xs md:text-sm font-semibold text-center px-1">{brand}</span>
             </div>
           ))}
         </div>

@@ -153,8 +153,8 @@ export default function AdminNotificationsPage() {
     <AdminLayout>
       <div className="space-y-6">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Send Notifications</h1>
-          <p className="text-muted-foreground">Send email announcements to vendors on the platform</p>
+          <h1 className="text-2xl md:text-3xl font-bold tracking-tight">Send Notifications</h1>
+          <p className="text-xs md:text-base text-muted-foreground">Send email announcements to vendors on the platform</p>
         </div>
 
         {lastResult && (

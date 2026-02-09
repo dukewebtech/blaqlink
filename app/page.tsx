@@ -10,85 +10,85 @@ export default function Home() {
     <div className="min-h-screen bg-white">
       {/* Navigation */}
       <nav className="sticky top-0 z-50 bg-blue-600 text-white">
-        <div className="mx-auto max-w-7xl px-6 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <div className="w-8 h-8 bg-white rounded-md flex items-center justify-center font-bold text-blue-600">B</div>
-            <span className="font-bold text-lg">Blaqora</span>
+        <div className="mx-auto max-w-7xl px-4 md:px-6 py-3 md:py-4 flex items-center justify-between gap-4 flex-wrap md:flex-nowrap">
+          <div className="flex items-center gap-2 flex-shrink-0">
+            <div className="w-8 h-8 bg-white rounded-md flex items-center justify-center font-bold text-blue-600 flex-shrink-0">B</div>
+            <span className="font-bold text-base md:text-lg hidden sm:inline">Blaqora</span>
           </div>
-          <div className="hidden md:flex items-center gap-8 text-sm">
+          <div className="hidden md:flex items-center gap-6 md:gap-8 text-xs md:text-sm">
             <Link href="#" className="hover:text-blue-100">Product</Link>
             <Link href="#" className="hover:text-blue-100">Pricing</Link>
             <Link href="#" className="hover:text-blue-100">Integration</Link>
             <Link href="#" className="hover:text-blue-100">Resources</Link>
           </div>
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 md:gap-3 flex-shrink-0">
             <Link href="/login">
-              <Button variant="ghost" size="sm" className="text-white hover:bg-blue-500">Sign up</Button>
+              <Button variant="ghost" size="sm" className="text-white hover:bg-blue-500 text-xs md:text-sm">Sign up</Button>
             </Link>
             <Link href="/signup">
-              <Button size="sm" className="rounded-full bg-yellow-300 text-blue-900 hover:bg-yellow-400 font-semibold">Get started</Button>
+              <Button size="sm" className="rounded-full bg-yellow-300 text-blue-900 hover:bg-yellow-400 font-semibold text-xs md:text-sm px-3 md:px-4">Get started</Button>
             </Link>
           </div>
         </div>
       </nav>
 
       {/* Hero Section */}
-      <section className="bg-blue-600 text-white py-24 px-6 relative overflow-hidden">
+      <section className="bg-blue-600 text-white py-12 md:py-24 px-4 md:px-6 relative overflow-hidden">
         <div className="mx-auto max-w-6xl text-center">
-          <p className="text-sm text-blue-100 mb-6">Trusted by 10K+ companies</p>
-          <h1 className="md:text-6xl font-bold mb-6 leading-tight text-3xl">
+          <p className="text-xs md:text-sm text-blue-100 mb-4 md:mb-6">Trusted by 10K+ companies</p>
+          <h1 className="text-2xl sm:text-3xl md:text-6xl font-bold mb-4 md:mb-6 leading-tight">
             Sell services and products
             <br />
             with total control
           </h1>
-          <p className="text-xl text-blue-100 mb-8 max-w-2xl mx-auto">
+          <p className="text-base md:text-xl text-blue-100 mb-6 md:mb-8 max-w-2xl mx-auto px-2">
             Complete e-commerce platform to manage your store, accept payments, track orders, and scale your business—all in one place.
           </p>
           <Link href="/signup">
-            <Button className="rounded-full bg-yellow-300 text-blue-900 hover:bg-yellow-400 font-semibold px-8 py-6 text-lg">
+            <Button className="rounded-full bg-yellow-300 text-blue-900 hover:bg-yellow-400 font-semibold px-6 md:px-8 py-4 md:py-6 text-sm md:text-lg">
               See How It Works
             </Button>
           </Link>
         </div>
 
         {/* Dashboard Cards Mockup - Complex Grid Layout */}
-        <div className="mx-auto max-w-7xl mt-20 relative px-4">
+        <div className="mx-auto max-w-7xl mt-12 md:mt-20 relative px-0 md:px-4">
           {/* Mobile/Tablet Responsive Grid */}
-          <div className="block lg:hidden space-y-4">
+          <div className="block lg:hidden space-y-4 px-4 md:px-0">
             {/* Store Overview */}
-            <div className="bg-white text-slate-900 rounded-2xl p-6 shadow-2xl">
+            <div className="bg-white text-slate-900 rounded-2xl p-4 md:p-6 shadow-2xl w-full">
               <div className="flex justify-between items-start mb-4">
-                <h3 className="font-bold text-lg">Store Overview</h3>
-                <span className="text-green-600 text-xs font-semibold bg-green-50 px-3 py-1 rounded-full">Active</span>
+                <h3 className="font-bold text-base md:text-lg">Store Overview</h3>
+                <span className="text-green-600 text-xs font-semibold bg-green-50 px-2 md:px-3 py-1 rounded-full">Active</span>
               </div>
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-2 gap-3 md:gap-4">
                 <div>
                   <p className="text-xs text-gray-600 mb-1">Total Orders</p>
-                  <p className="text-2xl font-bold">1,240</p>
+                  <p className="text-xl md:text-2xl font-bold">1,240</p>
                 </div>
                 <div>
                   <p className="text-xs text-gray-600 mb-1">Revenue</p>
-                  <p className="text-2xl font-bold">₦2.4M</p>
+                  <p className="text-xl md:text-2xl font-bold">₦2.4M</p>
                 </div>
                 <div>
                   <p className="text-xs text-gray-600 mb-1">Customers</p>
-                  <p className="text-2xl font-bold">847</p>
+                  <p className="text-xl md:text-2xl font-bold">847</p>
                 </div>
                 <div>
                   <p className="text-xs text-gray-600 mb-1">Avg Order</p>
-                  <p className="text-2xl font-bold">₦1,935</p>
+                  <p className="text-xl md:text-2xl font-bold">₦1,935</p>
                 </div>
               </div>
             </div>
 
             {/* Sales Performance */}
-            <div className="bg-white text-slate-900 rounded-2xl p-6 shadow-2xl">
-              <h3 className="font-bold text-lg mb-4">Sales Performance</h3>
+            <div className="bg-white text-slate-900 rounded-2xl p-4 md:p-6 shadow-2xl w-full">
+              <h3 className="font-bold text-base md:text-lg mb-4">Sales Performance</h3>
               <div className="space-y-4">
                 <div>
                   <div className="flex justify-between mb-2">
-                    <span className="text-sm font-medium">Products</span>
-                    <span className="font-bold">₦1,680.00</span>
+                    <span className="text-xs md:text-sm font-medium">Products</span>
+                    <span className="font-bold text-xs md:text-sm">₦1,680.00</span>
                   </div>
                   <div className="h-2 bg-gray-200 rounded-full overflow-hidden">
                     <div className="h-full bg-gradient-to-r from-blue-400 to-blue-500 w-3/4"></div>
@@ -96,8 +96,8 @@ export default function Home() {
                 </div>
                 <div>
                   <div className="flex justify-between mb-2">
-                    <span className="text-sm font-medium">Services</span>
-                    <span className="font-bold">₦720.00</span>
+                    <span className="text-xs md:text-sm font-medium">Services</span>
+                    <span className="font-bold text-xs md:text-sm">₦720.00</span>
                   </div>
                   <div className="h-2 bg-gray-200 rounded-full overflow-hidden">
                     <div className="h-full bg-gradient-to-r from-purple-400 to-purple-500 w-1/2"></div>
@@ -107,8 +107,8 @@ export default function Home() {
             </div>
 
             {/* Top Products */}
-            <div className="bg-white text-slate-900 rounded-2xl p-6 shadow-2xl">
-              <h3 className="font-bold text-lg mb-4">Top Sellers</h3>
+            <div className="bg-white text-slate-900 rounded-2xl p-4 md:p-6 shadow-2xl w-full">
+              <h3 className="font-bold text-base md:text-lg mb-4">Top Sellers</h3>
               <div className="space-y-3">
                 {[
                   { name: 'Premium Web Design', sales: '₦45,000', icon: '🎨' },
@@ -116,9 +116,9 @@ export default function Home() {
                   { name: 'Business Consulting', sales: '₦28,900', icon: '📊' }
                 ].map((item, i) => (
                   <div key={i} className="flex items-start gap-3">
-                    <span className="text-lg">{item.icon}</span>
-                    <div className="flex-1">
-                      <p className="text-sm font-semibold">{item.name}</p>
+                    <span className="text-lg flex-shrink-0">{item.icon}</span>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-xs md:text-sm font-semibold break-words">{item.name}</p>
                       <p className="text-xs text-gray-600">{item.sales} this month</p>
                     </div>
                   </div>
@@ -127,10 +127,10 @@ export default function Home() {
             </div>
 
             {/* Recent Orders */}
-            <div className="bg-white text-slate-900 rounded-2xl p-6 shadow-2xl">
-              <div className="flex justify-between items-start mb-4">
-                <h3 className="font-bold text-lg">Recent Orders</h3>
-                <Link href="#" className="text-blue-600 text-sm font-semibold">View all</Link>
+            <div className="bg-white text-slate-900 rounded-2xl p-4 md:p-6 shadow-2xl w-full">
+              <div className="flex justify-between items-start mb-4 flex-wrap gap-2">
+                <h3 className="font-bold text-base md:text-lg">Recent Orders</h3>
+                <Link href="#" className="text-blue-600 text-xs md:text-sm font-semibold">View all</Link>
               </div>
               <div className="space-y-3">
                 {[
@@ -138,8 +138,8 @@ export default function Home() {
                   { id: '#ORD-2846', customer: 'Tunde Ahmed', amount: '₦8,500', status: 'Processing' }
                 ].map((order, i) => (
                   <div key={i} className="border-b pb-3 last:border-b-0">
-                    <div className="flex justify-between items-start mb-1">
-                      <p className="text-sm font-semibold">{order.id}</p>
+                    <div className="flex justify-between items-start mb-1 flex-wrap gap-2">
+                      <p className="text-xs md:text-sm font-semibold">{order.id}</p>
                       <span className={`text-xs font-semibold px-2 py-1 rounded-full ${order.status === 'Delivered' ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'}`}>
                         {order.status}
                       </span>
@@ -153,9 +153,9 @@ export default function Home() {
           </div>
 
           {/* Desktop Layout */}
-          <div className="hidden lg:block relative h-[600px] perspective">
+          <div className="hidden lg:block relative h-[600px] perspective overflow-x-hidden">
             {/* Top Left - Store Overview Card */}
-            <div className="absolute left-12 top-0 bg-white text-slate-900 rounded-2xl p-6 shadow-2xl w-72 z-30">
+            <div className="absolute left-4 xl:left-12 top-0 bg-white text-slate-900 rounded-2xl p-6 shadow-2xl w-72 z-30">
               <div className="flex justify-between items-start mb-6">
                 <h3 className="font-bold text-lg">Store Overview</h3>
                 <span className="text-green-600 text-xs font-semibold bg-green-50 px-3 py-1 rounded-full">Active</span>
@@ -177,7 +177,7 @@ export default function Home() {
             </div>
 
             {/* Top Right - Sales Status Card */}
-            <div className="absolute right-12 top-0 bg-white text-slate-900 rounded-2xl p-6 shadow-2xl w-80 z-30">
+            <div className="absolute right-4 xl:right-12 top-0 bg-white text-slate-900 rounded-2xl p-6 shadow-2xl w-80 z-30">
               <div className="flex justify-between items-start mb-6">
                 <h3 className="font-bold text-lg">Sales Performance</h3>
                 <span className="text-blue-600 text-xs font-semibold bg-blue-50 px-3 py-1 rounded-full">Live</span>
@@ -217,8 +217,8 @@ export default function Home() {
             <div className="absolute left-0 top-32 bg-white text-slate-900 rounded-2xl p-6 shadow-2xl w-72 z-20">
               <div className="flex items-start gap-4 mb-4">
                 <div className="w-14 h-14 rounded-full bg-gradient-to-br from-blue-400 to-blue-600 flex-shrink-0 flex items-center justify-center text-white text-xl">🎨</div>
-                <div className="flex-1">
-                  <h3 className="font-bold">Premium Web Design</h3>
+                <div className="flex-1 min-w-0">
+                  <h3 className="font-bold break-words">Premium Web Design</h3>
                   <p className="text-xs text-gray-600">Top Product This Month</p>
                   <Link href="#" className="text-blue-600 text-xs font-semibold mt-1">See details</Link>
                 </div>
@@ -251,8 +251,8 @@ export default function Home() {
                   <div className="w-8 h-8 bg-purple-100 rounded-lg flex items-center justify-center flex-shrink-0">
                     ⚙️
                   </div>
-                  <div className="flex-1">
-                    <p className="text-sm font-semibold">API Integration</p>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-semibold break-words">API Integration</p>
                     <p className="text-xs text-gray-600">Technical Services</p>
                   </div>
                 </div>
@@ -266,8 +266,8 @@ export default function Home() {
                   <div className="w-8 h-8 bg-green-100 rounded-lg flex items-center justify-center flex-shrink-0">
                     📊
                   </div>
-                  <div className="flex-1">
-                    <p className="text-sm font-semibold">Business Consulting</p>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-semibold break-words">Business Consulting</p>
                     <p className="text-xs text-gray-600">Professional Services</p>
                   </div>
                 </div>
@@ -359,8 +359,8 @@ export default function Home() {
               <div className="bg-white text-slate-900 rounded-2xl p-6 shadow-2xl">
                 <div className="flex items-start gap-4 mb-4">
                   <div className="w-12 h-12 rounded-full bg-gradient-to-br from-orange-400 to-orange-600 flex-shrink-0"></div>
-                  <div>
-                    <h3 className="font-bold">Tunde Ahmed</h3>
+                  <div className="flex-1 min-w-0">
+                    <h3 className="font-bold break-words">Tunde Ahmed</h3>
                     <p className="text-xs text-gray-600">Best Customer</p>
                   </div>
                 </div>

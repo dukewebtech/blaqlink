@@ -169,24 +169,24 @@ export default function DashboardPage() {
     <DashboardLayout>
       <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
         {/* Header */}
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
           <div>
-            <h1 className="text-3xl font-bold tracking-tight">Dashboard</h1>
-            <p className="text-muted-foreground mt-1">Dashboard</p>
+            <h1 className="text-2xl md:text-3xl font-bold tracking-tight">Dashboard</h1>
+            <p className="text-muted-foreground mt-1 text-sm md:text-base">Dashboard</p>
           </div>
           {userStoreId && storeUrl && userProfile?.admin_kyc_approved && (
-            <div className="flex items-center gap-2">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 min-w-0">
               <a
                 href={storeUrl}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="text-sm text-primary hover:underline font-medium"
+                className="text-xs md:text-sm text-primary hover:underline font-medium truncate"
               >
                 {storeUrl}
               </a>
-              <Button onClick={copyToClipboard} variant="outline" size="sm" className="gap-2 bg-transparent">
+              <Button onClick={copyToClipboard} variant="outline" size="sm" className="gap-2 bg-transparent flex-shrink-0">
                 {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
-                {copied ? "Copied!" : "Copy"}
+                <span className="hidden sm:inline">{copied ? "Copied!" : "Copy"}</span>
               </Button>
             </div>
           )}

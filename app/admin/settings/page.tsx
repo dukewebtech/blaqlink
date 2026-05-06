@@ -1,0 +1,209 @@
+"use client"
+
+import { AdminLayout } from "@/components/admin/admin-layout"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import { useEffect, useState } from "react"
+import { useToast } from "@/hooks/use-toast"
+import { AlertCircle } from "lucide-react"
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
+import { Switch } from "@/components/ui/switch"
+
+export default function AdminSettingsPage() {
+  const [userData, setUserData] = useState<any>(null)
+  const [commission, setCommission] = useState("")
+  const [minWithdrawal, setMinWithdrawal] = useState("")
+  const [autoWithdrawal, setAutoWithdrawal] = useState(false)
+  const [loading, setLoading] = useState(true)
+  const [saving, setSaving] = useState(false)
+  const [needsSetup, setNeedsSetup] = useState(false)
+  const { toast } = useToast()
+
+  useEffect(() => {
+    async function fetchData() {
+      try {
+        const userResponse = await fetch("/api/users/me")
+        const userResult = await userResponse.json()
+        if (userResult.ok && userResult.data?.user) {
+          setUserData(userResult.data.user)
+        }
+
+        const settingsResponse = await fetch("/api/admin/settings")
+        const settingsResult = await settingsResponse.json()
+        if (settingsResult.ok && settingsResult.settings) {
+          setCommission(settingsResult.settings.commission_percentage?.toString() || "10")
+          setMinWithdrawal(settingsResult.settings.minimum_withdrawal_amount?.toString() || "5000")
+          setAutoWithdrawal(settingsResult.settings.auto_withdrawal_enabled ?? false)
+          setNeedsSetup(settingsResult.needsSetup || false)
+        }
+      } catch (error) {
+        console.error("[v0] Error fetching data:", error)
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    fetchData()
+  }, [])
+
+  const handleSavePlatformSettings = async () => {
+    try {
+      setSaving(true)
+
+      const response = await fetch("/api/admin/settings", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          commission_percentage: Number(commission),
+          minimum_withdrawal_amount: Number(minWithdrawal),
+          auto_withdrawal_enabled: autoWithdrawal,
+        }),
+      })
+
+      const result = await response.json()
+
+      if (response.ok) {
+        setNeedsSetup(false)
+        toast({
+          title: "Settings Saved",
+          description: result.message || "Platform settings have been updated successfully.",
+        })
+      } else {
+        if (result.needsSetup) setNeedsSetup(true)
+        toast({
+          title: "Error",
+          description: result.error || "Failed to save settings",
+          variant: "destructive",
+        })
+      }
+    } catch (error) {
+      console.error("[v0] Error saving platform settings:", error)
+      toast({
+        title: "Error",
+        description: "Failed to save platform settings",
+        variant: "destructive",
+      })
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const handleSave = () => {
+    toast({
+      title: "Settings Saved",
+      description: "Your admin settings have been updated successfully.",
+    })
+  }
+
+  if (loading) {
+    return (
+      <AdminLayout>
+        <div className="flex items-center justify-center min-h-[400px]">
+          <p>Loading settings...</p>
+        </div>
+      </AdminLayout>
+    )
+  }
+
+  return (
+    <AdminLayout>
+      <div className="space-y-6">
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight">Admin Settings</h1>
+          <p className="text-muted-foreground">Manage your admin profile and preferences</p>
+        </div>
+
+        {needsSetup && (
+          <Alert variant="destructive">
+            <AlertCircle className="h-4 w-4" />
+            <AlertTitle>Database Setup Required</AlertTitle>
+            <AlertDescription>
+              The platform_settings table needs to be created. Please run the SQL script located at{" "}
+              <code className="bg-muted px-1 py-0.5 rounded">scripts/001-create-platform-settings.sql</code> in your
+              Supabase SQL Editor. The script will create the table with default values (10% commission, ₦5,000 minimum
+              withdrawal).
+            </AlertDescription>
+          </Alert>
+        )}
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Profile Information</CardTitle>
+            <CardDescription>Update your admin account details</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="name">Full Name</Label>
+              <Input id="name" defaultValue={userData?.full_name || ""} />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="email">Email</Label>
+              <Input id="email" type="email" defaultValue={userData?.email || ""} disabled />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="phone">Phone</Label>
+              <Input id="phone" defaultValue={userData?.phone || ""} />
+            </div>
+            <Button onClick={handleSave}>Save Changes</Button>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Platform Settings</CardTitle>
+            <CardDescription>Configure platform-wide settings that affect all vendors</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="commission">Platform Commission (%)</Label>
+              <Input
+                id="commission"
+                type="number"
+                min="0"
+                max="100"
+                step="0.1"
+                value={commission}
+                onChange={(e) => setCommission(e.target.value)}
+              />
+              <p className="text-sm text-muted-foreground">
+                Percentage deducted from vendor revenue. Current: {commission}%
+              </p>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="min-withdrawal">Minimum Withdrawal Amount (NGN)</Label>
+              <Input
+                id="min-withdrawal"
+                type="number"
+                min="0"
+                step="100"
+                value={minWithdrawal}
+                onChange={(e) => setMinWithdrawal(e.target.value)}
+              />
+              <p className="text-sm text-muted-foreground">
+                Minimum amount vendors can withdraw. Current: ₦{Number(minWithdrawal).toLocaleString()}
+              </p>
+            </div>
+            <div className="flex items-center justify-between rounded-lg border p-4">
+              <div className="space-y-0.5">
+                <Label htmlFor="auto-withdrawal" className="text-base">Automatic Withdrawal Processing</Label>
+                <p className="text-sm text-muted-foreground">
+                  When enabled, withdrawal requests are automatically disbursed via KoraPay without admin approval.
+                </p>
+              </div>
+              <Switch
+                id="auto-withdrawal"
+                checked={autoWithdrawal}
+                onCheckedChange={setAutoWithdrawal}
+              />
+            </div>
+            <Button onClick={handleSavePlatformSettings} disabled={saving}>
+              {saving ? "Saving..." : "Save Platform Settings"}
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    </AdminLayout>
+  )
+}

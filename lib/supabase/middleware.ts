@@ -90,10 +90,8 @@ export async function updateSession(request: NextRequest) {
           .eq("user_id", user.id)
           .single()
 
-        const { data: userData } = await supabase.from("users").select("admin_kyc_approved").eq("id", user.id).single()
-
-        // Redirect to onboarding if not completed or KYC not approved
-        if (!progress?.onboarding_completed || !userData?.admin_kyc_approved) {
+        // Only gate on store setup completion — KYC is progressive, not a blocker
+        if (!progress?.onboarding_completed) {
           const url = request.nextUrl.clone()
           url.pathname = "/onboarding"
           return NextResponse.redirect(url)
@@ -125,9 +123,7 @@ export async function updateSession(request: NextRequest) {
           .eq("user_id", user.id)
           .single()
 
-        const { data: kycData } = await supabase.from("users").select("admin_kyc_approved").eq("id", user.id).single()
-
-        if (!progress?.onboarding_completed || !kycData?.admin_kyc_approved) {
+        if (!progress?.onboarding_completed) {
           url.pathname = "/onboarding"
         } else {
           url.pathname = "/dashboard"

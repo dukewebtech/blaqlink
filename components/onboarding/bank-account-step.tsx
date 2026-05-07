@@ -1,78 +1,84 @@
 "use client"
 
 import type React from "react"
-
 import { useState } from "react"
 import { Card } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { CreditCard, ArrowRight, Loader2, AlertCircle } from "lucide-react"
+import { Banknote, ArrowRight, Loader2, CheckCircle2, AlertCircle } from "lucide-react"
+import { BANK_NAMES } from "@/components/onboarding/identity-upload-step"
 
 interface Props {
   onNext: () => void
 }
 
-const nigerianBanks = [
-  "Access Bank",
-  "Citibank",
-  "Ecobank Nigeria",
-  "Fidelity Bank",
-  "First Bank of Nigeria",
-  "First City Monument Bank (FCMB)",
-  "Globus Bank",
-  "Guaranty Trust Bank (GTBank)",
-  "Heritage Bank",
-  "Keystone Bank",
-  "Parallex Bank",
-  "Polaris Bank",
-  "Premium Trust Bank",
-  "Providus Bank",
-  "Stanbic IBTC Bank",
-  "Standard Chartered Bank",
-  "Sterling Bank",
-  "SunTrust Bank",
-  "Titan Trust Bank",
-  "Union Bank of Nigeria",
-  "United Bank for Africa (UBA)",
-  "Unity Bank",
-  "Wema Bank",
-  "Zenith Bank",
-]
-
 export function BankAccountStep({ onNext }: Props) {
   const [loading, setLoading] = useState(false)
+  const [resolving, setResolving] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [formData, setFormData] = useState({
-    bankName: "",
-    accountNumber: "",
-    accountName: "",
-  })
+  const [bankName, setBankName] = useState("")
+  const [accountNumber, setAccountNumber] = useState("")
+  const [resolvedAccountName, setResolvedAccountName] = useState("")
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  async function resolveAccount(bank: string, account: string) {
+    if (account.length !== 10 || !bank) return
+    setResolving(true)
+    setResolvedAccountName("")
+    setError(null)
+    try {
+      const res = await fetch("/api/payment/korapay/resolve-bank", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ bank_name: bank, account_number: account }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error)
+      setResolvedAccountName(data.account_name)
+    } catch (err: any) {
+      setError(err.message || "Could not resolve account. Check the number and try again.")
+    } finally {
+      setResolving(false)
+    }
+  }
+
+  function handleAccountNumberChange(value: string) {
+    const digits = value.replace(/\D/g, "").slice(0, 10)
+    setAccountNumber(digits)
+    setResolvedAccountName("")
+    setError(null)
+    if (digits.length === 10) resolveAccount(bankName, digits)
+  }
+
+  function handleBankChange(value: string) {
+    setBankName(value)
+    setResolvedAccountName("")
+    setError(null)
+    if (accountNumber.length === 10) resolveAccount(value, accountNumber)
+  }
+
+  async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
+    if (!resolvedAccountName) {
+      setError("Please wait for account verification to complete.")
+      return
+    }
     setLoading(true)
     setError(null)
-
     try {
-      const response = await fetch("/api/onboarding", {
+      const res = await fetch("/api/onboarding", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          step: 4,
-          data: formData,
+          step: "bank",
+          data: { bankName, accountNumber, accountName: resolvedAccountName },
         }),
       })
-
-      if (!response.ok) {
-        throw new Error("Failed to save bank information")
-      }
-
+      if (!res.ok) throw new Error("Failed to save bank information")
       onNext()
-    } catch (error) {
-      console.error("[v0] Error saving bank information:", error)
-      setError(error instanceof Error ? error.message : "An error occurred")
+    } catch (err: any) {
+      setError(err.message)
     } finally {
       setLoading(false)
     }
@@ -82,93 +88,76 @@ export function BankAccountStep({ onNext }: Props) {
     <Card className="p-8 animate-in fade-in slide-in-from-right-4 duration-500">
       <div className="flex items-center gap-3 mb-6">
         <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-primary/10">
-          <CreditCard className="h-6 w-6 text-primary" />
+          <Banknote className="h-6 w-6 text-primary" />
         </div>
         <div>
-          <h2 className="text-2xl font-bold">Bank Account Setup</h2>
-          <p className="text-sm text-muted-foreground">Connect your payout account</p>
+          <h2 className="text-xl font-bold">Where should we send your earnings?</h2>
+          <p className="text-sm text-muted-foreground">Add your payout account. You can update this anytime in settings.</p>
         </div>
       </div>
 
-      <div className="rounded-lg bg-amber-500/10 border border-amber-500/20 p-4 mb-6">
-        <div className="flex items-start gap-2">
-          <AlertCircle className="h-5 w-5 text-amber-600 dark:text-amber-400 flex-shrink-0 mt-0.5" />
-          <div className="text-sm text-amber-600 dark:text-amber-400">
-            <p className="font-medium mb-1">This will be your primary payout account</p>
-            <p className="text-xs">
-              All withdrawals will be sent to this account. You can update it later in settings.
-            </p>
-          </div>
-        </div>
-      </div>
-
-      <form onSubmit={handleSubmit} className="space-y-6">
-        <div className="space-y-2">
-          <Label htmlFor="bankName">Bank Name *</Label>
-          <Select
-            required
-            value={formData.bankName}
-            onValueChange={(value) => setFormData({ ...formData, bankName: value })}
-          >
-            <SelectTrigger className="h-12">
+      <form onSubmit={handleSubmit} className="space-y-5">
+        <div className="space-y-1.5">
+          <Label>Bank Name <span className="text-destructive">*</span></Label>
+          <Select value={bankName} onValueChange={handleBankChange} required>
+            <SelectTrigger className="h-11">
               <SelectValue placeholder="Select your bank" />
             </SelectTrigger>
             <SelectContent>
-              {nigerianBanks.map((bank) => (
-                <SelectItem key={bank} value={bank}>
-                  {bank}
-                </SelectItem>
+              {BANK_NAMES.map((b: string) => (
+                <SelectItem key={b} value={b}>{b}</SelectItem>
               ))}
             </SelectContent>
           </Select>
         </div>
 
-        <div className="space-y-2">
-          <Label htmlFor="accountNumber">Account Number *</Label>
+        <div className="space-y-1.5">
+          <Label htmlFor="accountNumber">Account Number <span className="text-destructive">*</span></Label>
           <Input
             id="accountNumber"
-            placeholder="Enter your 10-digit account number"
-            required
+            placeholder="10-digit account number"
+            value={accountNumber}
+            onChange={(e) => handleAccountNumberChange(e.target.value)}
             maxLength={10}
-            value={formData.accountNumber}
-            onChange={(e) => setFormData({ ...formData, accountNumber: e.target.value.replace(/\D/g, "") })}
-            className="h-12"
-          />
-        </div>
-
-        <div className="space-y-2">
-          <Label htmlFor="accountName">Account Name *</Label>
-          <Input
-            id="accountName"
-            placeholder="Enter account holder name"
+            inputMode="numeric"
             required
-            value={formData.accountName}
-            onChange={(e) => setFormData({ ...formData, accountName: e.target.value })}
-            className="h-12"
+            className="h-11 font-mono tracking-wider"
           />
-          <p className="text-xs text-muted-foreground">Must match the name on your bank account</p>
         </div>
 
-        <div className="rounded-lg bg-muted/50 p-4 border">
-          <p className="text-sm text-muted-foreground">
-            <strong>Note:</strong> Automatic account verification will be added in a future update. For now, please
-            ensure your account details are correct.
-          </p>
-        </div>
+        {resolving && (
+          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+            <Loader2 className="h-4 w-4 animate-spin" /> Looking up account…
+          </div>
+        )}
 
-        {error && <div className="rounded-lg bg-destructive/10 p-3 text-sm text-destructive">{error}</div>}
+        {resolvedAccountName && !resolving && (
+          <div className="flex items-center gap-2 p-3 rounded-lg bg-green-50 border border-green-200">
+            <CheckCircle2 className="h-4 w-4 text-green-600 shrink-0" />
+            <div>
+              <p className="text-xs text-muted-foreground">Account Name</p>
+              <p className="text-sm font-semibold text-green-800">{resolvedAccountName}</p>
+            </div>
+          </div>
+        )}
 
-        <Button type="submit" size="lg" className="w-full gap-2" disabled={loading}>
+        {error && (
+          <div className="flex items-start gap-2 p-3 rounded-lg bg-destructive/10 text-sm text-destructive">
+            <AlertCircle className="h-4 w-4 mt-0.5 shrink-0" />
+            <span>{error}</span>
+          </div>
+        )}
+
+        <Button
+          type="submit"
+          size="lg"
+          className="w-full gap-2"
+          disabled={loading || resolving || !resolvedAccountName}
+        >
           {loading ? (
-            <>
-              <Loader2 className="h-5 w-5 animate-spin" />
-              Saving...
-            </>
+            <><Loader2 className="h-5 w-5 animate-spin" /> Saving…</>
           ) : (
-            <>
-              Continue
-              <ArrowRight className="h-5 w-5" />
-            </>
+            <>Save Payout Account <ArrowRight className="h-5 w-5" /></>
           )}
         </Button>
       </form>

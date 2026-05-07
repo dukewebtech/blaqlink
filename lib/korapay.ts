@@ -117,6 +117,18 @@ export async function verifyDisbursement(reference: string) {
   return koraFetch("GET", `/transactions/${reference}`)
 }
 
+export async function resolveBankAccount(bankCode: string, accountNumber: string) {
+  return koraFetch("POST", "/misc/banks/resolve", {
+    bank: bankCode,
+    account: accountNumber,
+    currency: "NGN",
+  })
+}
+
+export async function lookupNIN(nin: string) {
+  return koraFetch("POST", "/misc/nin", { nin })
+}
+
 export async function initializeDisbursement(params: KoraDisbursementParams) {
   return koraFetch("POST", "/transactions/disburse", {
     reference: params.reference,

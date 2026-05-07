@@ -1,23 +1,12 @@
 "use client"
 import { DashboardLayout } from "@/components/dashboard/dashboard-layout"
+import { OnboardingChecklist } from "@/components/onboarding/onboarding-checklist"
 import { StatsCard } from "@/components/dashboard/stats-card"
 import { SalesChart } from "@/components/dashboard/sales-chart"
 import { RecentOrders } from "@/components/dashboard/recent-orders"
-import {
-  TrendingUp,
-  Users,
-  ShoppingCart,
-  Package,
-  Copy,
-  Check,
-  AlertCircle,
-  CheckCircle,
-  Clock,
-  XCircle,
-} from "lucide-react"
+import { TrendingUp, Users, ShoppingCart, Package, Copy, Check } from "lucide-react"
 import { useEffect, useState } from "react"
 import { Button } from "@/components/ui/button"
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 
 interface DashboardStats {
   totalRevenue: number
@@ -27,13 +16,6 @@ interface DashboardStats {
   revenueChange: string
 }
 
-interface UserProfile {
-  id: string
-  kyc_status: "not_submitted" | "pending_review" | "approved" | "rejected"
-  admin_kyc_approved: boolean
-  onboarding_completed: boolean
-  full_name?: string
-}
 
 export default function DashboardPage() {
   const [stats, setStats] = useState<DashboardStats | null>(null)
@@ -42,7 +24,6 @@ export default function DashboardPage() {
   const [userStoreId, setUserStoreId] = useState<string | null>(null)
   const [copied, setCopied] = useState(false)
   const [storeUrl, setStoreUrl] = useState<string>("")
-  const [userProfile, setUserProfile] = useState<UserProfile | null>(null)
 
   useEffect(() => {
     async function fetchStats() {
@@ -69,8 +50,6 @@ export default function DashboardPage() {
         if (response.ok) {
           const result = await response.json()
           const user = result.data?.user || result.user || result
-          console.log("[v0] Dashboard - User profile:", user)
-          setUserProfile(user)
           setUserStoreId(user.id)
           if (typeof window !== "undefined") {
             setStoreUrl(`${window.location.origin}/store/${user.id}`)
@@ -103,50 +82,6 @@ export default function DashboardPage() {
     }).format(amount)
   }
 
-  const getKycStatusDisplay = () => {
-    if (!userProfile) return null
-
-    const { kyc_status, admin_kyc_approved } = userProfile
-
-    if (admin_kyc_approved) {
-      return {
-        icon: CheckCircle,
-        title: "Account Verified",
-        description: "Your account has been verified. You can now access all features.",
-        variant: "default" as const,
-        iconColor: "text-green-600",
-      }
-    }
-
-    switch (kyc_status) {
-      case "pending_review":
-        return {
-          icon: Clock,
-          title: "Verification Pending",
-          description: "Your documents are being reviewed. This typically takes 24-48 hours.",
-          variant: "default" as const,
-          iconColor: "text-yellow-600",
-        }
-      case "rejected":
-        return {
-          icon: XCircle,
-          title: "Verification Failed",
-          description: "Your verification was unsuccessful. Please contact support for assistance.",
-          variant: "destructive" as const,
-          iconColor: "text-destructive",
-        }
-      case "not_submitted":
-      default:
-        return {
-          icon: AlertCircle,
-          title: "Account Not Verified",
-          description: "Complete your onboarding to verify your account and access all features.",
-          variant: "default" as const,
-          iconColor: "text-blue-600",
-        }
-    }
-  }
-
   if (error) {
     return (
       <DashboardLayout>
@@ -160,11 +95,6 @@ export default function DashboardPage() {
     )
   }
 
-  const kycStatus = getKycStatusDisplay()
-  const hasOnboardingCompleted = userProfile?.onboarding_completed === true
-  const hasAdminApproval = userProfile?.admin_kyc_approved === true
-  const canAccessDashboard = hasOnboardingCompleted && hasAdminApproval
-
   return (
     <DashboardLayout>
       <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-700">
@@ -174,7 +104,7 @@ export default function DashboardPage() {
             <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Dashboard</h1>
             <p className="text-muted-foreground mt-1 text-sm">Welcome back</p>
           </div>
-          {userStoreId && storeUrl && userProfile?.admin_kyc_approved && (
+          {userStoreId && storeUrl && (
             <div className="flex items-center gap-2 min-w-0">
               <a
                 href={storeUrl}
@@ -193,23 +123,8 @@ export default function DashboardPage() {
           )}
         </div>
 
-        {!hasOnboardingCompleted && (
-          <Alert className="border-2 border-blue-500 bg-blue-50">
-            <AlertCircle className="h-5 w-5 text-blue-600" />
-            <AlertTitle className="font-semibold text-blue-900">Complete Your Onboarding</AlertTitle>
-            <AlertDescription className="text-blue-800">Please complete your onboarding to continue.</AlertDescription>
-          </Alert>
-        )}
-
-        {hasOnboardingCompleted && !hasAdminApproval && (
-          <Alert className="border-2 border-yellow-500 bg-yellow-50">
-            <Clock className="h-5 w-5 text-yellow-600" />
-            <AlertTitle className="font-semibold text-yellow-900">Verification In Progress</AlertTitle>
-            <AlertDescription className="text-yellow-800">
-              Your onboarding is complete. Verification is in progress — you'll gain full access once approved.
-            </AlertDescription>
-          </Alert>
-        )}
+        {/* Progressive onboarding checklist — non-blocking, hides when all complete */}
+        {userStoreId && <OnboardingChecklist storeId={userStoreId} />}
 
         {/* Stats Grid */}
         <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">

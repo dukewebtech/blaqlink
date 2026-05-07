@@ -1,263 +1,237 @@
 "use client"
 
 import type React from "react"
-
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Card } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Badge } from "@/components/ui/badge"
-import { Store, Upload, ArrowRight, Loader2, X, CheckCircle2, Palette } from "lucide-react"
-import { useRouter } from "next/navigation"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { ArrowRight, Loader2, Upload, X, Store } from "lucide-react"
 
-const storeTemplates = [
-  {
-    id: "marketplace-pro",
-    name: "Marketplace Pro",
-    description: "Feature-rich layout with filters and product grids",
-    image: "/marketplace-ecommerce-layout.jpg",
-    badge: "Recommended",
-  },
-  {
-    id: "premium-boutique",
-    name: "Premium Boutique",
-    description: "Minimal, elegant design for luxury brands",
-    image: "/minimal-fashion-boutique-storefront.jpg",
-    badge: "Popular",
-  },
-  {
-    id: "beauty-essentials",
-    name: "Beauty Essentials",
-    description: "Clean layout for beauty and skincare brands",
-    image: "/placeholder.svg?height=200&width=300",
-  },
+const CATEGORIES = ["Food & Beverages", "Fashion", "Electronics", "Beauty", "Services", "Other"]
+
+const NIGERIAN_STATES = [
+  "Abia", "Adamawa", "Akwa Ibom", "Anambra", "Bauchi", "Bayelsa", "Benue", "Borno",
+  "Cross River", "Delta", "Ebonyi", "Edo", "Ekiti", "Enugu", "FCT", "Gombe", "Imo",
+  "Jigawa", "Kaduna", "Kano", "Katsina", "Kebbi", "Kogi", "Kwara", "Lagos", "Nasarawa",
+  "Niger", "Ogun", "Ondo", "Osun", "Oyo", "Plateau", "Rivers", "Sokoto", "Taraba",
+  "Yobe", "Zamfara",
 ]
 
-const brandColors = [
-  { name: "Blue", value: "#3B82F6" },
-  { name: "Purple", value: "#8B5CF6" },
-  { name: "Pink", value: "#EC4899" },
-  { name: "Green", value: "#10B981" },
-  { name: "Orange", value: "#F97316" },
-  { name: "Red", value: "#EF4444" },
-]
+function toSlug(value: string) {
+  return value
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9\s-]/g, "")
+    .replace(/\s+/g, "-")
+    .replace(/-+/g, "-")
+}
 
-export function StoreSetupStep({ onNext }: any) {
-  const router = useRouter()
+interface Props {
+  prefillName?: string
+  onComplete: () => void
+}
+
+export function StoreSetupStep({ prefillName = "", onComplete }: Props) {
   const [loading, setLoading] = useState(false)
   const [uploadingLogo, setUploadingLogo] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [formData, setFormData] = useState({
-    storeTemplate: "marketplace-pro",
-    storeLogo: "",
-    brandColor: "#3B82F6",
-  })
-  const [logoFileName, setLogoFileName] = useState("")
 
-  const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const [businessName, setBusinessName] = useState("")
+  const [slug, setSlug] = useState("")
+  const [slugEdited, setSlugEdited] = useState(false)
+  const [category, setCategory] = useState("")
+  const [city, setCity] = useState("")
+  const [state, setState] = useState("")
+  const [logoUrl, setLogoUrl] = useState("")
+
+  // Pre-fill business name from full name once available
+  useEffect(() => {
+    if (prefillName && !businessName) {
+      setBusinessName(prefillName)
+      if (!slugEdited) setSlug(toSlug(prefillName))
+    }
+  }, [prefillName])
+
+  function handleBusinessNameChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const val = e.target.value
+    setBusinessName(val)
+    if (!slugEdited) setSlug(toSlug(val))
+  }
+
+  function handleSlugChange(e: React.ChangeEvent<HTMLInputElement>) {
+    setSlug(toSlug(e.target.value))
+    setSlugEdited(true)
+  }
+
+  async function handleLogoUpload(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
     if (!file) return
-
     setUploadingLogo(true)
-    setError(null)
-
     try {
-      const uploadFormData = new FormData()
-      uploadFormData.append("file", file)
-
-      const response = await fetch("/api/upload", {
-        method: "POST",
-        body: uploadFormData,
-      })
-
-      if (!response.ok) {
-        throw new Error("Upload failed")
-      }
-
-      const data = await response.json()
-      setFormData((prev) => ({ ...prev, storeLogo: data.url }))
-      setLogoFileName(file.name)
-      console.log("[v0] Store logo uploaded:", data.url)
-    } catch (error) {
-      console.error("[v0] Logo upload error:", error)
-      setError("Failed to upload logo. Please try again.")
+      const form = new FormData()
+      form.append("file", file)
+      const res = await fetch("/api/upload", { method: "POST", body: form })
+      if (!res.ok) throw new Error("Upload failed")
+      const data = await res.json()
+      setLogoUrl(data.url)
+    } catch {
+      setError("Logo upload failed. You can skip this and add it later.")
     } finally {
       setUploadingLogo(false)
     }
   }
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
+    if (!businessName.trim() || !slug.trim() || !category || !city.trim() || !state) {
+      setError("Please fill in all required fields.")
+      return
+    }
     setLoading(true)
     setError(null)
-
     try {
-      const response = await fetch("/api/onboarding", {
+      const res = await fetch("/api/onboarding", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          step: 5,
-          data: formData,
+          step: 1,
+          data: { businessName, storeSlug: slug, businessCategory: category, city, state, storeLogo: logoUrl },
         }),
       })
-
-      if (!response.ok) {
-        throw new Error("Failed to complete store setup")
+      if (!res.ok) {
+        const d = await res.json()
+        throw new Error(d.error || "Failed to create store")
       }
-
-      // Move to completion screen
-      onNext()
-    } catch (error) {
-      console.error("[v0] Error completing store setup:", error)
-      setError(error instanceof Error ? error.message : "An error occurred")
+      onComplete()
+    } catch (err: any) {
+      setError(err.message)
     } finally {
       setLoading(false)
     }
   }
 
   return (
-    <Card className="p-8 animate-in fade-in slide-in-from-right-4 duration-500">
-      <div className="flex items-center gap-3 mb-6">
-        <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-primary/10">
-          <Store className="h-6 w-6 text-primary" />
-        </div>
-        <div>
-          <h2 className="text-2xl font-bold">Store Setup</h2>
-          <p className="text-sm text-muted-foreground">Customize your storefront</p>
-        </div>
+    <Card className="p-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
+      {/* Header */}
+      <div className="mb-6">
+        <p className="text-xs font-semibold text-primary uppercase tracking-widest mb-1">Step 1 of 1</p>
+        <h2 className="text-2xl font-bold">Let's name your store</h2>
+        <p className="text-sm text-muted-foreground mt-1">
+          Just one step and you're in — no further setup required before your dashboard.
+        </p>
       </div>
 
-      <form onSubmit={handleSubmit} className="space-y-6">
-        {/* Template Selection */}
-        <div className="space-y-3">
-          <Label>Choose Store Template *</Label>
-          <div className="grid md:grid-cols-3 gap-4">
-            {storeTemplates.map((template) => (
-              <div
-                key={template.id}
-                onClick={() => setFormData({ ...formData, storeTemplate: template.id })}
-                className={`relative cursor-pointer rounded-lg border-2 overflow-hidden transition-all ${
-                  formData.storeTemplate === template.id
-                    ? "border-primary shadow-lg scale-105"
-                    : "border-border hover:border-primary/50"
-                }`}
-              >
-                {formData.storeTemplate === template.id && (
-                  <div className="absolute top-2 right-2 z-10">
-                    <div className="bg-primary rounded-full p-1">
-                      <CheckCircle2 className="h-4 w-4 text-primary-foreground" />
-                    </div>
-                  </div>
-                )}
-                {template.badge && <Badge className="absolute top-2 left-2 z-10 text-xs">{template.badge}</Badge>}
-                <img
-                  src={template.image || "/placeholder.svg"}
-                  alt={template.name}
-                  className="w-full h-32 object-cover"
-                />
-                <div className="p-3">
-                  <p className="font-medium text-sm">{template.name}</p>
-                  <p className="text-xs text-muted-foreground mt-1">{template.description}</p>
-                </div>
-              </div>
-            ))}
+      <form onSubmit={handleSubmit} className="space-y-5">
+        {/* Business Name */}
+        <div className="space-y-1.5">
+          <Label htmlFor="businessName">Business Name <span className="text-destructive">*</span></Label>
+          <Input
+            id="businessName"
+            placeholder="e.g. Rinno Cakes"
+            value={businessName}
+            onChange={handleBusinessNameChange}
+            required
+            className="h-11"
+          />
+        </div>
+
+        {/* Store Slug */}
+        <div className="space-y-1.5">
+          <Label htmlFor="storeSlug">Store URL Slug <span className="text-destructive">*</span></Label>
+          <Input
+            id="storeSlug"
+            placeholder="rinno-cakes"
+            value={slug}
+            onChange={handleSlugChange}
+            required
+            className="h-11 font-mono text-sm"
+          />
+          {slug && (
+            <div className="flex items-center gap-1.5 text-xs text-muted-foreground bg-muted/50 rounded-md px-3 py-2">
+              <Store className="h-3.5 w-3.5 shrink-0" />
+              <span>blaqora.store/<strong className="text-foreground">{slug}</strong></span>
+            </div>
+          )}
+        </div>
+
+        {/* Category */}
+        <div className="space-y-1.5">
+          <Label>Business Category <span className="text-destructive">*</span></Label>
+          <Select value={category} onValueChange={setCategory} required>
+            <SelectTrigger className="h-11">
+              <SelectValue placeholder="Select a category" />
+            </SelectTrigger>
+            <SelectContent>
+              {CATEGORIES.map((c) => (
+                <SelectItem key={c} value={c}>{c}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+
+        {/* Location */}
+        <div className="grid grid-cols-2 gap-3">
+          <div className="space-y-1.5">
+            <Label htmlFor="city">City <span className="text-destructive">*</span></Label>
+            <Input
+              id="city"
+              placeholder="e.g. Lagos"
+              value={city}
+              onChange={(e) => setCity(e.target.value)}
+              required
+              className="h-11"
+            />
+          </div>
+          <div className="space-y-1.5">
+            <Label>State <span className="text-destructive">*</span></Label>
+            <Select value={state} onValueChange={setState} required>
+              <SelectTrigger className="h-11">
+                <SelectValue placeholder="Select state" />
+              </SelectTrigger>
+              <SelectContent>
+                {NIGERIAN_STATES.map((s) => (
+                  <SelectItem key={s} value={s}>{s}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
         </div>
 
         {/* Logo Upload */}
-        <div className="space-y-2">
-          <Label htmlFor="storeLogo">Store Logo (Optional)</Label>
-          <div className="relative">
-            <input
-              id="storeLogo"
-              type="file"
-              accept="image/*"
-              onChange={handleLogoUpload}
-              className="hidden"
-              disabled={uploadingLogo}
-            />
+        <div className="space-y-1.5">
+          <Label>Business Logo <span className="text-xs text-muted-foreground font-normal">(optional)</span></Label>
+          <input id="logo" type="file" accept="image/*" className="hidden" onChange={handleLogoUpload} />
+          {logoUrl ? (
+            <div className="flex items-center gap-3 p-3 border rounded-lg bg-muted/30">
+              <img src={logoUrl} alt="Logo" className="h-12 w-12 object-contain rounded" />
+              <p className="text-sm text-muted-foreground flex-1">Logo uploaded</p>
+              <Button type="button" size="icon" variant="ghost" className="h-8 w-8" onClick={() => setLogoUrl("")}>
+                <X className="h-4 w-4" />
+              </Button>
+            </div>
+          ) : (
             <label
-              htmlFor="storeLogo"
-              className="flex items-center justify-center gap-2 h-32 rounded-lg border-2 border-dashed border-border hover:border-primary/50 transition-colors cursor-pointer bg-muted/30"
+              htmlFor="logo"
+              className="flex items-center gap-3 h-14 px-4 rounded-lg border-2 border-dashed border-border hover:border-primary/50 cursor-pointer transition-colors bg-muted/20"
             >
-              {formData.storeLogo ? (
-                <div className="flex items-center gap-3">
-                  <img
-                    src={formData.storeLogo || "/placeholder.svg"}
-                    alt="Store logo"
-                    className="h-20 w-20 object-contain rounded"
-                  />
-                  <Button
-                    type="button"
-                    size="icon"
-                    variant="ghost"
-                    className="h-8 w-8"
-                    onClick={(e) => {
-                      e.preventDefault()
-                      setFormData({ ...formData, storeLogo: "" })
-                      setLogoFileName("")
-                    }}
-                  >
-                    <X className="h-4 w-4" />
-                  </Button>
-                </div>
-              ) : uploadingLogo ? (
-                <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                  <Loader2 className="h-5 w-5 animate-spin" />
-                  <span>Uploading...</span>
-                </div>
+              {uploadingLogo ? (
+                <><Loader2 className="h-4 w-4 animate-spin text-muted-foreground" /><span className="text-sm text-muted-foreground">Uploading…</span></>
               ) : (
-                <div className="text-center">
-                  <Upload className="h-8 w-8 text-muted-foreground mx-auto mb-2" />
-                  <p className="text-sm font-medium">Upload Store Logo</p>
-                  <p className="text-xs text-muted-foreground mt-1">PNG, JPG or SVG (recommended: 200x200px)</p>
-                </div>
+                <><Upload className="h-4 w-4 text-muted-foreground" /><span className="text-sm text-muted-foreground">Click to upload (PNG, JPG, SVG)</span></>
               )}
             </label>
-          </div>
+          )}
         </div>
 
-        {/* Brand Color */}
-        <div className="space-y-3">
-          <Label className="flex items-center gap-2">
-            <Palette className="h-4 w-4" />
-            Brand Color *
-          </Label>
-          <div className="grid grid-cols-6 gap-3">
-            {brandColors.map((color) => (
-              <button
-                key={color.value}
-                type="button"
-                onClick={() => setFormData({ ...formData, brandColor: color.value })}
-                className={`relative h-12 rounded-lg border-2 transition-all ${
-                  formData.brandColor === color.value
-                    ? "border-foreground scale-110 shadow-lg"
-                    : "border-border hover:scale-105"
-                }`}
-                style={{ backgroundColor: color.value }}
-              >
-                {formData.brandColor === color.value && (
-                  <CheckCircle2 className="absolute inset-0 m-auto h-6 w-6 text-white drop-shadow-lg" />
-                )}
-              </button>
-            ))}
-          </div>
-          <p className="text-xs text-muted-foreground">This color will be used for buttons and accents in your store</p>
-        </div>
+        {error && <p className="text-sm text-destructive bg-destructive/10 rounded-md px-3 py-2">{error}</p>}
 
-        {error && <div className="rounded-lg bg-destructive/10 p-3 text-sm text-destructive">{error}</div>}
-
-        <Button type="submit" size="lg" className="w-full gap-2" disabled={loading}>
+        <Button type="submit" size="lg" className="w-full gap-2 h-12 text-base" disabled={loading || uploadingLogo}>
           {loading ? (
-            <>
-              <Loader2 className="h-5 w-5 animate-spin" />
-              Completing Setup...
-            </>
+            <><Loader2 className="h-5 w-5 animate-spin" />Creating your store…</>
           ) : (
-            <>
-              Complete Setup
-              <ArrowRight className="h-5 w-5" />
-            </>
+            <>Create My Store <ArrowRight className="h-5 w-5" /></>
           )}
         </Button>
       </form>

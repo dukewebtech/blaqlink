@@ -1,226 +1,250 @@
 "use client"
 
+import type React from "react"
 import { useState, useEffect } from "react"
 import { DashboardLayout } from "@/components/dashboard/dashboard-layout"
+import { Card } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Switch } from "@/components/ui/switch"
-import { Separator } from "@/components/ui/separator"
-import { CreditCard, Building2, User, CheckCircle2 } from "lucide-react"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Banknote, Loader2, CheckCircle2, AlertCircle, ShieldCheck } from "lucide-react"
+import { BANK_NAMES } from "@/components/onboarding/identity-upload-step"
+
+function normalize(name: string) {
+  return name.toUpperCase().replace(/\s+/g, " ").trim()
+}
+
+function namesMatch(a: string, b: string): boolean {
+  const words = normalize(a).split(" ").filter(Boolean)
+  const target = normalize(b)
+  const matchCount = words.filter((w) => target.includes(w)).length
+  return matchCount / words.length >= 0.5
+}
 
 export default function PayoutSettingsPage() {
-  const [isAutomatic, setIsAutomatic] = useState(false)
-  const [isSaving, setIsSaving] = useState(false)
+  const [bankName, setBankName] = useState("")
+  const [accountNumber, setAccountNumber] = useState("")
+  const [resolvedAccountName, setResolvedAccountName] = useState("")
+  const [resolving, setResolving] = useState(false)
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState<string | null>(null)
   const [saved, setSaved] = useState(false)
-  const [bankDetails, setBankDetails] = useState({
-    bankName: "",
-    accountNumber: "",
-    accountHolder: "",
-  })
-  const [isLoading, setIsLoading] = useState(true)
+  const [verifiedName, setVerifiedName] = useState<string | null>(null)
+  const [isVerified, setIsVerified] = useState(false)
+  const [loadingProfile, setLoadingProfile] = useState(true)
 
   useEffect(() => {
-    fetchBankDetails()
+    async function load() {
+      try {
+        const [profileRes, progressRes] = await Promise.all([
+          fetch("/api/users/me"),
+          fetch("/api/onboarding"),
+        ])
+        const profileData = profileRes.ok ? await profileRes.json() : null
+        const progressData = progressRes.ok ? await progressRes.json() : null
+
+        const user = profileData?.data?.user ?? {}
+        const progress = progressData?.progress ?? {}
+
+        const kycDone = progress.kyc_info_completed ?? user.payout_verified ?? false
+        setIsVerified(kycDone)
+        setVerifiedName(user.legal_name ?? null)
+
+        if (user.bank_name) setBankName(user.bank_name)
+        if (user.account_number) setAccountNumber(user.account_number)
+        if (user.account_name) setResolvedAccountName(user.account_name)
+      } catch (e) {
+        console.error("[payout] load error", e)
+      } finally {
+        setLoadingProfile(false)
+      }
+    }
+    load()
   }, [])
 
-  const fetchBankDetails = async () => {
+  async function resolveAccount(bank: string, account: string) {
+    if (account.length !== 10 || !bank) return
+    setResolving(true)
+    setResolvedAccountName("")
+    setError(null)
     try {
-      const response = await fetch("/api/users/me")
-      if (response.ok) {
-        const { data } = await response.json()
-        if (data?.user) {
-          setBankDetails({
-            bankName: data.user.bank_name || "",
-            accountNumber: data.user.account_number || "",
-            accountHolder: data.user.account_name || "",
-          })
-        }
+      const res = await fetch("/api/payment/korapay/resolve-bank", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ bank_name: bank, account_number: account }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error)
+
+      if (verifiedName && !namesMatch(data.account_name, verifiedName)) {
+        setError(
+          `The bank account name ("${data.account_name}") does not match your verified identity name ("${verifiedName}"). Please use a bank account registered in your legal name.`,
+        )
+        return
       }
-    } catch (error) {
-      console.error("Error fetching bank details:", error)
+
+      setResolvedAccountName(data.account_name)
+    } catch (err: any) {
+      setError(err.message || "Could not resolve account. Check the number and try again.")
     } finally {
-      setIsLoading(false)
+      setResolving(false)
     }
   }
 
-  const handleSave = async () => {
-    setIsSaving(true)
+  function handleAccountNumberChange(value: string) {
+    const digits = value.replace(/\D/g, "").slice(0, 10)
+    setAccountNumber(digits)
+    setResolvedAccountName("")
+    setError(null)
+    if (digits.length === 10) resolveAccount(bankName, digits)
+  }
+
+  function handleBankChange(value: string) {
+    setBankName(value)
+    setResolvedAccountName("")
+    setError(null)
+    if (accountNumber.length === 10) resolveAccount(value, accountNumber)
+  }
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault()
+    if (!resolvedAccountName) {
+      setError("Please wait for account verification to complete.")
+      return
+    }
+    setSaving(true)
+    setError(null)
     try {
-      const response = await fetch("/api/users/bank-details", {
+      const res = await fetch("/api/onboarding", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          bank_name: bankDetails.bankName,
-          account_number: bankDetails.accountNumber,
-          account_name: bankDetails.accountHolder,
+          step: "bank",
+          data: { bankName, accountNumber, accountName: resolvedAccountName },
         }),
       })
-
-      if (response.ok) {
-        setSaved(true)
-        setTimeout(() => setSaved(false), 3000)
-      } else {
-        alert("Failed to save bank details")
-      }
-    } catch (error) {
-      console.error("Error saving bank details:", error)
-      alert("Failed to save bank details")
+      if (!res.ok) throw new Error("Failed to save bank information. Please try again.")
+      setSaved(true)
+      setTimeout(() => setSaved(false), 3000)
+    } catch (err: any) {
+      setError(err.message)
     } finally {
-      setIsSaving(false)
+      setSaving(false)
     }
+  }
+
+  if (loadingProfile) {
+    return (
+      <DashboardLayout>
+        <div className="flex items-center justify-center min-h-[300px]">
+          <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+        </div>
+      </DashboardLayout>
+    )
   }
 
   return (
     <DashboardLayout>
-      <div className="space-y-6 max-w-4xl animate-in fade-in slide-in-from-bottom-4 duration-500">
-        {/* Header */}
+      <div className="max-w-lg mx-auto space-y-4">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Payout Settings</h1>
-          <p className="text-muted-foreground mt-2">Manage how you receive payments from your store</p>
+          <h1 className="text-2xl font-bold tracking-tight">Payout Account</h1>
+          <p className="text-muted-foreground text-sm mt-1">Connect a bank account to receive withdrawals.</p>
         </div>
 
-        {/* Payout Mode Card */}
-        <Card className="border-border/50 shadow-sm hover:shadow-md transition-shadow duration-300">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <CreditCard className="h-5 w-5 text-primary" />
-              Payout Mode
-            </CardTitle>
-            <CardDescription>Choose how you want to receive your payments</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-6">
-            <div className="flex items-center justify-between p-4 rounded-lg border border-border bg-muted/30 hover:bg-muted/50 transition-colors duration-200">
-              <div className="space-y-1">
-                <p className="font-medium">Automatic Payouts</p>
-                <p className="text-sm text-muted-foreground">
-                  Receive payments automatically after each successful transaction
-                </p>
-              </div>
-              <Switch
-                checked={isAutomatic}
-                onCheckedChange={setIsAutomatic}
-                className="data-[state=checked]:bg-primary"
+        {!isVerified && (
+          <div className="flex items-start gap-3 p-4 rounded-lg border border-amber-200 bg-amber-50 text-sm text-amber-800">
+            <ShieldCheck className="h-4 w-4 mt-0.5 shrink-0 text-amber-600" />
+            <div>
+              <p className="font-medium">Identity verification required</p>
+              <p className="text-xs mt-0.5 text-amber-700">
+                You must verify your identity before connecting a payout account.{" "}
+                <a href="/settings/verify" className="underline font-medium">Verify now →</a>
+              </p>
+            </div>
+          </div>
+        )}
+
+        <Card className="p-6">
+          <div className="flex items-center gap-3 mb-6">
+            <div className="inline-flex items-center justify-center w-10 h-10 rounded-full bg-primary/10">
+              <Banknote className="h-5 w-5 text-primary" />
+            </div>
+            <div>
+              <h2 className="text-base font-semibold">Bank Account Details</h2>
+              <p className="text-xs text-muted-foreground">Account must be in your legal name.</p>
+            </div>
+          </div>
+
+          <form onSubmit={handleSubmit} className="space-y-5">
+            <div className="space-y-1.5">
+              <Label>Bank Name <span className="text-destructive">*</span></Label>
+              <Select value={bankName} onValueChange={handleBankChange} disabled={!isVerified} required>
+                <SelectTrigger className="h-11">
+                  <SelectValue placeholder="Select your bank" />
+                </SelectTrigger>
+                <SelectContent>
+                  {BANK_NAMES.map((b) => (
+                    <SelectItem key={b} value={b}>{b}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-1.5">
+              <Label htmlFor="accountNumber">Account Number <span className="text-destructive">*</span></Label>
+              <Input
+                id="accountNumber"
+                placeholder="10-digit account number"
+                value={accountNumber}
+                onChange={(e) => handleAccountNumberChange(e.target.value)}
+                maxLength={10}
+                inputMode="numeric"
+                required
+                disabled={!isVerified}
+                className="h-11 font-mono tracking-wider"
               />
             </div>
 
-            {!isAutomatic && (
-              <div className="p-4 rounded-lg border border-border bg-accent/50 animate-in fade-in slide-in-from-top-2 duration-300">
-                <p className="text-sm font-medium mb-1">Manual Payout Mode Active</p>
-                <p className="text-sm text-muted-foreground">
-                  You'll need to manually request payouts from your dashboard. Funds will be held until you initiate a
-                  withdrawal.
-                </p>
+            {resolving && (
+              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                <Loader2 className="h-4 w-4 animate-spin" /> Verifying account…
               </div>
             )}
-          </CardContent>
-        </Card>
 
-        {/* Bank Details Card */}
-        <Card className="border-border/50 shadow-sm hover:shadow-md transition-shadow duration-300">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Building2 className="h-5 w-5 text-primary" />
-              Bank Account Details
-            </CardTitle>
-            <CardDescription>Enter your bank information to receive payments</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-6">
-            <div className="space-y-4">
-              {/* Bank Name */}
-              <div className="space-y-2 animate-in fade-in slide-in-from-left-2 duration-300 delay-100">
-                <Label htmlFor="bankName" className="text-sm font-medium flex items-center gap-2">
-                  <Building2 className="h-4 w-4 text-muted-foreground" />
-                  Bank Name
-                </Label>
-                <Input
-                  id="bankName"
-                  placeholder="e.g., Chase Bank, Bank of America"
-                  className="transition-all duration-200 focus:ring-2 focus:ring-primary/20"
-                  value={bankDetails.bankName}
-                  onChange={(e) => setBankDetails({ ...bankDetails, bankName: e.target.value })}
-                  disabled={isLoading}
-                />
+            {resolvedAccountName && !resolving && (
+              <div className="flex items-center gap-2 p-3 rounded-lg bg-green-50 border border-green-200">
+                <CheckCircle2 className="h-4 w-4 text-green-600 shrink-0" />
+                <div>
+                  <p className="text-xs text-muted-foreground">Verified Account Name</p>
+                  <p className="text-sm font-semibold text-green-800">{resolvedAccountName}</p>
+                </div>
               </div>
-
-              {/* Account Number */}
-              <div className="space-y-2 animate-in fade-in slide-in-from-left-2 duration-300 delay-200">
-                <Label htmlFor="accountNumber" className="text-sm font-medium flex items-center gap-2">
-                  <CreditCard className="h-4 w-4 text-muted-foreground" />
-                  Account Number
-                </Label>
-                <Input
-                  id="accountNumber"
-                  placeholder="Enter your account number"
-                  type="text"
-                  className="transition-all duration-200 focus:ring-2 focus:ring-primary/20"
-                  value={bankDetails.accountNumber}
-                  onChange={(e) => setBankDetails({ ...bankDetails, accountNumber: e.target.value })}
-                  disabled={isLoading}
-                />
-                <p className="text-xs text-muted-foreground">
-                  Your account number will be encrypted and stored securely
-                </p>
-              </div>
-
-              {/* Account Holder Name */}
-              <div className="space-y-2 animate-in fade-in slide-in-from-left-2 duration-300 delay-300">
-                <Label htmlFor="accountHolder" className="text-sm font-medium flex items-center gap-2">
-                  <User className="h-4 w-4 text-muted-foreground" />
-                  Account Holder Name
-                </Label>
-                <Input
-                  id="accountHolder"
-                  placeholder="Full name as it appears on your account"
-                  className="transition-all duration-200 focus:ring-2 focus:ring-primary/20"
-                  value={bankDetails.accountHolder}
-                  onChange={(e) => setBankDetails({ ...bankDetails, accountHolder: e.target.value })}
-                  disabled={isLoading}
-                />
-              </div>
-            </div>
-
-            <Separator />
-
-            {/* Security Notice */}
-            <div className="p-4 rounded-lg bg-primary/5 border border-primary/20">
-              <p className="text-sm text-foreground/80">
-                <span className="font-semibold">Security Notice:</span> Your banking information is encrypted using
-                industry-standard security protocols and will never be shared with third parties.
-              </p>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Save Button */}
-        <div className="flex items-center gap-3">
-          <Button
-            size="lg"
-            className="min-w-[200px] transition-all duration-200 hover:scale-105"
-            onClick={handleSave}
-            disabled={isSaving || saved || isLoading}
-          >
-            {isSaving ? (
-              <>
-                <div className="h-4 w-4 border-2 border-white/30 border-t-white rounded-full animate-spin mr-2" />
-                Saving...
-              </>
-            ) : saved ? (
-              <>
-                <CheckCircle2 className="h-4 w-4 mr-2" />
-                Saved Successfully
-              </>
-            ) : (
-              "Save Settings"
             )}
-          </Button>
-          {saved && (
-            <p className="text-sm text-success animate-in fade-in slide-in-from-left-2 duration-300">
-              Your payout settings have been updated
-            </p>
-          )}
-        </div>
+
+            {error && (
+              <div className="flex items-start gap-2 p-3 rounded-lg bg-destructive/10 text-sm text-destructive">
+                <AlertCircle className="h-4 w-4 mt-0.5 shrink-0" />
+                <span>{error}</span>
+              </div>
+            )}
+
+            <Button
+              type="submit"
+              size="lg"
+              className="w-full gap-2"
+              disabled={saving || resolving || !resolvedAccountName || !isVerified}
+            >
+              {saving ? (
+                <><Loader2 className="h-5 w-5 animate-spin" /> Saving…</>
+              ) : saved ? (
+                <><CheckCircle2 className="h-5 w-5" /> Saved!</>
+              ) : (
+                "Save Payout Account"
+              )}
+            </Button>
+          </form>
+        </Card>
       </div>
     </DashboardLayout>
   )

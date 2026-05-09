@@ -21,7 +21,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { cartStore } from "@/lib/cart-store"
+import { createCartStore } from "@/lib/cart-store"
 import { useRouter } from "next/navigation"
 import { ProductDetailModal } from "@/components/store/product-detail-modal"
 
@@ -62,10 +62,11 @@ interface AuroraFrostStorefrontProps {
 }
 
 export function AuroraFrostStorefront({ storeInfo, products, categories, storeId }: AuroraFrostStorefrontProps) {
+  const store = createCartStore(storeId)
   const [searchQuery, setSearchQuery] = useState("")
   const [selectedCategory, setSelectedCategory] = useState("all")
   const [selectedType, setSelectedType] = useState("all")
-  const [cartCount, setCartCount] = useState(cartStore.getItemCount())
+  const [cartCount, setCartCount] = useState(store.getItemCount())
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null)
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [favorites, setFavorites] = useState<string[]>([])
@@ -135,7 +136,7 @@ export function AuroraFrostStorefront({ storeInfo, products, categories, storeId
   }
 
   const handleAddToCart = (product: Product, quantity: number) => {
-    cartStore.addItem(
+    store.addItem(
       {
         id: product.id,
         title: product.title,
@@ -145,7 +146,7 @@ export function AuroraFrostStorefront({ storeInfo, products, categories, storeId
       },
       quantity,
     )
-    setCartCount(cartStore.getItemCount())
+    setCartCount(store.getItemCount())
     toast({
       title: "Added to cart",
       description: `${quantity}x ${product.title} added to your cart`,
@@ -429,7 +430,7 @@ export function AuroraFrostStorefront({ storeInfo, products, categories, storeId
             setIsModalOpen(open)
             if (!open) setSelectedProduct(null)
           }}
-          onAddToCart={handleAddToCart}
+          storeId={storeId}
           storeName={storeInfo?.business_name || storeInfo?.full_name}
         />
       )}

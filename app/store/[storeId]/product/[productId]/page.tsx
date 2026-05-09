@@ -24,7 +24,7 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Skeleton } from "@/components/ui/skeleton"
 import { useToast } from "@/hooks/use-toast"
-import { cartStore } from "@/lib/cart-store"
+import { createCartStore } from "@/lib/cart-store"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -69,6 +69,7 @@ export default function ProductDetailPage() {
   const { toast } = useToast()
   const storeId = params.storeId as string
   const productId = params.productId as string
+  const store = createCartStore(storeId)
 
   const [product, setProduct] = useState<Product | null>(null)
   const [storeInfo, setStoreInfo] = useState<StoreInfo | null>(null)
@@ -79,8 +80,8 @@ export default function ProductDetailPage() {
   const [copied, setCopied] = useState(false)
 
   useEffect(() => {
-    setCartCount(cartStore.getItemCount())
-    const handleCartUpdate = () => setCartCount(cartStore.getItemCount())
+    setCartCount(store.getItemCount())
+    const handleCartUpdate = () => setCartCount(store.getItemCount())
     window.addEventListener("cartUpdated", handleCartUpdate)
     return () => window.removeEventListener("cartUpdated", handleCartUpdate)
   }, [])
@@ -115,7 +116,7 @@ export default function ProductDetailPage() {
 
   const handleAddToCart = () => {
     if (!product) return
-    cartStore.addItem(
+    store.addItem(
       {
         id: product.id,
         title: product.title,

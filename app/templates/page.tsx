@@ -46,16 +46,16 @@ const templates = [
     color: "from-rose-500/20 to-teal-500/20",
     style: "glass",
   },
-  // Existing templates
+  // Coming soon templates
   {
     id: "beauty-essentials",
     name: "Beauty Essentials",
     description:
       "Clean, organized layout perfect for beauty and skincare brands. Features category circles and promotional bundles.",
-    href: "/templates/beauty-essentials",
+    href: null,
     image: "/placeholder.svg?height=400&width=600",
     features: ["Category Icons", "Product Bundles", "Promotional Banners", "Quick Add to Cart"],
-    badge: "Classic",
+    badge: "Coming Soon",
     color: "from-pink-500/20 to-rose-500/20",
     style: "classic",
   },
@@ -63,10 +63,10 @@ const templates = [
     id: "marketplace-pro",
     name: "Marketplace Pro",
     description: "Feature-rich layout with advanced filters and dense product grids for large catalogs.",
-    href: "/templates/marketplace-pro",
+    href: null,
     image: "/marketplace-ecommerce-professional-grid-layout.jpg",
     features: ["Advanced Filters", "Brand Carousel", "Dense Grid", "Quick Actions"],
-    badge: "Classic",
+    badge: "Coming Soon",
     color: "from-green-500/20 to-teal-500/20",
     style: "classic",
   },
@@ -74,10 +74,10 @@ const templates = [
     id: "editorial-magazine",
     name: "Editorial Magazine",
     description: "Story-driven layout with large imagery and editorial content for brand storytelling.",
-    href: "/templates/editorial-magazine",
+    href: null,
     image: "/magazine-editorial-fashion-layout-storytelling.jpg",
     features: ["Hero Banners", "Mixed Layouts", "Journal Section", "Visual Stories"],
-    badge: "Classic",
+    badge: "Coming Soon",
     color: "from-orange-500/20 to-red-500/20",
     style: "classic",
   },
@@ -261,9 +261,7 @@ export default function TemplatesPage() {
             {classicTemplates.map((template) => (
               <Card
                 key={template.id}
-                className={`group overflow-hidden hover:shadow-lg transition-all duration-300 hover:-translate-y-1 ${
-                  currentTemplate === template.id ? "ring-2 ring-primary" : ""
-                }`}
+                className="group overflow-hidden opacity-70 transition-all duration-300"
               >
                 <div
                   className="relative aspect-video bg-gradient-to-br overflow-hidden"
@@ -272,19 +270,11 @@ export default function TemplatesPage() {
                   <img
                     src={template.image || "/placeholder.svg"}
                     alt={template.name}
-                    className="w-full h-full object-cover opacity-90 group-hover:scale-105 transition-transform duration-500"
+                    className="w-full h-full object-cover opacity-60"
                   />
-                  {currentTemplate === template.id && (
-                    <Badge className="absolute top-3 left-3 gap-1 shadow-lg bg-primary">
-                      <Check className="h-3 w-3" />
-                      Active
-                    </Badge>
-                  )}
-                  {template.badge && (
-                    <Badge className="absolute top-3 right-3 gap-1 shadow-lg" variant="secondary">
-                      {template.badge}
-                    </Badge>
-                  )}
+                  <Badge className="absolute top-3 right-3 gap-1 shadow-lg" variant="secondary">
+                    Coming Soon
+                  </Badge>
                 </div>
                 <div className="p-6 space-y-4">
                   <div>
@@ -299,33 +289,13 @@ export default function TemplatesPage() {
                     ))}
                   </div>
                   <div className="flex gap-2 pt-2">
-                    <Link href={template.href} className="flex-1">
-                      <Button variant="outline" className="w-full gap-2 bg-transparent">
-                        <Eye className="h-4 w-4" />
-                        Preview
-                      </Button>
-                    </Link>
-                    <Button
-                      className="flex-1 gap-2"
-                      disabled={currentTemplate === template.id || settingTemplate === template.id}
-                      onClick={() => handleSetDefault(template.id)}
-                    >
-                      {settingTemplate === template.id ? (
-                        <>
-                          <span className="h-4 w-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                          Setting...
-                        </>
-                      ) : currentTemplate === template.id ? (
-                        <>
-                          <Check className="h-4 w-4" />
-                          Active
-                        </>
-                      ) : (
-                        <>
-                          <Sparkles className="h-4 w-4" />
-                          Set as Default
-                        </>
-                      )}
+                    <Button variant="outline" className="flex-1 gap-2 bg-transparent" disabled>
+                      <Eye className="h-4 w-4" />
+                      Preview
+                    </Button>
+                    <Button className="flex-1 gap-2" disabled>
+                      <Sparkles className="h-4 w-4" />
+                      Coming Soon
                     </Button>
                   </div>
                 </div>

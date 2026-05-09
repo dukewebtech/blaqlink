@@ -4,13 +4,14 @@ import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Loader2, CreditCard, Shield, Lock, AlertCircle } from "lucide-react"
-import { cartStore } from "@/lib/cart-store"
+import { createCartStore } from "@/lib/cart-store"
 import { OrderConfirmationDocument } from "@/components/order-confirmation-document"
 
 type Gateway = "paystack" | "korapay"
 
 export default function PaymentPage({ params }: { params: { storeId: string } }) {
   const router = useRouter()
+  const store = createCartStore(params.storeId)
   const [loading, setLoading] = useState(false)
   const [orderData, setOrderData] = useState<any>(null)
   const [error, setError] = useState<string | null>(null)
@@ -68,7 +69,7 @@ export default function PaymentPage({ params }: { params: { storeId: string } })
             setVerifiedOrder(verifyData.order)
             setVendorData(verifyData.vendor)
             setShowConfirmation(true)
-            cartStore.clearCart()
+            store.clearCart()
             sessionStorage.removeItem("pendingOrder")
           } else {
             setError(verifyData.error || "Payment verification failed. Please contact support.")
@@ -105,7 +106,7 @@ export default function PaymentPage({ params }: { params: { storeId: string } })
             setVerifiedOrder(verifyData.order)
             setVendorData(verifyData.vendor)
             setShowConfirmation(true)
-            cartStore.clearCart()
+            store.clearCart()
             sessionStorage.removeItem("pendingOrder")
           } else {
             setError(verifyData.error || "Payment verification failed. Please contact support.")

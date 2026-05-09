@@ -1,10 +1,9 @@
 "use client"
 
-import type React from "react"
 import { ArrowLeft, Package, MapPin, CreditCard } from "lucide-react"
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
-import { cartStore, type CartItem } from "@/lib/cart-store"
+import { createCartStore, type CartItem } from "@/lib/cart-store"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -14,6 +13,7 @@ import Image from "next/image"
 
 export default function CheckoutPage({ params }: { params: { storeId: string } }) {
   const router = useRouter()
+  const store = createCartStore(params.storeId)
   const [items, setItems] = useState<CartItem[]>([])
   const [total, setTotal] = useState(0)
   const [loading, setLoading] = useState(false)
@@ -33,7 +33,7 @@ export default function CheckoutPage({ params }: { params: { storeId: string } }
   const [notes, setNotes] = useState("")
 
   useEffect(() => {
-    const cart = cartStore.getCart()
+    const cart = store.getCart()
     if (cart.items.length === 0) {
       router.push(`/store/${params.storeId}/cart`)
       return
@@ -47,7 +47,7 @@ export default function CheckoutPage({ params }: { params: { storeId: string } }
     (item) => item.product_type === "digital" || item.product_type === "appointment" || item.product_type === "event",
   )
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: { preventDefault(): void }) => {
     e.preventDefault()
     setLoading(true)
 

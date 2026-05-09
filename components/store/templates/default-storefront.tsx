@@ -11,7 +11,7 @@ import { Search, ShoppingCart, Heart, User, Star, Eye } from "lucide-react"
 import Link from "next/link"
 import { ProductDetailModal } from "@/components/store/product-detail-modal"
 import { useToast } from "@/hooks/use-toast"
-import { cartStore } from "@/lib/cart-store"
+import { createCartStore } from "@/lib/cart-store"
 import { useRouter } from "next/navigation"
 
 interface Product {
@@ -86,9 +86,11 @@ export function DefaultStorefront({
   const { toast } = useToast()
   const router = useRouter()
 
+  const store = createCartStore(storeId)
+
   useEffect(() => {
     const updateCartCount = () => {
-      setCartCount(cartStore.getItemCount())
+      setCartCount(store.getItemCount())
     }
 
     updateCartCount()
@@ -111,7 +113,7 @@ export function DefaultStorefront({
   }
 
   const handleAddToCart = (product: Product, quantity: number) => {
-    cartStore.addItem(
+    store.addItem(
       {
         id: product.id,
         title: product.title,
@@ -506,7 +508,7 @@ export function DefaultStorefront({
         product={selectedProduct}
         open={isModalOpen}
         onOpenChange={setIsModalOpen}
-        onAddToCart={handleAddToCart}
+        storeId={storeId}
         storeName={storeInfo?.business_name || storeInfo?.full_name}
       />
     </div>

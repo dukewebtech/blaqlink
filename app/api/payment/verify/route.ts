@@ -60,6 +60,23 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: "Could not determine vendor for order" }, { status: 400 })
     }
 
+    // Idempotency — return existing order if already created for this reference
+    const { data: existing } = await supabase
+      .from("orders")
+      .select("id")
+      .eq("payment_reference", reference)
+      .maybeSingle()
+
+    if (existing) {
+      console.log("[v0] Order already exists for reference:", reference)
+      const { data: order } = await supabase
+        .from("orders")
+        .select("*, order_items(*)")
+        .eq("id", existing.id)
+        .single()
+      return NextResponse.json({ success: true, order_id: existing.id, reference, order })
+    }
+
     const { data: order, error: orderError } = await supabase
       .from("orders")
       .insert({

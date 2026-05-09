@@ -5,12 +5,13 @@ import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import { Minus, Plus, Trash2, ArrowLeft, ShoppingBag } from "lucide-react"
 import { useRouter } from "next/navigation"
-import { cartStore, type CartItem } from "@/lib/cart-store"
+import { createCartStore, type CartItem } from "@/lib/cart-store"
 
 export default function StoreCartPage({ params }: { params: { storeId: string } }) {
   const [cartItems, setCartItems] = useState<CartItem[]>([])
   const [total, setTotal] = useState(0)
   const router = useRouter()
+  const store = createCartStore(params.storeId)
 
   useEffect(() => {
     loadCart()
@@ -24,18 +25,18 @@ export default function StoreCartPage({ params }: { params: { storeId: string } 
   }, [])
 
   const loadCart = () => {
-    const cart = cartStore.getCart()
+    const cart = store.getCart()
     setCartItems(cart.items)
     setTotal(cart.total)
   }
 
   const updateQuantity = (itemId: string, newQuantity: number) => {
-    cartStore.updateQuantity(itemId, newQuantity)
+    store.updateQuantity(itemId, newQuantity)
     loadCart()
   }
 
   const removeItem = (itemId: string) => {
-    cartStore.removeItem(itemId)
+    store.removeItem(itemId)
     loadCart()
   }
 

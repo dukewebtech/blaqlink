@@ -4,7 +4,7 @@ import { useState, useEffect } from "react"
 import { Calendar, Clock, MapPin, Users, ChevronLeft, ChevronRight, X, Download, FileText, Shield } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { cartStore } from "@/lib/cart-store"
+import { cartStore, createCartStore } from "@/lib/cart-store"
 
 interface Product {
   id: string
@@ -37,6 +37,7 @@ interface ProductDetailModalProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   storeName?: string
+  storeId?: string
 }
 
 export function ProductDetailModal({
@@ -44,6 +45,7 @@ export function ProductDetailModal({
   open,
   onOpenChange,
   storeName = "Store Owner",
+  storeId,
 }: ProductDetailModalProps) {
   const [quantity, setQuantity] = useState(1)
   const [currentImageIndex, setCurrentImageIndex] = useState(0)
@@ -115,7 +117,7 @@ export function ProductDetailModal({
           ? { ticket_type: selectedTicketType.name }
           : undefined
 
-    cartStore.addItem(
+    ;(storeId ? createCartStore(storeId) : cartStore).addItem(
       {
         id: product.id,
         title: product.title,

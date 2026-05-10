@@ -12,6 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { createCartStore } from "@/lib/cart-store"
 import { useRouter } from "next/navigation"
 import { ProductDetailModal } from "@/components/store/product-detail-modal"
+import { CartDrawer } from "@/components/store/cart-drawer"
 import { useToast } from "@/hooks/use-toast"
 
 interface Product {
@@ -48,9 +49,15 @@ interface CrystalClearStorefrontProps {
   products: Product[]
   categories: Category[]
   storeId: string
+  hasMore?: boolean
+  loadingMore?: boolean
+  onLoadMore?: () => void
 }
 
-export function CrystalClearStorefront({ storeInfo, products, categories, storeId }: CrystalClearStorefrontProps) {
+export function CrystalClearStorefront({
+  storeInfo, products, categories, storeId,
+  hasMore = false, loadingMore = false, onLoadMore,
+}: CrystalClearStorefrontProps) {
   const store = createCartStore(storeId)
   const [searchQuery, setSearchQuery] = useState("")
   const [selectedCategory, setSelectedCategory] = useState("all")
@@ -58,6 +65,7 @@ export function CrystalClearStorefront({ storeInfo, products, categories, storeI
   const [cartCount, setCartCount] = useState(store.getItemCount())
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null)
   const [isModalOpen, setIsModalOpen] = useState(false)
+  const [cartDrawerOpen, setCartDrawerOpen] = useState(false)
   const router = useRouter()
   const { toast } = useToast()
 
@@ -115,7 +123,7 @@ export function CrystalClearStorefront({ storeInfo, products, categories, storeI
   }
 
   const handleCartClick = () => {
-    router.push(`/store/${storeId}/cart`)
+    setCartDrawerOpen(true)
   }
 
   const handleAddToCart = (product: Product, quantity: number) => {
@@ -358,6 +366,19 @@ export function CrystalClearStorefront({ storeInfo, products, categories, storeI
         </div>
       </section>
 
+      {/* Load More */}
+      {hasMore && (
+        <div className="flex justify-center py-8">
+          <button
+            onClick={onLoadMore}
+            disabled={loadingMore}
+            className="px-8 py-3 rounded-full bg-gradient-to-r from-blue-500 to-cyan-500 text-white font-medium hover:from-blue-600 hover:to-cyan-600 disabled:opacity-60 transition-all"
+          >
+            {loadingMore ? "Loading…" : "Load More Products"}
+          </button>
+        </div>
+      )}
+
       {/* Footer */}
       <footer className="bg-white/60 backdrop-blur-lg border-t border-white/30 py-8 px-4">
         <div className="max-w-7xl mx-auto text-center">
@@ -380,6 +401,12 @@ export function CrystalClearStorefront({ storeInfo, products, categories, storeI
           storeName={storeInfo?.business_name || storeInfo?.full_name}
         />
       )}
+      <CartDrawer
+        open={cartDrawerOpen}
+        onOpenChange={setCartDrawerOpen}
+        storeId={storeId}
+        themeButton="bg-gradient-to-r from-blue-500 to-cyan-500 hover:from-blue-600 hover:to-cyan-600 text-white"
+      />
     </div>
   )
 }

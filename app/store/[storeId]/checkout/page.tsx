@@ -92,8 +92,8 @@ export default function CheckoutPage({ params }: { params: { storeId: string } }
       store_id: params.storeId,
     }
 
-    // Store order data in sessionStorage for payment page
-    sessionStorage.setItem("pendingOrder", JSON.stringify(orderData))
+    // Store order data in sessionStorage for payment page (include timestamp for expiry check)
+    sessionStorage.setItem("pendingOrder", JSON.stringify({ ...orderData, _timestamp: Date.now() }))
 
     // Redirect to payment page
     router.push(`/store/${params.storeId}/payment`)

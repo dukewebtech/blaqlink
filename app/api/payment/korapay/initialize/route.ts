@@ -5,7 +5,7 @@ import { createAdminClient } from "@/lib/supabase/server"
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
-    const { email, amount, metadata } = body
+    const { email, amount, metadata, redirectUrl: clientRedirectUrl } = body
 
     console.log("[korapay] Initializing charge:", { email, amount })
 
@@ -37,7 +37,7 @@ export async function POST(request: NextRequest) {
       amount,
       customerEmail: email,
       customerName: metadata?.customer_name ?? email,
-      redirectUrl: `${appUrl}/store/payment/korapay/verify`,
+      redirectUrl: clientRedirectUrl || `${appUrl}/store/payment/korapay/verify`,
       notificationUrl: `${appUrl}/api/webhooks/korapay`,
       metadata: { ref: reference },
     })

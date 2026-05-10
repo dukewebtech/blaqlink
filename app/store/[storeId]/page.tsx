@@ -45,6 +45,10 @@ export default function PublicStorePage({ params }: { params: { storeId: string 
   const [categories, setCategories] = useState<Category[]>([])
   const [storeInfo, setStoreInfo] = useState<StoreInfo | null>(null)
   const [loading, setLoading] = useState(true)
+  const [loadingMore, setLoadingMore] = useState(false)
+  const [hasMore, setHasMore] = useState(false)
+  const [productOffset, setProductOffset] = useState(0)
+  const PRODUCT_LIMIT = 24
   const [searchQuery, setSearchQuery] = useState("")
   const [cartCount, setCartCount] = useState(0)
   const [selectedFilter, setSelectedFilter] = useState("all")
@@ -64,7 +68,7 @@ export default function PublicStorePage({ params }: { params: { storeId: string 
 
       const [storeRes, productsRes, categoriesRes] = await Promise.all([
         fetch(`/api/public/store-info?storeId=${params.storeId}`),
-        fetch(`/api/public/products?storeId=${params.storeId}`),
+        fetch(`/api/public/products?storeId=${params.storeId}&limit=${PRODUCT_LIMIT}&offset=0`),
         fetch(`/api/public/categories?storeId=${params.storeId}`),
       ])
 
@@ -81,9 +85,14 @@ export default function PublicStorePage({ params }: { params: { storeId: string 
       const productsData = await productsRes.json()
       const categoriesData = await categoriesRes.json()
 
+      const fetched: Product[] = productsData.products || []
+      const total: number = productsData.total ?? fetched.length
+
       setStoreInfo(storeData.storeInfo)
-      setProducts(productsData.products || [])
+      setProducts(fetched)
       setCategories(categoriesData.categories || [])
+      setProductOffset(PRODUCT_LIMIT)
+      setHasMore(fetched.length < total)
     } catch (error) {
       console.error("Error fetching store data:", error)
       toast({
@@ -93,6 +102,27 @@ export default function PublicStorePage({ params }: { params: { storeId: string 
       })
     } finally {
       setLoading(false)
+    }
+  }
+
+  const loadMoreProducts = async () => {
+    if (loadingMore || !hasMore) return
+    setLoadingMore(true)
+    try {
+      const res = await fetch(
+        `/api/public/products?storeId=${params.storeId}&limit=${PRODUCT_LIMIT}&offset=${productOffset}`,
+      )
+      const data = await res.json()
+      const fetched: Product[] = data.products || []
+      const total: number = data.total ?? 0
+      setProducts((prev) => [...prev, ...fetched])
+      const newOffset = productOffset + fetched.length
+      setProductOffset(newOffset)
+      setHasMore(newOffset < total)
+    } catch (error) {
+      console.error("Error loading more products:", error)
+    } finally {
+      setLoadingMore(false)
     }
   }
 
@@ -125,6 +155,9 @@ export default function PublicStorePage({ params }: { params: { storeId: string 
           products={products}
           categories={categories}
           storeId={params.storeId}
+          hasMore={hasMore}
+          loadingMore={loadingMore}
+          onLoadMore={loadMoreProducts}
         />
       )
     case "obsidian-glass":
@@ -134,6 +167,9 @@ export default function PublicStorePage({ params }: { params: { storeId: string 
           products={products}
           categories={categories}
           storeId={params.storeId}
+          hasMore={hasMore}
+          loadingMore={loadingMore}
+          onLoadMore={loadMoreProducts}
         />
       )
     case "aurora-frost":
@@ -143,6 +179,9 @@ export default function PublicStorePage({ params }: { params: { storeId: string 
           products={products}
           categories={categories}
           storeId={params.storeId}
+          hasMore={hasMore}
+          loadingMore={loadingMore}
+          onLoadMore={loadMoreProducts}
         />
       )
     default:

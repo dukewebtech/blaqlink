@@ -12,6 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { createCartStore } from "@/lib/cart-store"
 import { useRouter } from "next/navigation"
 import { ProductDetailModal } from "@/components/store/product-detail-modal"
+import { CartDrawer } from "@/components/store/cart-drawer"
 import { useToast } from "@/components/ui/use-toast"
 
 interface Product {
@@ -48,9 +49,15 @@ interface ObsidianGlassStorefrontProps {
   products: Product[]
   categories: Category[]
   storeId: string
+  hasMore?: boolean
+  loadingMore?: boolean
+  onLoadMore?: () => void
 }
 
-export function ObsidianGlassStorefront({ storeInfo, products, categories, storeId }: ObsidianGlassStorefrontProps) {
+export function ObsidianGlassStorefront({
+  storeInfo, products, categories, storeId,
+  hasMore = false, loadingMore = false, onLoadMore,
+}: ObsidianGlassStorefrontProps) {
   const store = createCartStore(storeId)
   const [searchQuery, setSearchQuery] = useState("")
   const [selectedCategory, setSelectedCategory] = useState("all")
@@ -58,6 +65,7 @@ export function ObsidianGlassStorefront({ storeInfo, products, categories, store
   const [cartCount, setCartCount] = useState(store.getItemCount())
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null)
   const [isModalOpen, setIsModalOpen] = useState(false)
+  const [cartDrawerOpen, setCartDrawerOpen] = useState(false)
   const router = useRouter()
   const { toast } = useToast()
 
@@ -115,7 +123,7 @@ export function ObsidianGlassStorefront({ storeInfo, products, categories, store
   }
 
   const handleCartClick = () => {
-    router.push(`/store/${storeId}/cart`)
+    setCartDrawerOpen(true)
   }
 
   const handleAddToCart = (product: Product, quantity: number) => {
@@ -376,6 +384,19 @@ export function ObsidianGlassStorefront({ storeInfo, products, categories, store
         </div>
       </section>
 
+      {/* Load More */}
+      {hasMore && (
+        <div className="flex justify-center py-8 bg-zinc-950">
+          <button
+            onClick={onLoadMore}
+            disabled={loadingMore}
+            className="px-8 py-3 rounded-full bg-gradient-to-r from-violet-600 to-fuchsia-600 text-white font-medium hover:from-violet-500 hover:to-fuchsia-500 disabled:opacity-60 transition-all"
+          >
+            {loadingMore ? "Loading…" : "Load More Products"}
+          </button>
+        </div>
+      )}
+
       {/* Footer */}
       <footer className="bg-zinc-900/60 backdrop-blur-xl border-t border-zinc-800/50 py-8 px-4">
         <div className="max-w-7xl mx-auto text-center">
@@ -398,6 +419,12 @@ export function ObsidianGlassStorefront({ storeInfo, products, categories, store
           storeName={storeInfo?.business_name || storeInfo?.full_name}
         />
       )}
+      <CartDrawer
+        open={cartDrawerOpen}
+        onOpenChange={setCartDrawerOpen}
+        storeId={storeId}
+        themeButton="bg-gradient-to-r from-violet-600 to-fuchsia-600 hover:from-violet-500 hover:to-fuchsia-500 text-white"
+      />
     </div>
   )
 }

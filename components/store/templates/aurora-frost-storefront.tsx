@@ -24,6 +24,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { createCartStore } from "@/lib/cart-store"
 import { useRouter } from "next/navigation"
 import { ProductDetailModal } from "@/components/store/product-detail-modal"
+import { CartDrawer } from "@/components/store/cart-drawer"
 
 interface Product {
   id: string
@@ -59,9 +60,15 @@ interface AuroraFrostStorefrontProps {
   products: Product[]
   categories: Category[]
   storeId: string
+  hasMore?: boolean
+  loadingMore?: boolean
+  onLoadMore?: () => void
 }
 
-export function AuroraFrostStorefront({ storeInfo, products, categories, storeId }: AuroraFrostStorefrontProps) {
+export function AuroraFrostStorefront({
+  storeInfo, products, categories, storeId,
+  hasMore = false, loadingMore = false, onLoadMore,
+}: AuroraFrostStorefrontProps) {
   const store = createCartStore(storeId)
   const [searchQuery, setSearchQuery] = useState("")
   const [selectedCategory, setSelectedCategory] = useState("all")
@@ -70,6 +77,7 @@ export function AuroraFrostStorefront({ storeInfo, products, categories, storeId
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null)
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [favorites, setFavorites] = useState<string[]>([])
+  const [cartDrawerOpen, setCartDrawerOpen] = useState(false)
   const router = useRouter()
   const { toast } = useToast()
 
@@ -132,7 +140,7 @@ export function AuroraFrostStorefront({ storeInfo, products, categories, storeId
   }
 
   const handleCartClick = () => {
-    router.push(`/store/${storeId}/cart`)
+    setCartDrawerOpen(true)
   }
 
   const handleAddToCart = (product: Product, quantity: number) => {
@@ -412,6 +420,19 @@ export function AuroraFrostStorefront({ storeInfo, products, categories, storeId
         </div>
       </section>
 
+      {/* Load More */}
+      {hasMore && (
+        <div className="flex justify-center py-8">
+          <button
+            onClick={onLoadMore}
+            disabled={loadingMore}
+            className="px-8 py-3 rounded-full bg-gradient-to-r from-rose-500 via-amber-500 to-teal-500 text-white font-medium hover:opacity-90 disabled:opacity-60 transition-all"
+          >
+            {loadingMore ? "Loading…" : "Load More Products"}
+          </button>
+        </div>
+      )}
+
       {/* Footer */}
       <footer className="relative bg-white/40 backdrop-blur-xl border-t border-white/50 py-8 px-4">
         <div className="max-w-6xl mx-auto text-center">
@@ -434,6 +455,12 @@ export function AuroraFrostStorefront({ storeInfo, products, categories, storeId
           storeName={storeInfo?.business_name || storeInfo?.full_name}
         />
       )}
+      <CartDrawer
+        open={cartDrawerOpen}
+        onOpenChange={setCartDrawerOpen}
+        storeId={storeId}
+        themeButton="bg-gradient-to-r from-rose-500 via-amber-500 to-teal-500 hover:from-rose-600 hover:via-amber-600 hover:to-teal-600 text-white"
+      />
     </div>
   )
 }

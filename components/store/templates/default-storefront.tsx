@@ -10,6 +10,7 @@ import { Card } from "@/components/ui/card"
 import { Search, ShoppingCart, Heart, User, Star, Eye } from "lucide-react"
 import Link from "next/link"
 import { ProductDetailModal } from "@/components/store/product-detail-modal"
+import { CartDrawer } from "@/components/store/cart-drawer"
 import { useToast } from "@/hooks/use-toast"
 import { createCartStore } from "@/lib/cart-store"
 import { useRouter } from "next/navigation"
@@ -85,6 +86,7 @@ export function DefaultStorefront({
 }: DefaultStorefrontProps) {
   const { toast } = useToast()
   const router = useRouter()
+  const [cartDrawerOpen, setCartDrawerOpen] = useState(false)
 
   const store = createCartStore(storeId)
 
@@ -182,7 +184,7 @@ export function DefaultStorefront({
                 variant="ghost"
                 size="icon"
                 className="relative"
-                onClick={() => router.push(`/store/${storeId}/cart`)}
+                onClick={() => setCartDrawerOpen(true)}
               >
                 <ShoppingCart className="h-5 w-5" />
                 {cartCount > 0 && (
@@ -511,6 +513,7 @@ export function DefaultStorefront({
         storeId={storeId}
         storeName={storeInfo?.business_name || storeInfo?.full_name}
       />
+      <CartDrawer open={cartDrawerOpen} onOpenChange={setCartDrawerOpen} storeId={storeId} />
     </div>
   )
 }

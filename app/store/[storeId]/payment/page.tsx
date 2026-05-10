@@ -1,18 +1,22 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { useRouter } from "next/navigation"
+import { useRouter, useSearchParams } from "next/navigation"
 import { Button } from "@/components/ui/button"
-import { Loader2, CreditCard, Shield, Lock, AlertCircle } from "lucide-react"
+import { Loader2, CreditCard, Shield, Lock, AlertCircle, CheckCircle } from "lucide-react"
 import { createCartStore } from "@/lib/cart-store"
 import { OrderConfirmationDocument } from "@/components/order-confirmation-document"
 
 type Gateway = "paystack" | "korapay"
+const ORDER_TTL_MS = 30 * 60 * 1000 // 30 minutes
 
 export default function PaymentPage({ params }: { params: { storeId: string } }) {
   const router = useRouter()
+  const searchParams = useSearchParams()
   const store = createCartStore(params.storeId)
+
   const [loading, setLoading] = useState(false)
+  const [verifying, setVerifying] = useState(false)
   const [orderData, setOrderData] = useState<any>(null)
   const [error, setError] = useState<string | null>(null)
   const [showConfirmation, setShowConfirmation] = useState(false)
@@ -20,15 +24,57 @@ export default function PaymentPage({ params }: { params: { storeId: string } })
   const [vendorData, setVendorData] = useState<any>(null)
   const [gateway, setGateway] = useState<Gateway>("paystack")
 
+  // On mount: either verify a redirect callback or load pending order
   useEffect(() => {
-    const pendingOrder = sessionStorage.getItem("pendingOrder")
-    if (!pendingOrder) { router.push(`/store/${params.storeId}/cart`); return }
+    const inboundRef = searchParams.get("reference") || searchParams.get("trxref")
+    const inboundGateway = (searchParams.get("gateway") as Gateway) || "paystack"
+
+    if (inboundRef) {
+      // Coming back from payment gateway redirect — auto-verify
+      verifyAfterRedirect(inboundRef, inboundGateway)
+      return
+    }
+
+    const raw = sessionStorage.getItem("pendingOrder")
+    if (!raw) { router.push(`/store/${params.storeId}/cart`); return }
+
     try {
-      setOrderData(JSON.parse(pendingOrder))
+      const parsed = JSON.parse(raw)
+      if (parsed._timestamp && Date.now() - parsed._timestamp > ORDER_TTL_MS) {
+        sessionStorage.removeItem("pendingOrder")
+        router.push(`/store/${params.storeId}/cart`)
+        return
+      }
+      setOrderData(parsed)
     } catch {
       router.push(`/store/${params.storeId}/cart`)
     }
-  }, [router, params.storeId])
+  }, [])
+
+  const verifyAfterRedirect = async (reference: string, gw: Gateway) => {
+    setVerifying(true)
+    setError(null)
+    try {
+      const endpoint = gw === "korapay"
+        ? `/api/payment/korapay/verify?reference=${reference}`
+        : `/api/payment/verify?reference=${reference}`
+      const res = await fetch(endpoint)
+      const data = await res.json()
+      if (res.ok && data.success) {
+        setVerifiedOrder(data.order)
+        setVendorData(data.vendor)
+        setShowConfirmation(true)
+        store.clearCart()
+        sessionStorage.removeItem("pendingOrder")
+      } else {
+        setError(data.error || "Payment verification failed. Please contact support.")
+      }
+    } catch {
+      setError(`Failed to verify payment. Please contact support with reference: ${reference}`)
+    } finally {
+      setVerifying(false)
+    }
+  }
 
   const handlePayment = async () => {
     if (!orderData) return
@@ -47,84 +93,60 @@ export default function PaymentPage({ params }: { params: { storeId: string } })
   }
 
   const payWithPaystack = async () => {
+    const callbackBase = `${window.location.origin}/store/${params.storeId}/payment?gateway=paystack`
     const response = await fetch("/api/payment/initialize", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email: orderData.customer_email, amount: orderData.total_amount, metadata: orderData }),
+      body: JSON.stringify({
+        email: orderData.customer_email,
+        amount: orderData.total_amount,
+        metadata: orderData,
+        storeId: params.storeId,
+        callbackUrl: callbackBase,
+      }),
     })
     const data = await response.json()
     if (!response.ok) throw new Error(data.error || "Payment initialization failed")
-    if (!data.authorization_url) throw new Error("No authorization URL received from Paystack")
-
-    const win = window.open(data.authorization_url, "_blank", "width=600,height=800")
-    if (!win) { window.location.href = data.authorization_url; return }
-
-    const timer = setInterval(async () => {
-      if (win.closed) {
-        clearInterval(timer)
-        try {
-          const res = await fetch(`/api/payment/verify?reference=${data.reference}`)
-          const verifyData = await res.json()
-          if (res.ok && verifyData.success) {
-            setVerifiedOrder(verifyData.order)
-            setVendorData(verifyData.vendor)
-            setShowConfirmation(true)
-            store.clearCart()
-            sessionStorage.removeItem("pendingOrder")
-          } else {
-            setError(verifyData.error || "Payment verification failed. Please contact support.")
-          }
-        } catch {
-          setError("Failed to verify payment. Please contact support with your reference: " + data.reference)
-        } finally {
-          setLoading(false)
-        }
-      }
-    }, 1000)
+    if (!data.authorization_url) throw new Error("No authorization URL received")
+    window.location.href = data.authorization_url
   }
 
   const payWithKoraPay = async () => {
+    const redirectUrl = `${window.location.origin}/store/${params.storeId}/payment?gateway=korapay`
     const response = await fetch("/api/payment/korapay/initialize", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email: orderData.customer_email, amount: orderData.total_amount, metadata: orderData }),
+      body: JSON.stringify({
+        email: orderData.customer_email,
+        amount: orderData.total_amount,
+        metadata: orderData,
+        storeId: params.storeId,
+        redirectUrl,
+      }),
     })
     const data = await response.json()
     if (!response.ok) throw new Error(data.error || "KoraPay initialization failed")
-    if (!data.checkout_url) throw new Error("No checkout URL received from KoraPay")
-
-    const win = window.open(data.checkout_url, "_blank", "width=600,height=800")
-    if (!win) { window.location.href = data.checkout_url; return }
-
-    const timer = setInterval(async () => {
-      if (win.closed) {
-        clearInterval(timer)
-        try {
-          const res = await fetch(`/api/payment/korapay/verify?reference=${data.reference}`)
-          const verifyData = await res.json()
-          if (res.ok && verifyData.success) {
-            setVerifiedOrder(verifyData.order)
-            setVendorData(verifyData.vendor)
-            setShowConfirmation(true)
-            store.clearCart()
-            sessionStorage.removeItem("pendingOrder")
-          } else {
-            setError(verifyData.error || "Payment verification failed. Please contact support.")
-          }
-        } catch {
-          setError("Failed to verify payment. Please contact support with your reference: " + data.reference)
-        } finally {
-          setLoading(false)
-        }
-      }
-    }, 1000)
+    if (!data.checkout_url) throw new Error("No checkout URL received")
+    window.location.href = data.checkout_url
   }
 
   if (showConfirmation && verifiedOrder) {
     return <OrderConfirmationDocument order={verifiedOrder} vendor={vendorData} />
   }
 
-  if (!orderData) {
+  if (verifying) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center p-4">
+        <div className="text-center space-y-4">
+          <Loader2 className="w-12 h-12 animate-spin text-primary mx-auto" />
+          <p className="text-lg font-medium">Verifying your payment…</p>
+          <p className="text-sm text-muted-foreground">Please wait, do not close this page.</p>
+        </div>
+      </div>
+    )
+  }
+
+  if (!orderData && !verifying) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <Loader2 className="w-8 h-8 animate-spin" />
@@ -158,15 +180,15 @@ export default function PaymentPage({ params }: { params: { storeId: string } })
           <div className="bg-muted/50 rounded-lg p-5 space-y-3 text-left">
             <div className="flex justify-between text-sm">
               <span className="text-muted-foreground">Order Total</span>
-              <span className="font-bold text-lg">NGN {orderData.total_amount?.toLocaleString()}</span>
+              <span className="font-bold text-lg">NGN {orderData?.total_amount?.toLocaleString()}</span>
             </div>
             <div className="flex justify-between text-sm">
               <span className="text-muted-foreground">Items</span>
-              <span className="font-medium">{orderData.items?.length} item(s)</span>
+              <span className="font-medium">{orderData?.items?.length} item(s)</span>
             </div>
             <div className="flex justify-between text-sm">
               <span className="text-muted-foreground">Email</span>
-              <span className="font-medium truncate max-w-[200px]">{orderData.customer_email}</span>
+              <span className="font-medium truncate max-w-[200px]">{orderData?.customer_email}</span>
             </div>
           </div>
 
@@ -184,12 +206,16 @@ export default function PaymentPage({ params }: { params: { storeId: string } })
                   }`}
                 >
                   <div className="flex items-center gap-2 mb-1">
-                    <div className={`w-3.5 h-3.5 rounded-full border-2 flex items-center justify-center shrink-0 ${
-                      gateway === g ? "border-primary" : "border-muted-foreground/40"
-                    }`}>
+                    <div
+                      className={`w-3.5 h-3.5 rounded-full border-2 flex items-center justify-center shrink-0 ${
+                        gateway === g ? "border-primary" : "border-muted-foreground/40"
+                      }`}
+                    >
                       {gateway === g && <div className="w-1.5 h-1.5 rounded-full bg-primary" />}
                     </div>
-                    <span className="text-sm font-semibold capitalize">{g === "korapay" ? "KoraPay" : "Paystack"}</span>
+                    <span className="text-sm font-semibold capitalize">
+                      {g === "korapay" ? "KoraPay" : "Paystack"}
+                    </span>
                   </div>
                   <p className="text-xs text-muted-foreground pl-5">
                     {g === "paystack" ? "Cards, bank transfer, USSD" : "Cards, bank transfer"}
@@ -199,11 +225,25 @@ export default function PaymentPage({ params }: { params: { storeId: string } })
             </div>
           </div>
 
+          <div className="bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800 rounded-lg p-3 flex items-start gap-2 text-left">
+            <CheckCircle className="w-4 h-4 text-blue-600 dark:text-blue-400 shrink-0 mt-0.5" />
+            <p className="text-xs text-blue-700 dark:text-blue-300">
+              You'll be redirected to {gateway === "paystack" ? "Paystack" : "KoraPay"} to complete payment securely,
+              then automatically returned here.
+            </p>
+          </div>
+
           <Button onClick={handlePayment} disabled={loading} className="w-full h-12 text-base" size="lg">
             {loading ? (
-              <><Loader2 className="w-5 h-5 mr-2 animate-spin" />Processing…</>
+              <>
+                <Loader2 className="w-5 h-5 mr-2 animate-spin" />
+                Connecting to gateway…
+              </>
             ) : (
-              <><Lock className="w-5 h-5 mr-2" />Pay with {gateway === "paystack" ? "Paystack" : "KoraPay"}</>
+              <>
+                <Lock className="w-5 h-5 mr-2" />
+                Pay with {gateway === "paystack" ? "Paystack" : "KoraPay"}
+              </>
             )}
           </Button>
 
@@ -212,7 +252,11 @@ export default function PaymentPage({ params }: { params: { storeId: string } })
             <span>Payments are secure and encrypted</span>
           </div>
 
-          <Button variant="ghost" onClick={() => router.push(`/store/${params.storeId}/checkout`)} disabled={loading}>
+          <Button
+            variant="ghost"
+            onClick={() => router.push(`/store/${params.storeId}/checkout`)}
+            disabled={loading}
+          >
             Back to Checkout
           </Button>
         </div>

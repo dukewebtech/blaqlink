@@ -97,12 +97,12 @@ export default function ProductDetailPage() {
         }
 
         // Fetch product
-        const productRes = await fetch(`/api/public/products?storeId=${storeId}`)
+        const productRes = await fetch(`/api/public/products/${productId}?storeId=${storeId}`)
         if (productRes.ok) {
-          const productsData = await productRes.json()
-          const productsArray = productsData.products || []
-          const foundProduct = productsArray.find((p: Product) => p.id === productId)
-          setProduct(foundProduct || null)
+          const productData = await productRes.json()
+          setProduct(productData.product || null)
+        } else {
+          setProduct(null)
         }
       } catch (error) {
         console.error("Error fetching product:", error)
@@ -448,7 +448,7 @@ export default function ProductDetailPage() {
                     {copied ? <Check className="h-4 w-4 mr-2 text-green-500" /> : <Copy className="h-4 w-4 mr-2" />}
                     {copied ? "Copied!" : "Copy Link"}
                   </DropdownMenuItem>
-                  {typeof navigator !== "undefined" && navigator.share && (
+                  {typeof navigator !== "undefined" && "share" in navigator && (
                     <>
                       <DropdownMenuSeparator />
                       <DropdownMenuItem onClick={handleNativeShare} className="cursor-pointer">

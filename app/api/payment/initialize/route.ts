@@ -3,7 +3,7 @@ import { type NextRequest, NextResponse } from "next/server"
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
-    const { email, amount, metadata } = body
+    const { email, amount, metadata, callbackUrl: clientCallbackUrl } = body
 
     console.log("[v0] Initializing Paystack payment:", { email, amount })
 
@@ -12,12 +12,8 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Payment gateway not configured. Please contact support." }, { status: 500 })
     }
 
-    if (!process.env.NEXT_PUBLIC_APP_URL) {
-      console.error("[v0] NEXT_PUBLIC_APP_URL is not set")
-      return NextResponse.json({ error: "Application URL not configured. Please contact support." }, { status: 500 })
-    }
-
-    const callbackUrl = `${process.env.NEXT_PUBLIC_APP_URL}/store/payment/verify`
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL
+    const callbackUrl = clientCallbackUrl || `${appUrl}/store/payment/verify`
     console.log("[v0] Callback URL:", callbackUrl)
 
     // Initialize Paystack payment

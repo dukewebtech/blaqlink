@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, use } from "react"
 import { useToast } from "@/hooks/use-toast"
 import { useRouter } from "next/navigation"
 import { CrystalClearStorefront } from "@/components/store/templates/crystal-clear-storefront"
@@ -40,7 +40,8 @@ interface StoreInfo {
   store_template?: string // Added store_template field
 }
 
-export default function PublicStorePage({ params }: { params: { storeId: string } }) {
+export default function PublicStorePage({ params: paramsProp }: { params: Promise<{ storeId: string }> }) {
+  const params = use(paramsProp)
   const [products, setProducts] = useState<Product[]>([])
   const [categories, setCategories] = useState<Category[]>([])
   const [storeInfo, setStoreInfo] = useState<StoreInfo | null>(null)

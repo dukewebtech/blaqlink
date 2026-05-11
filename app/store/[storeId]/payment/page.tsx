@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useState, use } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Loader2, CreditCard, Shield, Lock, AlertCircle, CheckCircle } from "lucide-react"
@@ -10,10 +10,11 @@ import { OrderConfirmationDocument } from "@/components/order-confirmation-docum
 type Gateway = "paystack" | "korapay"
 const ORDER_TTL_MS = 30 * 60 * 1000 // 30 minutes
 
-export default function PaymentPage({ params }: { params: { storeId: string } }) {
+export default function PaymentPage({ params: paramsProp }: { params: Promise<{ storeId: string }> }) {
+  const { storeId } = use(paramsProp)
   const router = useRouter()
   const searchParams = useSearchParams()
-  const store = createCartStore(params.storeId)
+  const store = createCartStore(storeId)
 
   const [loading, setLoading] = useState(false)
   const [verifying, setVerifying] = useState(false)
@@ -36,18 +37,18 @@ export default function PaymentPage({ params }: { params: { storeId: string } })
     }
 
     const raw = sessionStorage.getItem("pendingOrder")
-    if (!raw) { router.push(`/store/${params.storeId}/cart`); return }
+    if (!raw) { router.push(`/store/${storeId}/cart`); return }
 
     try {
       const parsed = JSON.parse(raw)
       if (parsed._timestamp && Date.now() - parsed._timestamp > ORDER_TTL_MS) {
         sessionStorage.removeItem("pendingOrder")
-        router.push(`/store/${params.storeId}/cart`)
+        router.push(`/store/${storeId}/cart`)
         return
       }
       setOrderData(parsed)
     } catch {
-      router.push(`/store/${params.storeId}/cart`)
+      router.push(`/store/${storeId}/cart`)
     }
   }, [])
 
@@ -93,7 +94,7 @@ export default function PaymentPage({ params }: { params: { storeId: string } })
   }
 
   const payWithPaystack = async () => {
-    const callbackBase = `${window.location.origin}/store/${params.storeId}/payment?gateway=paystack`
+    const callbackBase = `${window.location.origin}/store/${storeId}/payment?gateway=paystack`
     const response = await fetch("/api/payment/initialize", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -101,7 +102,7 @@ export default function PaymentPage({ params }: { params: { storeId: string } })
         email: orderData.customer_email,
         amount: orderData.total_amount,
         metadata: orderData,
-        storeId: params.storeId,
+        storeId: storeId,
         callbackUrl: callbackBase,
       }),
     })
@@ -112,7 +113,7 @@ export default function PaymentPage({ params }: { params: { storeId: string } })
   }
 
   const payWithKoraPay = async () => {
-    const redirectUrl = `${window.location.origin}/store/${params.storeId}/payment?gateway=korapay`
+    const redirectUrl = `${window.location.origin}/store/${storeId}/payment?gateway=korapay`
     const response = await fetch("/api/payment/korapay/initialize", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -120,7 +121,7 @@ export default function PaymentPage({ params }: { params: { storeId: string } })
         email: orderData.customer_email,
         amount: orderData.total_amount,
         metadata: orderData,
-        storeId: params.storeId,
+        storeId: storeId,
         redirectUrl,
       }),
     })
@@ -254,7 +255,7 @@ export default function PaymentPage({ params }: { params: { storeId: string } })
 
           <Button
             variant="ghost"
-            onClick={() => router.push(`/store/${params.storeId}/checkout`)}
+            onClick={() => router.push(`/store/${storeId}/checkout`)}
             disabled={loading}
           >
             Back to Checkout

@@ -1,7 +1,7 @@
 "use client"
 
 import { ArrowLeft, Package, MapPin, CreditCard } from "lucide-react"
-import { useEffect, useState } from "react"
+import { useEffect, useState, use } from "react"
 import { useRouter } from "next/navigation"
 import { createCartStore, type CartItem } from "@/lib/cart-store"
 import { Button } from "@/components/ui/button"
@@ -11,9 +11,10 @@ import { Textarea } from "@/components/ui/textarea"
 import { NigerianLocationSelect } from "@/components/checkout/nigerian-location-select"
 import Image from "next/image"
 
-export default function CheckoutPage({ params }: { params: { storeId: string } }) {
+export default function CheckoutPage({ params: paramsProp }: { params: Promise<{ storeId: string }> }) {
+  const { storeId } = use(paramsProp)
   const router = useRouter()
-  const store = createCartStore(params.storeId)
+  const store = createCartStore(storeId)
   const [items, setItems] = useState<CartItem[]>([])
   const [total, setTotal] = useState(0)
   const [loading, setLoading] = useState(false)
@@ -35,12 +36,12 @@ export default function CheckoutPage({ params }: { params: { storeId: string } }
   useEffect(() => {
     const cart = store.getCart()
     if (cart.items.length === 0) {
-      router.push(`/store/${params.storeId}/cart`)
+      router.push(`/store/${storeId}/cart`)
       return
     }
     setItems(cart.items)
     setTotal(cart.total)
-  }, [router, params.storeId])
+  }, [router, storeId])
 
   const hasPhysicalProducts = items.some((item) => item.product_type === "physical")
   const hasOnlyVirtualProducts = items.every(
@@ -89,14 +90,14 @@ export default function CheckoutPage({ params }: { params: { storeId: string } }
       })),
       total_amount: total,
       notes,
-      store_id: params.storeId,
+      store_id: storeId,
     }
 
     // Store order data in sessionStorage for payment page (include timestamp for expiry check)
     sessionStorage.setItem("pendingOrder", JSON.stringify({ ...orderData, _timestamp: Date.now() }))
 
     // Redirect to payment page
-    router.push(`/store/${params.storeId}/payment`)
+    router.push(`/store/${storeId}/payment`)
   }
 
   if (items.length === 0) {
@@ -106,7 +107,7 @@ export default function CheckoutPage({ params }: { params: { storeId: string } }
   return (
     <div className="min-h-screen bg-background">
       <div className="max-w-7xl mx-auto px-4 py-12">
-        <Button variant="ghost" onClick={() => router.push(`/store/${params.storeId}/cart`)} className="mb-8">
+        <Button variant="ghost" onClick={() => router.push(`/store/${storeId}/cart`)} className="mb-8">
           <ArrowLeft className="w-4 h-4 mr-2" />
           Back to Cart
         </Button>

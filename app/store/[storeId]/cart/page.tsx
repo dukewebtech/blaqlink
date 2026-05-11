@@ -1,17 +1,18 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, use } from "react"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import { Minus, Plus, Trash2, ArrowLeft, ShoppingBag } from "lucide-react"
 import { useRouter } from "next/navigation"
 import { createCartStore, type CartItem } from "@/lib/cart-store"
 
-export default function StoreCartPage({ params }: { params: { storeId: string } }) {
+export default function StoreCartPage({ params: paramsProp }: { params: Promise<{ storeId: string }> }) {
+  const { storeId } = use(paramsProp)
   const [cartItems, setCartItems] = useState<CartItem[]>([])
   const [total, setTotal] = useState(0)
   const router = useRouter()
-  const store = createCartStore(params.storeId)
+  const store = createCartStore(storeId)
 
   useEffect(() => {
     loadCart()
@@ -53,7 +54,7 @@ export default function StoreCartPage({ params }: { params: { storeId: string } 
             <h2 className="text-2xl font-bold">Your cart is empty</h2>
             <p className="text-muted-foreground">Add some products to get started!</p>
           </div>
-          <Button onClick={() => router.push(`/store/${params.storeId}`)} className="w-full" size="lg">
+          <Button onClick={() => router.push(`/store/${storeId}`)} className="w-full" size="lg">
             Continue Shopping
           </Button>
         </Card>
@@ -64,7 +65,7 @@ export default function StoreCartPage({ params }: { params: { storeId: string } 
   return (
     <div className="min-h-screen bg-background">
       <div className="container mx-auto px-4 py-8 max-w-6xl">
-        <Button variant="ghost" onClick={() => router.push(`/store/${params.storeId}`)} className="mb-8">
+        <Button variant="ghost" onClick={() => router.push(`/store/${storeId}`)} className="mb-8">
           <ArrowLeft className="mr-2 h-4 w-4" />
           Continue Shopping
         </Button>
@@ -174,7 +175,7 @@ export default function StoreCartPage({ params }: { params: { storeId: string } 
               <Button
                 className="w-full h-12 text-base"
                 size="lg"
-                onClick={() => router.push(`/store/${params.storeId}/checkout`)}
+                onClick={() => router.push(`/store/${storeId}/checkout`)}
               >
                 Proceed to Checkout
               </Button>

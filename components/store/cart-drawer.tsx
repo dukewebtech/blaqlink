@@ -59,7 +59,7 @@ export function CartDrawer({ open, onOpenChange, storeId, themeButton }: CartDra
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent side="right" className="w-full sm:max-w-md flex flex-col p-0">
+      <SheetContent className="w-full sm:max-w-md flex flex-col p-0">
         <SheetHeader className="px-6 py-5 border-b">
           <SheetTitle className="flex items-center gap-2">
             <ShoppingCart className="h-5 w-5" />

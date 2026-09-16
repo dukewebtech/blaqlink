@@ -22,7 +22,35 @@ export async function updateSession(request: NextRequest) {
 
   const isPublicPath = publicPaths.some((path) => request.nextUrl.pathname.startsWith(path))
 
-  if (isPublicPath) {
+  // Vendor storefronts render at a bare top-level slug (e.g. /queenchic, see
+  // app/[slug]/page.tsx) — there's no fixed prefix to list, so anything that
+  // isn't one of the app's own private routes is treated as a public storefront
+  // and left for that page to 404 if the slug doesn't resolve to a vendor.
+  const privateTopLevelSegments = new Set([
+    "admin",
+    "api-diagnostics",
+    "categories",
+    "customers",
+    "dashboard",
+    "logout",
+    "onboarding",
+    "onboarding2",
+    "order",
+    "orders",
+    "payouts",
+    "plan",
+    "products",
+    "products-list",
+    "sales",
+    "store-design",
+    "settings",
+    "test-isolation",
+    "transactions",
+  ])
+  const firstSegment = request.nextUrl.pathname.split("/")[1] ?? ""
+  const isStorefrontSlug = firstSegment !== "" && !privateTopLevelSegments.has(firstSegment)
+
+  if (isPublicPath || isStorefrontSlug) {
     return supabaseResponse
   }
 

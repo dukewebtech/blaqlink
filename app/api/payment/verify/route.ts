@@ -1,6 +1,8 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { createAdminClient } from "@/lib/supabase/server"
 import { sendEmail, getNewOrderEmailForVendor, getOrderConfirmationEmailForCustomer } from "@/lib/email"
+import { getVendorPlan, computeOrderFee } from "@/lib/pricing"
+import { runOrderFulfilment } from "@/lib/storefront/fulfilment"
 
 export async function GET(request: NextRequest) {
   try {
@@ -77,6 +79,10 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ success: true, order_id: existing.id, reference, order })
     }
 
+    const totalAmount = paymentData.amount / 100 // Convert from kobo
+    const vendorPlan = await getVendorPlan(vendorUserId)
+    const fee = computeOrderFee(totalAmount, vendorPlan)
+
     const { data: order, error: orderError } = await supabase
       .from("orders")
       .insert({
@@ -85,10 +91,18 @@ export async function GET(request: NextRequest) {
         customer_name: orderData.customer_name,
         customer_phone: orderData.customer_phone,
         shipping_address: orderData.shipping_address,
-        total_amount: paymentData.amount / 100, // Convert from kobo
+        delivery_method: orderData.delivery_method || null,
+        delivery_area: orderData.delivery_area || null,
+        delivery_address: orderData.delivery_address || null,
+        delivery_state: orderData.delivery_state || null,
+        delivery_city: orderData.delivery_city || null,
+        delivery_postal_code: orderData.delivery_postal_code || null,
+        customer_note: orderData.customer_note || null,
+        total_amount: totalAmount,
         status: "confirmed",
         payment_reference: reference,
         payment_status: "success",
+        ...fee,
       })
       .select()
       .single()
@@ -109,14 +123,35 @@ export async function GET(request: NextRequest) {
       quantity: Number.parseInt(item.quantity),
       price: Number.parseFloat(item.price),
       subtotal: Number.parseFloat(item.subtotal),
+      product_variant_id: item.product_variant_id || null,
+      variant_label: item.variant_label || null,
+      ticket_tier_id: item.ticket_tier_id || null,
+      ticket_tier_name: item.ticket_tier_name || null,
+      appointment_date: item.appointment_date || null,
+      appointment_time: item.appointment_time || null,
     }))
 
-    const { error: itemsError } = await supabase.from("order_items").insert(orderItems)
+    const { data: insertedItems, error: itemsError } = await supabase
+      .from("order_items")
+      .insert(orderItems)
+      .select()
 
     if (itemsError) {
       console.error("[v0] Order items creation error:", itemsError.message)
     } else {
       console.log("[v0] Order items created successfully:", orderItems.length, "items")
+    }
+
+    if (insertedItems && insertedItems.length > 0) {
+      runOrderFulfilment(
+        {
+          orderId: order.id,
+          customerName: order.customer_name,
+          customerEmail: order.customer_email,
+          vendorName: vendorInfo?.business_name || vendorInfo?.full_name || "the seller",
+        },
+        insertedItems,
+      ).catch((err) => console.error("[v0] Fulfilment error:", err))
     }
 
     const productIds = orderData.items.map((item: any) => item.product_id)

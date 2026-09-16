@@ -305,6 +305,84 @@ export function getWithdrawalUpdateEmailForVendor(params: WithdrawalEmailParams)
   }
 }
 
+interface DigitalDownloadEmailParams {
+  customerName: string
+  vendorName: string
+  files: { title: string; url: string }[]
+}
+
+// Email for customers to download their digital product(s) after payment
+export function getDigitalDownloadEmailForCustomer(params: DigitalDownloadEmailParams): {
+  subject: string
+  html: string
+} {
+  const { customerName, vendorName, files } = params
+
+  const linksHtml = files
+    .map((f) => `<p><a href="${f.url}" class="btn">Download ${f.title}</a></p>`)
+    .join("")
+
+  const content = `
+    <div class="header">
+      <h1>Your download is ready</h1>
+    </div>
+    <div class="content">
+      <p>Hi ${customerName},</p>
+      <p>Thanks for your purchase from ${vendorName}. Your file${files.length > 1 ? "s are" : " is"} ready below.</p>
+      ${linksHtml}
+      <p>If a link doesn't work, contact the seller directly and they can resend it.</p>
+    </div>
+  `
+
+  return {
+    subject: `Your download from ${vendorName}`,
+    html: emailTemplate(content),
+  }
+}
+
+interface TicketEmailParams {
+  customerName: string
+  vendorName: string
+  eventName: string
+  eventDate?: string | null
+  eventLocation?: string | null
+  tierName?: string | null
+  quantity: number
+  qrDataUrl: string
+  ticketReference: string
+}
+
+// Email for customers with their QR ticket after payment
+export function getTicketEmailForCustomer(params: TicketEmailParams): { subject: string; html: string } {
+  const { customerName, vendorName, eventName, eventDate, eventLocation, tierName, quantity, qrDataUrl, ticketReference } =
+    params
+
+  const content = `
+    <div class="header">
+      <h1>Your ticket is ready</h1>
+    </div>
+    <div class="content">
+      <p>Hi ${customerName},</p>
+      <p>Here's your ticket for <strong>${eventName}</strong> from ${vendorName}. Show the QR code at the gate.</p>
+      <div class="highlight">
+        ${tierName ? `<strong>Tier:</strong> ${tierName}<br>` : ""}
+        <strong>Quantity:</strong> ${quantity}<br>
+        ${eventDate ? `<strong>Date:</strong> ${eventDate}<br>` : ""}
+        ${eventLocation ? `<strong>Venue:</strong> ${eventLocation}<br>` : ""}
+        <strong>Reference:</strong> ${ticketReference}
+      </div>
+      <div style="text-align:center;margin:24px 0;">
+        <img src="${qrDataUrl}" alt="QR ticket" width="220" height="220" style="border:1px solid #eee;border-radius:8px;" />
+      </div>
+    </div>
+  `
+
+  return {
+    subject: `Your ticket for ${eventName}`,
+    html: emailTemplate(content),
+  }
+}
+
 interface SystemUpdateEmailParams {
   recipientName?: string
   title: string

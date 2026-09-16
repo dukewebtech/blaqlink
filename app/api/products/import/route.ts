@@ -1,6 +1,7 @@
 import { createServerClient } from "@/lib/supabase/server"
 import { type NextRequest, NextResponse } from "next/server"
 import { getAuthenticatedUser, handleApiError } from "@/lib/utils/api-helpers"
+import { getVendorPlan } from "@/lib/pricing"
 
 const VALID_STATUSES = ["draft", "published", "archived"]
 
@@ -38,6 +39,16 @@ export async function POST(request: NextRequest) {
 
     const supabase = await createServerClient()
 
+    const plan = await getVendorPlan(authResult.user.userId)
+    let remainingSlots = plan.product_limit
+    if (plan.product_limit !== null) {
+      const { count: existingProductCount } = await supabase
+        .from("products")
+        .select("*", { count: "exact", head: true })
+        .eq("user_id", authResult.user.userId)
+      remainingSlots = plan.product_limit - (existingProductCount || 0)
+    }
+
     const results = {
       success: true,
       imported: 0,
@@ -61,6 +72,19 @@ export async function POST(request: NextRequest) {
         results.errors.push({ row: i + 1, error: "Product type is required" })
         continue
       }
+
+      if (!plan.allowed_selling_types.includes(product.product_type)) {
+        results.failed++
+        results.errors.push({ row: i + 1, error: `Your ${plan.name} plan doesn't allow ${product.product_type} products` })
+        continue
+      }
+
+      if (remainingSlots !== null && remainingSlots <= 0) {
+        results.failed++
+        results.errors.push({ row: i + 1, error: `Your ${plan.name} plan allows up to ${plan.product_limit} products` })
+        continue
+      }
+      if (remainingSlots !== null) remainingSlots--
 
       const normalizedStatus = (product.status || "draft").toLowerCase().trim()
       const validStatus = VALID_STATUSES.includes(normalizedStatus) ? normalizedStatus : "draft"

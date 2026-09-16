@@ -32,6 +32,7 @@ import {
   Shield,
   Package,
   Megaphone,
+  Tag,
 } from "lucide-react"
 import { Logo } from "@/components/logo"
 
@@ -41,6 +42,7 @@ const navigation = [
   { name: "Users & Stores", href: "/admin/users", icon: Users },
   { name: "Orders", href: "/admin/orders", icon: ShoppingBag },
   { name: "Products", href: "/admin/products", icon: Package },
+  { name: "Pricing Plans", href: "/admin/pricing", icon: Tag },
   { name: "Financial Reports", href: "/admin/reports", icon: BarChart3 },
   { name: "Announcement", href: "/admin/announcement", icon: Megaphone }, // Renamed to Announcement
   { name: "Settings", href: "/admin/settings", icon: Settings },

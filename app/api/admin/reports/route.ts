@@ -6,30 +6,33 @@ export async function GET() {
     console.log("[v0] Fetching admin reports...")
     const adminClient = createAdminClient()
 
-    let commissionPercentage = 10 // Default fallback
+    // Orders created before the per-plan fee snapshot was introduced have no
+    // platform_fee_amount — fall back to the old flat commission for those
+    // so historical totals never shift.
+    let fallbackCommissionPercentage = 10
     try {
       const { data: settings, error: settingsError } = await adminClient.from("platform_settings").select("*").single()
 
       if (!settingsError && settings) {
-        commissionPercentage = settings.commission_percentage || 10
+        fallbackCommissionPercentage = settings.commission_percentage || 10
       }
     } catch (settingsErr) {
-      // Table doesn't exist yet, use default value
-      console.log("[v0] Platform settings table not found, using default commission (10%)")
+      console.log("[v0] Platform settings table not found, using default fallback commission (10%)")
     }
 
-    console.log("[v0] Commission percentage:", commissionPercentage)
+    const feeForOrder = (order: { total_amount: number; platform_fee_amount: number | null }) =>
+      order.platform_fee_amount ?? (Number(order.total_amount || 0) * fallbackCommissionPercentage) / 100
 
     // Get all paid orders
     const { data: orders } = await adminClient
       .from("orders")
-      .select("total_amount, user_id")
+      .select("total_amount, user_id, platform_fee_amount")
       .in("payment_status", ["paid", "success"])
 
     const totalRevenue = orders?.reduce((sum, order) => sum + Number(order.total_amount || 0), 0) || 0
-
-    const totalCommission = (totalRevenue * commissionPercentage) / 100
+    const totalCommission = orders?.reduce((sum, order) => sum + feeForOrder(order), 0) || 0
     const netRevenue = totalRevenue - totalCommission
+    const commissionPercentage = totalRevenue > 0 ? (totalCommission / totalRevenue) * 100 : 0
 
     console.log("[v0] Revenue breakdown:", {
       totalRevenue,
@@ -59,12 +62,12 @@ export async function GET() {
       (vendors || []).map(async (vendor) => {
         const { data: vendorOrders } = await adminClient
           .from("orders")
-          .select("total_amount")
+          .select("total_amount, platform_fee_amount")
           .eq("user_id", vendor.id)
           .in("payment_status", ["paid", "success"])
 
         const grossRevenue = vendorOrders?.reduce((sum, order) => sum + Number(order.total_amount || 0), 0) || 0
-        const vendorCommission = (grossRevenue * commissionPercentage) / 100
+        const vendorCommission = vendorOrders?.reduce((sum, order) => sum + feeForOrder(order), 0) || 0
         const netRevenue = grossRevenue - vendorCommission
 
         return {
@@ -72,6 +75,7 @@ export async function GET() {
           grossRevenue,
           netRevenue,
           commission: vendorCommission,
+          commissionPercentage: grossRevenue > 0 ? (vendorCommission / grossRevenue) * 100 : 0,
         }
       }),
     )

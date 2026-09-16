@@ -2,6 +2,7 @@ import { createServerClient } from "@/lib/supabase/server"
 import { type NextRequest, NextResponse } from "next/server"
 import { getAuthenticatedUser, handleApiError } from "@/lib/utils/api-helpers"
 import { validateBody, productSchema } from "@/lib/utils/validation"
+import { getVendorPlan } from "@/lib/pricing"
 
 export async function GET(request: NextRequest) {
   try {
@@ -62,6 +63,29 @@ export async function POST(request: NextRequest) {
     }
 
     const supabase = await createServerClient()
+
+    const plan = await getVendorPlan(authResult.user.userId)
+
+    if (!plan.allowed_selling_types.includes(validation.data.product_type)) {
+      return NextResponse.json(
+        { error: `Your ${plan.name} plan doesn't allow ${validation.data.product_type} products. Upgrade to unlock this selling type.` },
+        { status: 403 },
+      )
+    }
+
+    if (plan.product_limit !== null) {
+      const { count: existingProductCount } = await supabase
+        .from("products")
+        .select("*", { count: "exact", head: true })
+        .eq("user_id", authResult.user.userId)
+
+      if ((existingProductCount || 0) >= plan.product_limit) {
+        return NextResponse.json(
+          { error: `Your ${plan.name} plan allows up to ${plan.product_limit} products. Upgrade to add more.` },
+          { status: 403 },
+        )
+      }
+    }
 
     const productData = {
       user_id: authResult.user.userId,

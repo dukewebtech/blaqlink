@@ -1,0 +1,190 @@
+/* ==========================================================================
+   Blaqora Design System: Tokens + Base
+   Version 1.0 (September 2026)
+
+   Load order: 1) blaqora-tokens.css  2) blaqora-components.css
+   Fonts (add to <head>):
+   <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500..800&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+   Both families include the naira sign (₦). Do not swap them for fonts that don't.
+   ========================================================================== */
+
+:root {
+  /* ---------- Typography ---------- */
+  --bq-font-display: "Bricolage Grotesque", "Plus Jakarta Sans", system-ui, sans-serif;
+  --bq-font-body: "Plus Jakarta Sans", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+
+  --bq-text-display: clamp(44px, 10.5vw, 84px);  /* Hero headline only */
+  --bq-text-h1: clamp(38px, 6vw, 64px);           /* Page titles, final CTA */
+  --bq-text-h2: clamp(34px, 5.4vw, 56px);         /* Section headings */
+  --bq-text-h3: clamp(28px, 4vw, 42px);           /* Panel headings */
+  --bq-text-title: 20px;                          /* Card titles */
+  --bq-text-body-lg: 19px;                        /* Lead paragraphs (17px on mobile) */
+  --bq-text-body: 16px;
+  --bq-text-sm: 14px;
+  --bq-text-xs: 12.5px;                           /* Minimum size for any text */
+
+  --bq-leading-tight: 1;       /* Display */
+  --bq-leading-heading: 1.05;  /* H1 to H3 */
+  --bq-leading-snug: 1.25;     /* Card titles, UI labels */
+  --bq-leading-body: 1.6;
+
+  --bq-track-display: -0.045em;
+  --bq-track-heading: -0.035em;
+  --bq-track-title: -0.015em;
+
+  --bq-weight-regular: 400;
+  --bq-weight-medium: 500;
+  --bq-weight-semibold: 600;
+  --bq-weight-bold: 700;
+  --bq-weight-heavy: 800;
+
+  /* ---------- Colour: brand ---------- */
+  --bq-blue: #155DFD;        /* Primary actions, links, brand moments */
+  --bq-blue-600: #0A4BE3;    /* Hover */
+  --bq-blue-700: #073BB8;    /* Pressed, text on blue-50 */
+  --bq-blue-100: #DCE6FF;
+  --bq-blue-50: #EEF3FF;     /* Selected states, tags */
+  --bq-violet-accent: #6A4DFF; /* Gradient partner only */
+
+  /* ---------- Colour: neutrals ---------- */
+  --bq-ink: #0A0E27;         /* Headings, primary text, dark buttons */
+  --bq-ink-2: #1C2248;       /* Dark hover, secondary dark text */
+  --bq-body: #4B5275;        /* Paragraphs */
+  --bq-soft: #636A8C;        /* Meta text, placeholders-as-labels (AA on white and bg-soft) */
+  --bq-placeholder: #B3B9CF; /* Input placeholder only, never for real content */
+  --bq-line: #E7E9F2;        /* Borders, dividers */
+  --bq-line-2: #D9DDEA;      /* Input borders, stronger dividers */
+  --bq-bg: #FFFFFF;
+  --bq-bg-soft: #F5F7FC;     /* Alternating sections, card fill */
+  --bq-white: #FFFFFF;
+
+  /* ---------- Colour: dark surfaces ---------- */
+  --bq-night: #070B22;                        /* Dark sections, footer */
+  --bq-night-card: rgba(255, 255, 255, .04);
+  --bq-night-line: rgba(255, 255, 255, .08);
+  --bq-night-text: #FFFFFF;
+  --bq-night-body: rgba(226, 232, 255, .68);
+  --bq-night-accent: #9DB8FF;
+
+  /* ---------- Colour: sell categories ----------
+     Every category has a base (icons, dots, fills), 50 (tints),
+     and ink (text on the tint). Never put text in the base colour. */
+  --bq-tix: #F2542D;  --bq-tix-50: #FFF0EA;  --bq-tix-ink: #B83A18;   /* Tickets */
+  --bq-book: #7A5CFF; --bq-book-50: #F1EDFF; --bq-book-ink: #5A3FDB;  /* Bookings */
+  --bq-prod: #F5A623; --bq-prod-50: #FFF5E1; --bq-prod-ink: #9A5B00;  /* Physical products */
+  --bq-dig: #0E9F6E;  --bq-dig-50: #E5F7EF;  --bq-dig-ink: #067650;   /* Digital products */
+
+  /* ---------- Colour: feedback ---------- */
+  --bq-success: #0E9F6E;  --bq-success-50: #E5F7EF; --bq-success-ink: #067650;
+  --bq-warning: #F5A623;  --bq-warning-50: #FFF5E1; --bq-warning-ink: #9A5B00;
+  --bq-danger: #E5484D;   --bq-danger-50: #FDECEC;  --bq-danger-ink: #B42328;
+  --bq-money-up-dark: #7CF3BE;   /* Positive money on dark surfaces */
+  --bq-money-down-dark: #FF9B85; /* Negative money on dark surfaces */
+
+  /* ---------- Gradients ---------- */
+  --bq-grad-brand: linear-gradient(135deg, #155DFD 0%, #2F5BFF 45%, #6A4DFF 100%);
+  --bq-grad-text: linear-gradient(92deg, #155DFD 0%, #4F7DFF 55%, #7A5CFF 100%);
+  --bq-grad-spectrum: linear-gradient(90deg, #F2542D, #F5A623, #0E9F6E, #155DFD, #7A5CFF);
+  --bq-grad-tix: linear-gradient(135deg, #FFF3EE, #FFE4DA);
+  --bq-grad-book: linear-gradient(135deg, #F4F0FF, #E6DEFF);
+  --bq-grad-prod: linear-gradient(135deg, #FFF8E8, #FFEBC2);
+  --bq-grad-dig: linear-gradient(135deg, #EDFAF4, #D2F2E3);
+
+  /* ---------- Spacing (4px base) ---------- */
+  --bq-space-1: 4px;
+  --bq-space-2: 8px;
+  --bq-space-3: 12px;
+  --bq-space-4: 16px;
+  --bq-space-5: 20px;
+  --bq-space-6: 24px;
+  --bq-space-8: 32px;
+  --bq-space-10: 40px;
+  --bq-space-12: 48px;
+  --bq-space-14: 56px;
+  --bq-space-16: 64px;
+  --bq-space-20: 80px;   /* Section padding, mobile */
+  --bq-space-32: 128px;  /* Section padding, desktop */
+
+  /* ---------- Layout ---------- */
+  --bq-container: 1200px;
+  --bq-gutter: 20px;     /* 32px from 768px */
+  --bq-nav-height: 72px;
+  /* Breakpoints (use in media queries): 480, 640, 768, 900, 1024 */
+
+  /* ---------- Radius ---------- */
+  --bq-radius-xs: 8px;    /* Small tags, file icons */
+  --bq-radius-sm: 12px;   /* Icon tiles, inputs inside cards, small buttons */
+  --bq-radius-md: 16px;   /* List rows, dropdown items */
+  --bq-radius-lg: 24px;   /* Cards */
+  --bq-radius-xl: 32px;   /* Feature panels, CTA banners, pricing */
+  --bq-radius-pill: 999px;/* Buttons, chips, claim field */
+
+  /* ---------- Elevation ---------- */
+  --bq-shadow-1: 0 1px 2px rgba(10,14,39,.05), 0 2px 8px -2px rgba(10,14,39,.06);   /* Inputs, resting */
+  --bq-shadow-2: 0 1px 2px rgba(10,14,39,.04), 0 12px 28px -10px rgba(10,14,39,.16); /* Cards on hover, active tab */
+  --bq-shadow-3: 0 2px 6px rgba(10,14,39,.05), 0 30px 60px -20px rgba(10,14,39,.28); /* Floating UI, dropdowns, toasts */
+  --bq-shadow-blue: 0 1px 0 rgba(255,255,255,.25) inset, 0 8px 20px -8px rgba(21,93,253,.7); /* Primary button */
+  --bq-focus-ring: 0 0 0 4px rgba(21,93,253,.15);
+
+  /* ---------- Motion ---------- */
+  --bq-ease: cubic-bezier(.22, .8, .26, 1);     /* Default: entrances, movement */
+  --bq-spring: cubic-bezier(.34, 1.4, .5, 1);   /* Pop-ins, confirmations, small objects */
+  --bq-dur-fast: 150ms;    /* Colour, hover */
+  --bq-dur-base: 250ms;    /* Toggles, menus */
+  --bq-dur-slow: 450ms;    /* Tabs, panels, screen changes */
+  --bq-dur-enter: 800ms;   /* Page-load and reveal */
+
+  /* ---------- Z-index ---------- */
+  --bq-z-nav: 60;
+  --bq-z-dropdown: 70;
+  --bq-z-drawer: 100;
+  --bq-z-toast: 150;
+}
+
+/* ---------- Base ---------- */
+*, *::before, *::after { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; scroll-behavior: smooth; scroll-padding-top: 84px; }
+body {
+  margin: 0; background: var(--bq-bg); color: var(--bq-ink);
+  font-family: var(--bq-font-body); font-size: var(--bq-text-body); line-height: var(--bq-leading-body);
+  -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility;
+}
+img, svg { display: block; max-width: 100%; }
+h1, h2, h3, h4, p, ul, ol, dl, dd, blockquote, figure { margin: 0; }
+ul, ol { padding: 0; list-style: none; }
+a { color: inherit; }
+button, input, select, textarea { font: inherit; color: inherit; }
+:focus-visible { outline: 3px solid var(--bq-blue); outline-offset: 3px; border-radius: 10px; }
+
+.bq-sr { position: absolute !important; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+.bq-container { width: 100%; max-width: var(--bq-container); margin: 0 auto; padding: 0 var(--bq-gutter); }
+@media (min-width: 768px) { .bq-container { padding: 0 32px; } }
+.bq-section { padding: var(--bq-space-20) 0; position: relative; }
+@media (min-width: 1024px) { .bq-section { padding: var(--bq-space-32) 0; } }
+.bq-section--soft { background: var(--bq-bg-soft); }
+.bq-section--night { background: var(--bq-night); color: var(--bq-night-text); }
+
+/* Type helpers */
+.bq-display { font-family: var(--bq-font-display); font-weight: 800; font-size: var(--bq-text-display); line-height: .95; letter-spacing: var(--bq-track-display); font-variation-settings: "opsz" 96; }
+.bq-h1 { font-family: var(--bq-font-display); font-weight: 800; font-size: var(--bq-text-h1); line-height: .98; letter-spacing: -.04em; text-wrap: balance; }
+.bq-h2 { font-family: var(--bq-font-display); font-weight: 700; font-size: var(--bq-text-h2); line-height: 1.02; letter-spacing: var(--bq-track-heading); font-variation-settings: "opsz" 96; text-wrap: balance; }
+.bq-h3 { font-family: var(--bq-font-display); font-weight: 700; font-size: var(--bq-text-h3); line-height: var(--bq-leading-heading); letter-spacing: -.03em; text-wrap: balance; }
+.bq-title { font-family: var(--bq-font-body); font-weight: 800; font-size: var(--bq-text-title); line-height: var(--bq-leading-snug); letter-spacing: var(--bq-track-title); }
+.bq-lead { font-size: 17px; line-height: 1.65; color: var(--bq-body); text-wrap: pretty; }
+@media (min-width: 1024px) { .bq-lead { font-size: var(--bq-text-body-lg); } }
+.bq-body { font-size: var(--bq-text-body); color: var(--bq-body); }
+.bq-small { font-size: var(--bq-text-sm); color: var(--bq-body); }
+.bq-meta { font-size: var(--bq-text-xs); font-weight: 600; color: var(--bq-soft); }
+.bq-money { font-variant-numeric: tabular-nums; font-weight: 700; white-space: nowrap; }
+.bq-grad-text { background: var(--bq-grad-text); -webkit-background-clip: text; background-clip: text; color: transparent; }
+
+/* Motion keyframes */
+@keyframes bq-fade-up { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: none; } }
+@keyframes bq-pop-in { from { opacity: 0; transform: translateY(10px) scale(.9); } to { opacity: 1; transform: none; } }
+@keyframes bq-rise { from { transform: translateY(105%); } to { transform: none; } }
+@keyframes bq-grow-x { from { transform: scaleX(0); } }
+@keyframes bq-pulse { 0%, 100% { box-shadow: 0 0 0 0 rgba(21,93,253,.35); } 50% { box-shadow: 0 0 0 6px rgba(21,93,253,0); } }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: .001ms !important; animation-iteration-count: 1 !important; transition-duration: .001ms !important; scroll-behavior: auto !important; }
+}

@@ -20,6 +20,7 @@ interface ReportData {
     grossRevenue: number
     netRevenue: number
     commission: number
+    commissionPercentage: number
   }>
 }
 
@@ -101,7 +102,9 @@ export default function AdminReportsPage() {
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">{formatCurrency(data?.totalCommission || 0)}</div>
-              <p className="text-xs text-muted-foreground mt-1">{data?.commissionPercentage || 0}% platform fee</p>
+              <p className="text-xs text-muted-foreground mt-1">
+                {(data?.commissionPercentage || 0).toFixed(1)}% avg. platform fee
+              </p>
             </CardContent>
           </Card>
 
@@ -162,7 +165,7 @@ export default function AdminReportsPage() {
                     </div>
                     <div className="ml-11 flex items-center justify-between text-sm">
                       <span className="text-muted-foreground">
-                        Commission ({data.commissionPercentage}%): {formatCurrency(vendor.commission)}
+                        Commission ({vendor.commissionPercentage.toFixed(1)}%): {formatCurrency(vendor.commission)}
                       </span>
                       <span className="font-semibold text-green-600">Net: {formatCurrency(vendor.netRevenue)}</span>
                     </div>

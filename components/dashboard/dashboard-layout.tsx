@@ -29,7 +29,9 @@ import {
   X,
   Wallet,
   Palette,
+  Sparkles,
   FolderTree,
+  Tag,
 } from "lucide-react"
 import { Logo } from "@/components/logo"
 
@@ -41,6 +43,7 @@ const navigation = [
   { name: "Payouts", href: "/payouts", icon: Wallet },
   { name: "Customers", href: "/customers", icon: Users },
   { name: "Sales Report", href: "/sales", icon: BarChart3 },
+  { name: "Plan & Billing", href: "/plan", icon: Tag },
 ]
 
 const tools = [
@@ -54,6 +57,7 @@ const tools = [
       { name: "Store Settings", href: "/settings/store" },
     ],
   },
+  { name: "Store design", href: "/store-design", icon: Sparkles },
   { name: "Templates", href: "/templates", icon: Palette },
   { name: "Help", href: "/help", icon: HelpCircle },
 ]

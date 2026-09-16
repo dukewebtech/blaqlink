@@ -38,6 +38,7 @@ interface StoreInfo {
   phone?: string
   email?: string
   store_template?: string // Added store_template field
+  store_slug?: string | null
 }
 
 export default function PublicStorePage({ params: paramsProp }: { params: Promise<{ storeId: string }> }) {
@@ -62,6 +63,15 @@ export default function PublicStorePage({ params: paramsProp }: { params: Promis
   useEffect(() => {
     fetchStoreData()
   }, [params.storeId])
+
+  useEffect(() => {
+    // Daylight is server-rendered (for SEO/link previews) at /{slug} rather than
+    // handled by this client-rendered switch — send vendors who picked it there,
+    // falling back to their user id when they haven't set a store_slug yet.
+    if (storeInfo?.store_template === "daylight") {
+      router.replace(`/${storeInfo.store_slug || params.storeId}`)
+    }
+  }, [storeInfo, router, params.storeId])
 
   const fetchStoreData = async () => {
     try {
@@ -142,6 +152,15 @@ export default function PublicStorePage({ params: paramsProp }: { params: Promis
           <h1 className="text-2xl font-bold mb-2">Store Not Found</h1>
           <p className="text-muted-foreground">The store you're looking for doesn't exist.</p>
         </div>
+      </div>
+    )
+  }
+
+  if (storeInfo.store_template === "daylight") {
+    // Redirecting to the server-rendered /{slug} route — see the effect above.
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <div className="w-12 h-12 rounded-full border-4 border-muted border-t-primary animate-spin" />
       </div>
     )
   }

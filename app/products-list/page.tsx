@@ -13,6 +13,25 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger, SheetClose 
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog"
+import {
+  AlertDialog,
+  AlertDialogContent,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogCancel,
+  AlertDialogAction,
+} from "@/components/ui/alert-dialog"
+import {
   Search,
   SlidersHorizontal,
   Download,
@@ -22,15 +41,23 @@ import {
   Trash2,
   ChevronLeft,
   ChevronRight,
+  ChevronDown,
   X,
   FolderPlus,
   Upload,
   Loader2,
   FileUp,
+  Globe,
+  EyeOff,
+  Archive,
+  Package,
+  Tag,
+  Copy,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { useRouter, useSearchParams } from "next/navigation"
-import { useState, useEffect } from "react"
+import { useState, useEffect, useMemo } from "react"
+import { toast } from "sonner"
 
 type Product = {
   id: string
@@ -46,7 +73,13 @@ type Product = {
   images?: string[] | null
 }
 
-const categories = [
+type ProductCategory = {
+  id: string
+  name: string
+  product_type: string
+}
+
+const PRODUCT_TYPE_FILTERS = [
   { name: "All Products", type: null, active: true },
   { name: "Digital Products", type: "digital", active: false },
   { name: "Physical Products", type: "physical", active: false },
@@ -68,9 +101,24 @@ export default function ProductListPage() {
   const [selectedType, setSelectedType] = useState<string | null>(null)
   const [searchQuery, setSearchQuery] = useState("")
 
+  // Bulk selection
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
+  const [categories, setCategories] = useState<ProductCategory[]>([])
+  const [bulkBusy, setBulkBusy] = useState<string | null>(null)
+  const [stockDialogOpen, setStockDialogOpen] = useState(false)
+  const [stockQuantityInput, setStockQuantityInput] = useState("")
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
+
   useEffect(() => {
     fetchProducts()
   }, [selectedType])
+
+  useEffect(() => {
+    fetch("/api/categories")
+      .then((res) => res.json())
+      .then((data) => setCategories(data.categories || []))
+      .catch(() => {})
+  }, [])
 
   const fetchProducts = async () => {
     try {
@@ -97,14 +145,179 @@ export default function ProductListPage() {
     }
   }
 
+  const categoryNameById = useMemo(() => new Map(categories.map((c) => [c.id, c.name])), [categories])
+
   const filteredProducts = products.filter((product) => {
     const query = searchQuery.toLowerCase()
+    const categoryName = (product.category && categoryNameById.get(product.category)) || ""
     return (
       product.title.toLowerCase().includes(query) ||
       product.sku?.toLowerCase().includes(query) ||
-      product.category?.toLowerCase().includes(query)
+      product.category?.toLowerCase().includes(query) ||
+      categoryName.toLowerCase().includes(query)
     )
   })
+
+  const selectedProducts = products.filter((p) => selectedIds.has(p.id))
+  const selectedTypeSet = new Set(selectedProducts.map((p) => p.product_type))
+  const selectionCommonType = selectedTypeSet.size === 1 ? [...selectedTypeSet][0] : null
+  const categoryOptionsForSelection = selectionCommonType
+    ? categories.filter((c) => c.product_type === selectionCommonType)
+    : []
+
+  const allFilteredSelected = filteredProducts.length > 0 && filteredProducts.every((p) => selectedIds.has(p.id))
+  const someFilteredSelected = filteredProducts.some((p) => selectedIds.has(p.id))
+
+  function toggleSelectOne(id: string) {
+    setSelectedIds((prev) => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
+  }
+
+  function toggleSelectAllFiltered() {
+    setSelectedIds((prev) => {
+      const next = new Set(prev)
+      if (allFilteredSelected) {
+        filteredProducts.forEach((p) => next.delete(p.id))
+      } else {
+        filteredProducts.forEach((p) => next.add(p.id))
+      }
+      return next
+    })
+  }
+
+  function clearSelection() {
+    setSelectedIds(new Set())
+  }
+
+  async function callBulkAction(action: string, extra: Record<string, unknown> = {}) {
+    setBulkBusy(action)
+    try {
+      const res = await fetch("/api/products/bulk", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action, ids: Array.from(selectedIds), ...extra }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || "Action failed")
+      return data
+    } finally {
+      setBulkBusy(null)
+    }
+  }
+
+  async function handleBulkStatus(status: "draft" | "published" | "archived") {
+    try {
+      const data = await callBulkAction("status", { status })
+      const n = data.updated?.length || 0
+      if (n) toast.success(`${n} product${n === 1 ? "" : "s"} ${status === "published" ? "published" : status === "draft" ? "moved to draft" : "archived"}`)
+      else toast.error("Nothing was updated")
+      clearSelection()
+      fetchProducts()
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to update status")
+    }
+  }
+
+  async function handleBulkDelete() {
+    try {
+      const data = await callBulkAction("delete")
+      const deleted = data.deleted?.length || 0
+      const failed = data.failed?.length || 0
+      if (deleted) toast.success(`Deleted ${deleted} product${deleted === 1 ? "" : "s"}`)
+      if (failed) toast.error(`${failed} product${failed === 1 ? "" : "s"} couldn't be deleted (likely tied to existing orders)`)
+      setDeleteDialogOpen(false)
+      clearSelection()
+      fetchProducts()
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to delete products")
+    }
+  }
+
+  async function handleBulkStock(mode: "set" | "out_of_stock") {
+    const quantity = mode === "set" ? Number(stockQuantityInput) : 0
+    if (mode === "set" && (!Number.isFinite(quantity) || quantity < 0 || !Number.isInteger(quantity))) {
+      toast.error("Enter a whole number of 0 or more")
+      return
+    }
+    try {
+      const data = await callBulkAction("stock", { mode, quantity })
+      const updated = data.updated?.length || 0
+      const skipped = data.skipped?.length || 0
+      if (updated) toast.success(`Stock updated for ${updated} product${updated === 1 ? "" : "s"}`)
+      if (skipped) {
+        toast.message(`${skipped} product${skipped === 1 ? "" : "s"} skipped`, {
+          description: data.skipped.map((s: { title: string; reason: string }) => `${s.title}: ${s.reason}`).join("; "),
+        })
+      }
+      if (!updated && !skipped) toast.error("Nothing to update")
+      setStockDialogOpen(false)
+      setStockQuantityInput("")
+      clearSelection()
+      fetchProducts()
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to update stock")
+    }
+  }
+
+  async function handleBulkCategory(categoryId: string | null) {
+    try {
+      const data = await callBulkAction("category", { categoryId })
+      const n = data.updated?.length || 0
+      if (n) toast.success(categoryId ? `Category assigned to ${n} product${n === 1 ? "" : "s"}` : `Category removed from ${n} product${n === 1 ? "" : "s"}`)
+      else toast.error("Nothing was updated")
+      clearSelection()
+      fetchProducts()
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to assign category")
+    }
+  }
+
+  async function handleBulkDuplicate() {
+    try {
+      const data = await callBulkAction("duplicate")
+      const n = data.created?.length || 0
+      if (n) toast.success(`Duplicated ${n} product${n === 1 ? "" : "s"} as draft${n === 1 ? "" : "s"}`)
+      else toast.error("Nothing was duplicated")
+      clearSelection()
+      fetchProducts()
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to duplicate products")
+    }
+  }
+
+  function handleExportSelected() {
+    if (selectedProducts.length === 0) {
+      toast.error("No products selected")
+      return
+    }
+    const header = ["Title", "SKU", "Type", "Category", "Price", "Stock", "Status", "Created At"]
+    const rows = selectedProducts.map((p) => [
+      p.title,
+      p.sku || "",
+      p.product_type,
+      (p.category && categoryNameById.get(p.category)) || "",
+      String(p.price ?? ""),
+      p.product_type === "physical" ? String(p.stock_quantity ?? "") : "",
+      p.status,
+      new Date(p.created_at).toISOString(),
+    ])
+    const escapeCsv = (v: string) => `"${v.replace(/"/g, '""')}"`
+    const csv = [header, ...rows].map((r) => r.map(escapeCsv).join(",")).join("\r\n")
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement("a")
+    a.href = url
+    a.download = `products-export-${new Date().toISOString().slice(0, 10)}.csv`
+    document.body.appendChild(a)
+    a.click()
+    document.body.removeChild(a)
+    URL.revokeObjectURL(url)
+    toast.success(`Exported ${selectedProducts.length} product${selectedProducts.length === 1 ? "" : "s"}`)
+  }
 
   const handleDeleteProduct = async (productId: string) => {
     if (!confirm("Are you sure you want to delete this product?")) return
@@ -173,11 +386,11 @@ export default function ProductListPage() {
             <span>Product</span>
             <span>›</span>
             <span className="text-primary font-medium">
-              {selectedType ? categories.find((c) => c.type === selectedType)?.name : "All Products"}
+              {selectedType ? PRODUCT_TYPE_FILTERS.find((c) => c.type === selectedType)?.name : "All Products"}
             </span>
           </div>
           <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">
-            {selectedType ? categories.find((c) => c.type === selectedType)?.name : "All Products"}
+            {selectedType ? PRODUCT_TYPE_FILTERS.find((c) => c.type === selectedType)?.name : "All Products"}
           </h1>
         </div>
 
@@ -312,7 +525,7 @@ export default function ProductListPage() {
         </div>
 
         <div className="flex gap-2 overflow-x-auto pb-2">
-          {categories.map((category) => (
+          {PRODUCT_TYPE_FILTERS.map((category) => (
             <Button
               key={category.name}
               variant={selectedType === category.type ? "default" : "ghost"}
@@ -326,6 +539,126 @@ export default function ProductListPage() {
             </Button>
           ))}
         </div>
+
+        {/* Bulk action bar */}
+        {selectedIds.size > 0 && (
+          <Card className="p-3 sm:p-4 border-primary/30 bg-primary/5 animate-in fade-in slide-in-from-top-2 duration-200">
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="text-sm font-medium mr-1">
+                {selectedIds.size} selected
+              </span>
+              <Button size="sm" variant="ghost" className="h-8 gap-1 text-muted-foreground" onClick={clearSelection}>
+                <X className="h-3.5 w-3.5" />
+                Clear
+              </Button>
+
+              <div className="flex-1" />
+
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button size="sm" variant="outline" className="h-8 gap-1.5 bg-transparent" disabled={bulkBusy !== null}>
+                    <Globe className="h-3.5 w-3.5" />
+                    Status
+                    <ChevronDown className="h-3.5 w-3.5" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem onClick={() => handleBulkStatus("published")}>
+                    <Globe className="h-4 w-4" /> Publish
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => handleBulkStatus("draft")}>
+                    <EyeOff className="h-4 w-4" /> Unpublish (draft)
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => handleBulkStatus("archived")}>
+                    <Archive className="h-4 w-4" /> Archive
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+
+              <Button
+                size="sm"
+                variant="outline"
+                className="h-8 gap-1.5 bg-transparent"
+                disabled={bulkBusy !== null}
+                onClick={() => setStockDialogOpen(true)}
+              >
+                <Package className="h-3.5 w-3.5" />
+                Stock
+              </Button>
+
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="h-8 gap-1.5 bg-transparent"
+                    disabled={bulkBusy !== null || !selectionCommonType}
+                    title={!selectionCommonType ? "Select products of only one type to assign a category" : undefined}
+                  >
+                    <Tag className="h-3.5 w-3.5" />
+                    Assign category
+                    <ChevronDown className="h-3.5 w-3.5" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  {categoryOptionsForSelection.length === 0 ? (
+                    <DropdownMenuLabel className="font-normal text-muted-foreground">
+                      No categories for this product type yet
+                    </DropdownMenuLabel>
+                  ) : (
+                    <>
+                      {categoryOptionsForSelection.map((c) => (
+                        <DropdownMenuItem key={c.id} onClick={() => handleBulkCategory(c.id)}>
+                          {c.name}
+                        </DropdownMenuItem>
+                      ))}
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem onClick={() => handleBulkCategory(null)}>Remove category</DropdownMenuItem>
+                    </>
+                  )}
+                </DropdownMenuContent>
+              </DropdownMenu>
+
+              <Button
+                size="sm"
+                variant="outline"
+                className="h-8 gap-1.5 bg-transparent"
+                disabled={bulkBusy !== null}
+                onClick={handleBulkDuplicate}
+              >
+                <Copy className="h-3.5 w-3.5" />
+                Duplicate
+              </Button>
+
+              <Button
+                size="sm"
+                variant="outline"
+                className="h-8 gap-1.5 bg-transparent"
+                disabled={bulkBusy !== null}
+                onClick={handleExportSelected}
+              >
+                <Download className="h-3.5 w-3.5" />
+                Export selected
+              </Button>
+
+              <Button
+                size="sm"
+                variant="outline"
+                className="h-8 gap-1.5 bg-transparent text-destructive hover:text-destructive border-destructive/30"
+                disabled={bulkBusy !== null}
+                onClick={() => setDeleteDialogOpen(true)}
+              >
+                <Trash2 className="h-3.5 w-3.5" />
+                Delete
+              </Button>
+            </div>
+            {!selectionCommonType && selectedIds.size > 1 && (
+              <p className="text-xs text-muted-foreground mt-2">
+                Category assignment is disabled — selected products are of different types.
+              </p>
+            )}
+          </Card>
+        )}
 
         {/* Products */}
         <Card className="overflow-hidden animate-in fade-in slide-in-from-bottom-4 duration-700 delay-100">
@@ -350,6 +683,12 @@ export default function ProductListPage() {
               <div className="md:hidden divide-y divide-border">
                 {filteredProducts.map((product) => (
                   <div key={product.id} className="flex items-start gap-3 p-4">
+                    <Checkbox
+                      className="mt-1 shrink-0"
+                      checked={selectedIds.has(product.id)}
+                      onCheckedChange={() => toggleSelectOne(product.id)}
+                      aria-label={`Select ${product.title}`}
+                    />
                     <img
                       src={
                         (product.images && product.images.length > 0 ? product.images[0] : null) ||
@@ -417,7 +756,13 @@ export default function ProductListPage() {
                 <Table>
                   <TableHeader>
                     <TableRow className="hover:bg-transparent">
-                      <TableHead className="w-12"><Checkbox /></TableHead>
+                      <TableHead className="w-12">
+                        <Checkbox
+                          checked={allFilteredSelected ? true : someFilteredSelected ? "indeterminate" : false}
+                          onCheckedChange={toggleSelectAllFiltered}
+                          aria-label="Select all products"
+                        />
+                      </TableHead>
                       <TableHead>Product</TableHead>
                       <TableHead>Type</TableHead>
                       <TableHead>Price</TableHead>
@@ -433,7 +778,13 @@ export default function ProductListPage() {
                         className="group transition-all duration-200 hover:bg-muted/50 animate-in fade-in slide-in-from-bottom-2"
                         style={{ animationDelay: `${index * 50}ms` }}
                       >
-                        <TableCell><Checkbox /></TableCell>
+                        <TableCell>
+                          <Checkbox
+                            checked={selectedIds.has(product.id)}
+                            onCheckedChange={() => toggleSelectOne(product.id)}
+                            aria-label={`Select ${product.title}`}
+                          />
+                        </TableCell>
                         <TableCell>
                           <div className="flex items-center gap-3">
                             <img
@@ -447,8 +798,8 @@ export default function ProductListPage() {
                             <div>
                               <p className="text-xs text-muted-foreground">{product.sku || product.id.slice(0, 8)}</p>
                               <p className="font-medium">{product.title}</p>
-                              {product.category && (
-                                <p className="text-xs text-muted-foreground capitalize">{product.category}</p>
+                              {product.category && categoryNameById.get(product.category) && (
+                                <p className="text-xs text-muted-foreground">{categoryNameById.get(product.category)}</p>
                               )}
                             </div>
                           </div>
@@ -524,6 +875,70 @@ export default function ProductListPage() {
           )}
         </Card>
       </div>
+
+      {/* Bulk: set stock */}
+      <Dialog open={stockDialogOpen} onOpenChange={setStockDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Set stock for {selectedIds.size} product{selectedIds.size === 1 ? "" : "s"}</DialogTitle>
+            <DialogDescription>
+              Only applies to physical products without size/colour variants. Digital, event, appointment items
+              and variant-managed products will be skipped.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-2">
+            <Label htmlFor="bulk-stock-qty">Quantity</Label>
+            <Input
+              id="bulk-stock-qty"
+              type="number"
+              min={0}
+              step={1}
+              placeholder="e.g. 25"
+              value={stockQuantityInput}
+              onChange={(e) => setStockQuantityInput(e.target.value)}
+            />
+          </div>
+          <DialogFooter className="gap-2 sm:gap-2">
+            <Button
+              variant="outline"
+              disabled={bulkBusy !== null}
+              onClick={() => handleBulkStock("out_of_stock")}
+            >
+              Mark out of stock
+            </Button>
+            <Button disabled={bulkBusy !== null || stockQuantityInput.trim() === ""} onClick={() => handleBulkStock("set")}>
+              {bulkBusy === "stock" ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+              Set quantity
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Bulk: delete confirmation */}
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete {selectedIds.size} product{selectedIds.size === 1 ? "" : "s"}?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This can't be undone. Products tied to existing orders can't be deleted and will be skipped.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={bulkBusy !== null}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              disabled={bulkBusy !== null}
+              onClick={(e) => {
+                e.preventDefault()
+                handleBulkDelete()
+              }}
+            >
+              {bulkBusy === "delete" ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </DashboardLayout>
   )
 }

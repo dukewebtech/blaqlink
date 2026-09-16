@@ -11,6 +11,54 @@ import { toast } from "sonner"
 
 const templates = [
   {
+    id: "daylight",
+    name: "Daylight",
+    description:
+      "Light, friendly, general-purpose storefront with a full item sheet, bag and three-step checkout — built to work for products, tickets, bookings and downloads out of the box.",
+    href: "/templates/daylight",
+    image: "/placeholder.svg?height=400&width=600",
+    features: ["Item Sheet", "Bag & Checkout", "All Item Types", "Brand Colour"],
+    badge: "Signature",
+    color: "from-blue-500/20 to-indigo-500/20",
+    style: "signature",
+  },
+  {
+    id: "editorial",
+    name: "Editorial",
+    description:
+      "Dark, magazine-style storefront with a spotlight hero, scrolling category rails and app-like bottom navigation. Built for fashion and creator brands.",
+    href: "/templates/editorial",
+    image: "/placeholder.svg?height=400&width=600",
+    features: ["Spotlight Hero", "Category Rails", "Bottom Navigation", "Brand Colour"],
+    badge: "Signature",
+    color: "from-slate-800/40 to-rose-400/20",
+    style: "signature",
+  },
+  {
+    id: "studio",
+    name: "Studio",
+    description:
+      "Light, service-led storefront with a greeting header, illustrated category tiles and a trust slab that reacts to the bag. Built for vendors who sell a mix of products, events and bookings.",
+    href: "/templates/studio",
+    image: "/placeholder.svg?height=400&width=600",
+    features: ["Category Tiles", "Trust Slab", "All Item Types", "Brand Colour"],
+    badge: "Signature",
+    color: "from-emerald-500/20 to-teal-500/20",
+    style: "signature",
+  },
+  {
+    id: "boutique",
+    name: "Boutique",
+    description:
+      "Warm, editorial storefront with a serif greeting, gradient hero carousel and a saved-items grid. Built for fashion and lifestyle brands.",
+    href: "/templates/boutique",
+    image: "/placeholder.svg?height=400&width=600",
+    features: ["Gradient Hero", "Saved Items", "All Item Types", "Brand Colour"],
+    badge: "Signature",
+    color: "from-orange-400/20 to-rose-400/20",
+    style: "signature",
+  },
+  {
     id: "crystal-clear",
     name: "Crystal Clear",
     description:
@@ -131,6 +179,7 @@ export default function TemplatesPage() {
     }
   }
 
+  const signatureTemplates = templates.filter((t) => t.style === "signature")
   const glassTemplates = templates.filter((t) => t.style === "glass")
   const classicTemplates = templates.filter((t) => t.style === "classic")
 
@@ -157,6 +206,92 @@ export default function TemplatesPage() {
                 Current: {templates.find((t) => t.id === currentTemplate)?.name || "Default"}
               </Badge>
             )}
+          </div>
+        </div>
+
+        {/* Signature Templates Section */}
+        <div className="space-y-4">
+          <div className="flex items-center gap-2">
+            <Store className="h-5 w-5 text-primary" />
+            <h2 className="text-xl font-semibold">Signature Templates</h2>
+          </div>
+          <p className="text-muted-foreground text-sm">
+            Blaqora's own storefront designs — server-rendered, with your brand colour applied automatically.
+          </p>
+
+          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {signatureTemplates.map((template) => (
+              <Card
+                key={template.id}
+                className={`group overflow-hidden hover:shadow-lg transition-all duration-300 hover:-translate-y-1 ${
+                  currentTemplate === template.id ? "ring-2 ring-primary" : ""
+                }`}
+              >
+                <div
+                  className="relative aspect-video bg-gradient-to-br overflow-hidden"
+                  style={{ background: `linear-gradient(to bottom right, ${template.color})` }}
+                >
+                  <img
+                    src={template.image || "/placeholder.svg"}
+                    alt={template.name}
+                    className="w-full h-full object-cover opacity-90 group-hover:scale-105 transition-transform duration-500"
+                  />
+                  {currentTemplate === template.id && (
+                    <Badge className="absolute top-3 left-3 gap-1 shadow-lg bg-primary">
+                      <Check className="h-3 w-3" />
+                      Active
+                    </Badge>
+                  )}
+                  <Badge className="absolute top-3 right-3 gap-1 shadow-lg bg-blue-500">
+                    <Sparkles className="h-3 w-3" />
+                    {template.badge}
+                  </Badge>
+                </div>
+                <div className="p-6 space-y-4">
+                  <div>
+                    <h3 className="text-xl font-semibold mb-2">{template.name}</h3>
+                    <p className="text-sm text-muted-foreground leading-relaxed">{template.description}</p>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    {template.features.map((feature) => (
+                      <Badge key={feature} variant="secondary" className="text-xs">
+                        {feature}
+                      </Badge>
+                    ))}
+                  </div>
+                  <div className="flex gap-2 pt-2">
+                    <Link href={template.href ?? "#"} className="flex-1">
+                      <Button variant="outline" className="w-full gap-2 bg-transparent">
+                        <Eye className="h-4 w-4" />
+                        Preview
+                      </Button>
+                    </Link>
+                    <Button
+                      className="flex-1 gap-2"
+                      disabled={currentTemplate === template.id || settingTemplate === template.id}
+                      onClick={() => handleSetDefault(template.id)}
+                    >
+                      {settingTemplate === template.id ? (
+                        <>
+                          <span className="h-4 w-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                          Setting...
+                        </>
+                      ) : currentTemplate === template.id ? (
+                        <>
+                          <Check className="h-4 w-4" />
+                          Active
+                        </>
+                      ) : (
+                        <>
+                          <Sparkles className="h-4 w-4" />
+                          Set as Default
+                        </>
+                      )}
+                    </Button>
+                  </div>
+                </div>
+              </Card>
+            ))}
           </div>
         </div>
 

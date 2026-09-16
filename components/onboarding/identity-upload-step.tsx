@@ -6,6 +6,12 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { ShieldCheck, ArrowRight, Loader2, CheckCircle2, AlertCircle, Lock } from "lucide-react"
+import { StepProgress } from "@/components/onboarding/step-progress"
+
+const STAGES = ["Verify", "Details", "Done"] as const
+const STAGE_INDEX: Record<"trust" | "form" | "success", number> = { trust: 0, form: 1, success: 2 }
+const STAGE_TRANSITION =
+  "motion-safe:animate-in motion-safe:fade-in motion-safe:slide-in-from-bottom-2 motion-safe:duration-300"
 
 export const BANK_NAMES = [
   "Access Bank", "Citibank", "Ecobank", "Fidelity Bank", "First Bank",
@@ -55,7 +61,9 @@ export function IdentityUploadStep({ onComplete, onSkip, showSkip = true }: Prop
   // ── Trust screen ─────────────────────────────────────────────────────────────
   if (stage === "trust") {
     return (
-      <Card className="p-8 space-y-6 animate-in fade-in duration-300">
+      <div key={stage}>
+      <StepProgress steps={[...STAGES]} current={STAGE_INDEX[stage]} />
+      <Card className={`p-8 space-y-6 ${STAGE_TRANSITION}`}>
         <div className="text-center space-y-3">
           <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-primary/10 mx-auto">
             <ShieldCheck className="h-8 w-8 text-primary" />
@@ -90,13 +98,16 @@ export function IdentityUploadStep({ onComplete, onSkip, showSkip = true }: Prop
           )}
         </div>
       </Card>
+      </div>
     )
   }
 
   // ── Success screen ────────────────────────────────────────────────────────────
   if (stage === "success") {
     return (
-      <Card className="p-8 text-center space-y-4 animate-in fade-in duration-300">
+      <div key={stage}>
+      <StepProgress steps={[...STAGES]} current={STAGE_INDEX[stage]} />
+      <Card className={`p-8 text-center space-y-4 ${STAGE_TRANSITION}`}>
         <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-green-100 mx-auto">
           <CheckCircle2 className="h-8 w-8 text-green-600" />
         </div>
@@ -110,12 +121,15 @@ export function IdentityUploadStep({ onComplete, onSkip, showSkip = true }: Prop
           </Button>
         )}
       </Card>
+      </div>
     )
   }
 
   // ── Verification form ──────────────────────────────────────────────────────────
   return (
-    <Card className="p-8 animate-in fade-in duration-300">
+    <div key={stage}>
+    <StepProgress steps={[...STAGES]} current={STAGE_INDEX[stage]} />
+    <Card className={`p-8 ${STAGE_TRANSITION}`}>
       <div className="flex items-center gap-3 mb-6">
         <div className="inline-flex items-center justify-center w-10 h-10 rounded-full bg-primary/10">
           <ShieldCheck className="h-5 w-5 text-primary" />
@@ -197,5 +211,6 @@ export function IdentityUploadStep({ onComplete, onSkip, showSkip = true }: Prop
         </div>
       </form>
     </Card>
+    </div>
   )
 }

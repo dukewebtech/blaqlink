@@ -108,9 +108,17 @@ export default function PayoutsPage() {
         const totalRevenue =
           paidOrders?.reduce((sum: number, order: any) => sum + Number(order.total_amount || 0), 0) || 0
 
-        const commissionRate = settingsData.settings?.commission_percentage || 10
-        const netRevenue = totalRevenue * (1 - commissionRate / 100)
-        console.log("[v0] Revenue calculation:", { totalRevenue, commissionRate, netRevenue })
+        // Orders created before per-plan fees existed have no platform_fee_amount —
+        // fall back to the old flat commission for those so historical totals don't shift.
+        const fallbackCommissionRate = settingsData.settings?.commission_percentage || 10
+        const totalFees =
+          paidOrders?.reduce((sum: number, order: any) => {
+            const fee =
+              order.platform_fee_amount ?? (Number(order.total_amount || 0) * fallbackCommissionRate) / 100
+            return sum + Number(fee)
+          }, 0) || 0
+        const netRevenue = totalRevenue - totalFees
+        console.log("[v0] Revenue calculation:", { totalRevenue, totalFees, netRevenue })
 
         const allWithdrawals = withdrawalsData.withdrawals || []
         const completedWithdrawals = allWithdrawals.filter(
@@ -259,9 +267,7 @@ export default function PayoutsPage() {
           <Card className="relative overflow-hidden bg-gradient-to-br from-primary to-primary/80 text-white border-0 group hover:shadow-lg transition-all duration-300">
             <div className="p-6">
               <div className="flex items-start justify-between mb-4">
-                <h3 className="text-sm font-medium text-white/90">
-                  Net Revenue (After {platformSettings?.commission_percentage || 10}% Commission)
-                </h3>
+                <h3 className="text-sm font-medium text-white/90">Net Revenue (After Platform Fees)</h3>
                 <ArrowUpRight className="size-5 text-white/80 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform" />
               </div>
               <div className="space-y-2">

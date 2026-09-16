@@ -7,7 +7,7 @@ export async function GET() {
 
     const { data: vendors, error: vendorsError } = await adminClient
       .from("users")
-      .select("id, full_name, business_name, email, phone, created_at")
+      .select("id, full_name, business_name, email, phone, created_at, plan_id, pricing_plans(id, name, plan_key)")
       .eq("role", "vendor")
       .order("created_at", { ascending: false })
 

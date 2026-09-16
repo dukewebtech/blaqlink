@@ -1,0 +1,182 @@
+{
+  "meta": {
+    "name": "Blaqora Design System",
+    "version": "1.0.0",
+    "updated": "2026-09"
+  },
+  "font": {
+    "display": "Bricolage Grotesque",
+    "body": "Plus Jakarta Sans",
+    "note": "Both include the naira sign (₦)."
+  },
+  "color": {
+    "brand": {
+      "blue": "#155DFD",
+      "blue-600": "#0A4BE3",
+      "blue-700": "#073BB8",
+      "blue-100": "#DCE6FF",
+      "blue-50": "#EEF3FF",
+      "violet-accent": "#6A4DFF"
+    },
+    "neutral": {
+      "ink": "#0A0E27",
+      "ink-2": "#1C2248",
+      "body": "#4B5275",
+      "soft": "#636A8C",
+      "placeholder": "#B3B9CF",
+      "line": "#E7E9F2",
+      "line-2": "#D9DDEA",
+      "bg": "#FFFFFF",
+      "bg-soft": "#F5F7FC"
+    },
+    "night": {
+      "bg": "#070B22",
+      "card": "rgba(255,255,255,0.04)",
+      "line": "rgba(255,255,255,0.08)",
+      "body": "rgba(226,232,255,0.68)",
+      "accent": "#9DB8FF"
+    },
+    "category": {
+      "tickets": {
+        "base": "#F2542D",
+        "50": "#FFF0EA",
+        "ink": "#B83A18"
+      },
+      "bookings": {
+        "base": "#7A5CFF",
+        "50": "#F1EDFF",
+        "ink": "#5A3FDB"
+      },
+      "products": {
+        "base": "#F5A623",
+        "50": "#FFF5E1",
+        "ink": "#9A5B00"
+      },
+      "digital": {
+        "base": "#0E9F6E",
+        "50": "#E5F7EF",
+        "ink": "#067650"
+      }
+    },
+    "feedback": {
+      "success": {
+        "base": "#0E9F6E",
+        "50": "#E5F7EF",
+        "ink": "#067650"
+      },
+      "warning": {
+        "base": "#F5A623",
+        "50": "#FFF5E1",
+        "ink": "#9A5B00"
+      },
+      "danger": {
+        "base": "#E5484D",
+        "50": "#FDECEC",
+        "ink": "#B42328"
+      },
+      "money-up-on-dark": "#7CF3BE",
+      "money-down-on-dark": "#FF9B85"
+    }
+  },
+  "gradient": {
+    "brand": "linear-gradient(135deg,#155DFD 0%,#2F5BFF 45%,#6A4DFF 100%)",
+    "text": "linear-gradient(92deg,#155DFD 0%,#4F7DFF 55%,#7A5CFF 100%)",
+    "spectrum": "linear-gradient(90deg,#F2542D,#F5A623,#0E9F6E,#155DFD,#7A5CFF)"
+  },
+  "fontSize": {
+    "display": {
+      "min": 44,
+      "max": 84
+    },
+    "h1": {
+      "min": 38,
+      "max": 64
+    },
+    "h2": {
+      "min": 34,
+      "max": 56
+    },
+    "h3": {
+      "min": 28,
+      "max": 42
+    },
+    "title": 20,
+    "body-lg": 19,
+    "body": 16,
+    "sm": 14,
+    "xs": 12.5
+  },
+  "fontWeight": {
+    "regular": 400,
+    "medium": 500,
+    "semibold": 600,
+    "bold": 700,
+    "heavy": 800
+  },
+  "lineHeight": {
+    "tight": 0.95,
+    "heading": 1.05,
+    "snug": 1.25,
+    "body": 1.6
+  },
+  "letterSpacing": {
+    "display": "-0.045em",
+    "heading": "-0.035em",
+    "title": "-0.015em"
+  },
+  "space": {
+    "1": 4,
+    "2": 8,
+    "3": 12,
+    "4": 16,
+    "5": 20,
+    "6": 24,
+    "8": 32,
+    "10": 40,
+    "12": 48,
+    "14": 56,
+    "16": 64,
+    "20": 80,
+    "32": 128
+  },
+  "radius": {
+    "xs": 8,
+    "sm": 12,
+    "md": 16,
+    "lg": 24,
+    "xl": 32,
+    "pill": 999
+  },
+  "shadow": {
+    "1": "0 1px 2px rgba(10,14,39,.05), 0 2px 8px -2px rgba(10,14,39,.06)",
+    "2": "0 1px 2px rgba(10,14,39,.04), 0 12px 28px -10px rgba(10,14,39,.16)",
+    "3": "0 2px 6px rgba(10,14,39,.05), 0 30px 60px -20px rgba(10,14,39,.28)"
+  },
+  "layout": {
+    "container": 1200,
+    "gutter": {
+      "mobile": 20,
+      "tablet": 32
+    },
+    "navHeight": 72,
+    "breakpoints": {
+      "sm": 480,
+      "md": 640,
+      "tablet": 768,
+      "lg": 900,
+      "desktop": 1024
+    }
+  },
+  "motion": {
+    "easing": {
+      "default": "cubic-bezier(.22,.8,.26,1)",
+      "spring": "cubic-bezier(.34,1.4,.5,1)"
+    },
+    "duration": {
+      "fast": 150,
+      "base": 250,
+      "slow": 450,
+      "enter": 800
+    }
+  }
+}

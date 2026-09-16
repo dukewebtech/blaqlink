@@ -4,7 +4,7 @@ import type React from "react"
 
 import { useState } from "react"
 import Link from "next/link"
-import { useRouter } from "next/navigation"
+import { useRouter, useSearchParams } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -16,6 +16,8 @@ import { createClient } from "@/lib/supabase/client"
 export default function SignupPage() {
   const [showPassword, setShowPassword] = useState(false)
   const [fullName, setFullName] = useState("")
+  const searchParams = useSearchParams()
+  const [storeName, setStoreName] = useState(() => searchParams.get("store") || "")
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
   const [rememberMe, setRememberMe] = useState(false)
@@ -73,6 +75,7 @@ export default function SignupPage() {
           data: {
             full_name: fullName,
             role: "vendor",
+            store_name: storeName || undefined,
           },
         },
       })
@@ -205,6 +208,21 @@ export default function SignupPage() {
                 className="h-12 transition-all duration-300 focus:ring-2 focus:ring-primary"
                 required
               />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="storeName" className="text-sm font-medium">
+                Store Name
+              </Label>
+              <Input
+                id="storeName"
+                type="text"
+                placeholder="yourbrand"
+                value={storeName}
+                onChange={(e) => setStoreName(e.target.value)}
+                className="h-12 transition-all duration-300 focus:ring-2 focus:ring-primary"
+              />
+              {storeName && <p className="text-xs text-muted-foreground">blaqora.store/{storeName}</p>}
             </div>
 
             <div className="space-y-2">

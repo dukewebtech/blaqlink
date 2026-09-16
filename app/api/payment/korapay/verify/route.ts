@@ -2,6 +2,8 @@ import { type NextRequest, NextResponse } from "next/server"
 import { verifyCharge } from "@/lib/korapay"
 import { createAdminClient } from "@/lib/supabase/server"
 import { sendEmail, getNewOrderEmailForVendor, getOrderConfirmationEmailForCustomer } from "@/lib/email"
+import { getVendorPlan, computeOrderFee } from "@/lib/pricing"
+import { runOrderFulfilment } from "@/lib/storefront/fulfilment"
 
 export async function GET(request: NextRequest) {
   try {
@@ -76,6 +78,9 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: "Could not determine vendor for order" }, { status: 400 })
     }
 
+    const vendorPlan = await getVendorPlan(vendorUserId)
+    const fee = computeOrderFee(chargeData.amount, vendorPlan)
+
     const { data: order, error: orderError } = await supabase
       .from("orders")
       .insert({
@@ -84,10 +89,18 @@ export async function GET(request: NextRequest) {
         customer_name: orderData.customer_name,
         customer_phone: orderData.customer_phone,
         shipping_address: orderData.shipping_address,
+        delivery_method: orderData.delivery_method || null,
+        delivery_area: orderData.delivery_area || null,
+        delivery_address: orderData.delivery_address || null,
+        delivery_state: orderData.delivery_state || null,
+        delivery_city: orderData.delivery_city || null,
+        delivery_postal_code: orderData.delivery_postal_code || null,
+        customer_note: orderData.customer_note || null,
         total_amount: chargeData.amount,
         status: "confirmed",
         payment_reference: reference,
         payment_status: "success",
+        ...fee,
       })
       .select()
       .single()
@@ -110,10 +123,28 @@ export async function GET(request: NextRequest) {
       quantity: Number(item.quantity),
       price: Number(item.price),
       subtotal: Number(item.subtotal),
+      product_variant_id: item.product_variant_id || null,
+      variant_label: item.variant_label || null,
+      ticket_tier_id: item.ticket_tier_id || null,
+      ticket_tier_name: item.ticket_tier_name || null,
+      appointment_date: item.appointment_date || null,
+      appointment_time: item.appointment_time || null,
     }))
 
-    const { error: itemsError } = await supabase.from("order_items").insert(orderItems)
+    const { data: insertedItems, error: itemsError } = await supabase.from("order_items").insert(orderItems).select()
     if (itemsError) console.error("[korapay] Order items error:", itemsError.message)
+
+    if (insertedItems && insertedItems.length > 0) {
+      runOrderFulfilment(
+        {
+          orderId: order.id,
+          customerName: order.customer_name,
+          customerEmail: order.customer_email,
+          vendorName: vendorInfo?.business_name || vendorInfo?.full_name || "the seller",
+        },
+        insertedItems,
+      ).catch((err) => console.error("[korapay] Fulfilment error:", err))
+    }
 
     const emailItems = orderItems.map((i: any) => ({
       product_title: i.product_title,

@@ -1,4 +1,5 @@
 import { type NextRequest, NextResponse } from "next/server"
+import { initializeTransaction } from "@/lib/paystack"
 
 export async function POST(request: NextRequest) {
   try {
@@ -16,23 +17,7 @@ export async function POST(request: NextRequest) {
     const callbackUrl = clientCallbackUrl || `${appUrl}/store/payment/verify`
     console.log("[v0] Callback URL:", callbackUrl)
 
-    // Initialize Paystack payment
-    const response = await fetch("https://api.paystack.co/transaction/initialize", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${process.env.PAYSTACK_SECRET_KEY}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        email,
-        amount: Math.round(amount * 100), // Convert to kobo
-        currency: "NGN",
-        metadata,
-        callback_url: callbackUrl,
-      }),
-    })
-
-    const data = await response.json()
+    const data = await initializeTransaction({ email, amount, metadata, callbackUrl })
     console.log("[v0] Paystack response:", data)
 
     if (!data.status) {

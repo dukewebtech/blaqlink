@@ -2,7 +2,7 @@
 
 import type React from "react"
 
-import { useState } from "react"
+import { Suspense, useState } from "react"
 import Link from "next/link"
 import { useRouter, useSearchParams } from "next/navigation"
 import { Button } from "@/components/ui/button"
@@ -14,6 +14,14 @@ import { Logo } from "@/components/logo"
 import { createClient } from "@/lib/supabase/client"
 
 export default function SignupPage() {
+  return (
+    <Suspense fallback={null}>
+      <SignupForm />
+    </Suspense>
+  )
+}
+
+function SignupForm() {
   const [showPassword, setShowPassword] = useState(false)
   const [fullName, setFullName] = useState("")
   const searchParams = useSearchParams()

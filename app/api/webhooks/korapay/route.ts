@@ -4,7 +4,7 @@ import { verifyCharge } from "@/lib/korapay"
 import { createAdminClient } from "@/lib/supabase/server"
 import { sendEmail, getNewOrderEmailForVendor, getOrderConfirmationEmailForCustomer } from "@/lib/email"
 import { getVendorPlan, computeOrderFee } from "@/lib/pricing"
-import { runOrderFulfilment } from "@/lib/storefront/fulfilment"
+import { runOrderFulfilment, runShipmentBooking } from "@/lib/storefront/fulfilment"
 
 function verifySignature(rawBody: string, signature: string): boolean {
   const secret = process.env.KORA_SECRET_KEY
@@ -102,6 +102,10 @@ export async function POST(request: NextRequest) {
           status: "confirmed",
           payment_reference: reference,
           payment_status: "success",
+          shipping_provider: orderData.shipping_provider || null,
+          shipping_rate_id: orderData.shipping_rate_id || null,
+          shipping_request_token: orderData.shipping_request_token || null,
+          shipping_status: orderData.shipping_provider ? "pending_booking" : null,
           ...fee,
         })
         .select()
@@ -139,6 +143,10 @@ export async function POST(request: NextRequest) {
           },
           insertedItems,
         ).catch((err) => console.error("[korapay/webhook] Fulfilment error:", err))
+      }
+
+      if (order.shipping_provider) {
+        runShipmentBooking(order).catch((err) => console.error("[korapay/webhook] Shipment booking error:", err))
       }
 
       const emailItems = orderItems.map((i: any) => ({

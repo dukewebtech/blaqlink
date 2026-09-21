@@ -37,6 +37,10 @@ type Product = {
   total_capacity?: number | null
   weight?: string | null
   dimensions?: string | null
+  weight_kg?: number | null
+  length_cm?: number | null
+  width_cm?: number | null
+  height_cm?: number | null
   is_automated_delivery?: boolean | null
   shipping_locations?: { location: string; price: string }[] | null
   logistics_api_key?: string | null
@@ -611,6 +615,72 @@ export default function EditProductPage() {
                         value={formData.sku || ""}
                         onChange={(e) => setFormData({ ...formData, sku: e.target.value })}
                       />
+                    </div>
+                  </div>
+
+                  <div className="space-y-2 p-4 border rounded-lg">
+                    <Label>Shipping weight &amp; dimensions</Label>
+                    <p className="text-xs text-muted-foreground">
+                      Only needed if you use Terminal Africa or Shipbubble for live delivery rates — couriers price a
+                      parcel by weight and size. Leave blank if you use manual delivery zones.
+                    </p>
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4 pt-2">
+                      <div>
+                        <Label htmlFor="weight_kg">Weight (kg)</Label>
+                        <Input
+                          id="weight_kg"
+                          type="number"
+                          step="0.01"
+                          min="0"
+                          placeholder="0.5"
+                          value={formData.weight_kg ?? ""}
+                          onChange={(e) =>
+                            setFormData({ ...formData, weight_kg: e.target.value ? Number.parseFloat(e.target.value) : null })
+                          }
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor="length_cm">Length (cm)</Label>
+                        <Input
+                          id="length_cm"
+                          type="number"
+                          step="0.1"
+                          min="0"
+                          placeholder="20"
+                          value={formData.length_cm ?? ""}
+                          onChange={(e) =>
+                            setFormData({ ...formData, length_cm: e.target.value ? Number.parseFloat(e.target.value) : null })
+                          }
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor="width_cm">Width (cm)</Label>
+                        <Input
+                          id="width_cm"
+                          type="number"
+                          step="0.1"
+                          min="0"
+                          placeholder="15"
+                          value={formData.width_cm ?? ""}
+                          onChange={(e) =>
+                            setFormData({ ...formData, width_cm: e.target.value ? Number.parseFloat(e.target.value) : null })
+                          }
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor="height_cm">Height (cm)</Label>
+                        <Input
+                          id="height_cm"
+                          type="number"
+                          step="0.1"
+                          min="0"
+                          placeholder="10"
+                          value={formData.height_cm ?? ""}
+                          onChange={(e) =>
+                            setFormData({ ...formData, height_cm: e.target.value ? Number.parseFloat(e.target.value) : null })
+                          }
+                        />
+                      </div>
                     </div>
                   </div>
 

@@ -6,7 +6,7 @@ export async function getDeliveryAreas(vendorUserId: string): Promise<DeliveryAr
   const supabase = createAdminClient()
   const { data, error } = await supabase
     .from("delivery_areas")
-    .select("id, name, note, fee")
+    .select("id, name, note, fee, state, city")
     .eq("user_id", vendorUserId)
     .eq("is_active", true)
     .order("sort_order", { ascending: true })

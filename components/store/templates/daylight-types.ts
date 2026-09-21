@@ -32,6 +32,11 @@ export interface DaylightItem {
   price: number
   compareAtPrice: number | null
   images: string[]
+  // Vendor-defined sub-category (the `categories` table), scoped to this item's type.
+  // Only Ora currently filters by this — null when unset or when a template ignores it.
+  categoryId: string | null
+  categoryName: string | null
+  categoryImageUrl: string | null
   // physical
   stock: number | null
   variants: DaylightVariant[]
@@ -52,6 +57,10 @@ export interface DaylightDeliveryArea {
   name: string
   note: string | null
   fee: number
+  // When set, checkout auto-fills (and locks) the shipping-address state —
+  // and city too, if the zone also has one — instead of asking twice.
+  state: string | null
+  city: string | null
 }
 
 export interface DaylightStore {
@@ -69,6 +78,20 @@ export interface DaylightStore {
   memberSinceYear: number
   verified: boolean
   deliveryAreas: DaylightDeliveryArea[]
+  // "manual" (the default) uses deliveryAreas above. Any other mode means the
+  // vendor connected a live courier — checkout fetches real rates instead.
+  shippingMode: "manual" | "terminal_africa" | "shipbubble"
+  // Storefront-only font pairing (see lib/storefront/fonts.ts). "modern" is
+  // today's fixed pairing — every existing store is unaffected until changed.
+  fontPairing: "modern" | "classic" | "minimal" | "elegant"
+}
+
+export interface LiveDeliveryRate {
+  id: string
+  carrierName: string
+  carrierLogo: string | null
+  amount: number
+  etaLabel: string | null
 }
 
 const nf = new Intl.NumberFormat("en-NG", { maximumFractionDigits: 2 })

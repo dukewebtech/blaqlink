@@ -23,6 +23,11 @@ interface CheckoutRequestBody {
     email: string
     method: "delivery" | "pickup"
     areaId?: string
+    // Live-rate checkout (Terminal Africa / Shipbubble): the quote returned by
+    // /api/shipping/rates and the courier the shopper picked from it. Omitted
+    // entirely for manual-mode stores (the default) — areaId is used instead.
+    quoteId?: string
+    rateId?: string
     address?: string
     state?: string
     city?: string
@@ -45,7 +50,7 @@ export async function POST(request: NextRequest) {
 
     const { data: vendor } = await supabase
       .from("users")
-      .select("id, business_name, full_name, email")
+      .select("id, business_name, full_name, email, shipping_mode")
       .eq("id", storeId)
       .maybeSingle()
 
@@ -132,8 +137,49 @@ export async function POST(request: NextRequest) {
     const requiresDelivery = computeNeedsDelivery(resolvedItems.map((i) => ({ product_type: i.product_type })))
     let deliveryAreaName: string | null = null
     let deliveryFee = 0
+    let shippingProvider: "terminal_africa" | "shipbubble" | null = null
+    let shippingRateId: string | null = null
+    let shippingRequestToken: string | null = null
 
-    if (requiresDelivery && details.method === "delivery") {
+    if (requiresDelivery && details.method === "delivery" && vendor.shipping_mode !== "manual") {
+      // Live-rate checkout — never trust the client's quoted amount, re-verify
+      // the chosen rate against what /api/shipping/rates actually cached.
+      if (!details.quoteId || !details.rateId) {
+        return NextResponse.json({ error: "Please choose a delivery option" }, { status: 400 })
+      }
+      const { data: quote } = await supabase
+        .from("shipping_rate_quotes")
+        .select("store_id, provider, rates, request_token, created_at")
+        .eq("id", details.quoteId)
+        .maybeSingle()
+
+      const isExpired = quote && Date.now() - new Date(quote.created_at).getTime() > 15 * 60 * 1000
+      if (!quote || quote.store_id !== storeId || isExpired) {
+        return NextResponse.json({ error: "Your delivery options have expired — please pick delivery again" }, { status: 409 })
+      }
+      const rate = (quote.rates as { id: string; carrierName: string; amount: number }[]).find(
+        (r) => r.id === details.rateId,
+      )
+      if (!rate) {
+        return NextResponse.json({ error: "That delivery option is no longer available" }, { status: 409 })
+      }
+      const deliveryErrors = validateDeliveryStep({
+        needsDelivery: true,
+        method: "delivery",
+        areaFee: rate.amount,
+        address: details.address ?? "",
+        state: details.state ?? "",
+        city: details.city ?? "",
+      })
+      if (deliveryErrors.length > 0) {
+        return NextResponse.json({ error: deliveryErrors[0].message, errors: deliveryErrors }, { status: 400 })
+      }
+      deliveryAreaName = rate.carrierName
+      deliveryFee = rate.amount
+      shippingProvider = quote.provider
+      shippingRateId = rate.id
+      shippingRequestToken = quote.request_token
+    } else if (requiresDelivery && details.method === "delivery") {
       const areas = await getDeliveryAreas(storeId)
       const area = areas.find((a) => a.id === details.areaId)
       const deliveryErrors = validateDeliveryStep({
@@ -168,6 +214,9 @@ export async function POST(request: NextRequest) {
       delivery_postal_code: requiresDelivery && details.method === "delivery" ? details.postalCode?.trim() || null : null,
       customer_note: details.note?.trim() || null,
       items: resolvedItems,
+      shipping_provider: shippingProvider,
+      shipping_rate_id: shippingRateId,
+      shipping_request_token: shippingRequestToken,
     }
 
     const session = await createCheckoutSession({

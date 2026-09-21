@@ -28,18 +28,22 @@ export async function getAuthenticatedUser(): Promise<
       error: authError,
     } = await supabase.auth.getUser()
 
+    // No user (e.g. no session cookie at all) is the routine "not logged in"
+    // case — Supabase surfaces it as an error alongside `user: null`, so this
+    // check must come before the authError branch below, or every logged-out
+    // request gets misreported as a 503 service outage instead of a 401.
+    if (!user) {
+      return {
+        success: false,
+        error: NextResponse.json({ error: "Unauthorized" }, { status: 401 }),
+      }
+    }
+
     if (authError) {
       console.error("[v0] Auth service error:", authError.message)
       return {
         success: false,
         error: NextResponse.json({ error: "Authentication service temporarily unavailable" }, { status: 503 }),
-      }
-    }
-
-    if (!user) {
-      return {
-        success: false,
-        error: NextResponse.json({ error: "Unauthorized" }, { status: 401 }),
       }
     }
 

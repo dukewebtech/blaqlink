@@ -67,6 +67,10 @@ export default function CreateProductPage() {
     stockQuantity: "",
     status: "available",
     apiKey: "",
+    weightKg: "",
+    lengthCm: "",
+    widthCm: "",
+    heightCm: "",
     eventDate: "",
     eventLocation: "",
     capacity: "",
@@ -252,6 +256,10 @@ export default function CreateProductPage() {
         productData.is_automated_delivery = isAutomatedDelivery
         productData.logistics_api_key = isAutomatedDelivery ? formData.apiKey : null
         productData.shipping_locations = !isAutomatedDelivery ? shippingLocations.filter((l) => l.location) : null
+        productData.weight_kg = formData.weightKg ? Number.parseFloat(formData.weightKg) : null
+        productData.length_cm = formData.lengthCm ? Number.parseFloat(formData.lengthCm) : null
+        productData.width_cm = formData.widthCm ? Number.parseFloat(formData.widthCm) : null
+        productData.height_cm = formData.heightCm ? Number.parseFloat(formData.heightCm) : null
       } else if (productType === "appointment") {
         productData.duration_minutes = formData.duration ? Number.parseInt(formData.duration) : null
         productData.available_days = availableDays
@@ -1014,6 +1022,64 @@ export default function CreateProductPage() {
                         <SelectItem value="coming-soon">Coming Soon</SelectItem>
                       </SelectContent>
                     </Select>
+                  </div>
+
+                  <div className="space-y-2 p-4 border rounded-lg">
+                    <Label>Shipping weight &amp; dimensions</Label>
+                    <p className="text-xs text-muted-foreground">
+                      Only needed if you use Terminal Africa or Shipbubble for live delivery rates — couriers price a
+                      parcel by weight and size. Leave blank if you use manual delivery zones.
+                    </p>
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4 pt-2">
+                      <div className="space-y-2">
+                        <Label htmlFor="weightKg">Weight (kg)</Label>
+                        <Input
+                          id="weightKg"
+                          placeholder="0.5"
+                          type="number"
+                          step="0.01"
+                          min="0"
+                          value={formData.weightKg}
+                          onChange={(e) => handleInputChange("weightKg", e.target.value)}
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="lengthCm">Length (cm)</Label>
+                        <Input
+                          id="lengthCm"
+                          placeholder="20"
+                          type="number"
+                          step="0.1"
+                          min="0"
+                          value={formData.lengthCm}
+                          onChange={(e) => handleInputChange("lengthCm", e.target.value)}
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="widthCm">Width (cm)</Label>
+                        <Input
+                          id="widthCm"
+                          placeholder="15"
+                          type="number"
+                          step="0.1"
+                          min="0"
+                          value={formData.widthCm}
+                          onChange={(e) => handleInputChange("widthCm", e.target.value)}
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="heightCm">Height (cm)</Label>
+                        <Input
+                          id="heightCm"
+                          placeholder="10"
+                          type="number"
+                          step="0.1"
+                          min="0"
+                          value={formData.heightCm}
+                          onChange={(e) => handleInputChange("heightCm", e.target.value)}
+                        />
+                      </div>
+                    </div>
                   </div>
 
                   <div className="space-y-4 p-4 border rounded-lg">

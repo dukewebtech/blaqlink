@@ -6,7 +6,7 @@ import { DashboardLayout } from "@/components/dashboard/dashboard-layout"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { ArrowLeft, Package, User, MapPin, CreditCard, Calendar } from "lucide-react"
+import { ArrowLeft, Package, User, MapPin, CreditCard, Calendar, Truck, RotateCw } from "lucide-react"
 
 interface OrderItem {
   id: string
@@ -30,6 +30,10 @@ interface Order {
   created_at: string
   updated_at: string
   order_items: OrderItem[]
+  shipping_provider: "terminal_africa" | "shipbubble" | null
+  shipping_status: "pending_booking" | "booked" | "failed" | null
+  shipping_tracking_number: string | null
+  shipping_tracking_url: string | null
 }
 
 export default function OrderDetailPage() {
@@ -38,6 +42,7 @@ export default function OrderDetailPage() {
   const [order, setOrder] = useState<Order | null>(null)
   const [loading, setLoading] = useState(true)
   const [updating, setUpdating] = useState(false)
+  const [retrying, setRetrying] = useState(false)
 
   useEffect(() => {
     fetchOrder()
@@ -83,6 +88,26 @@ export default function OrderDetailPage() {
       console.error("[v0] Failed to update order:", error)
     } finally {
       setUpdating(false)
+    }
+  }
+
+  const retryShipmentBooking = async () => {
+    if (!order) return
+    setRetrying(true)
+    try {
+      const response = await fetch("/api/shipping/retry", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ orderId: order.id }),
+      })
+      const data = await response.json()
+      if (response.ok && data.order) {
+        setOrder({ ...order, ...data.order })
+      }
+    } catch (error) {
+      console.error("[v0] Failed to retry shipment booking:", error)
+    } finally {
+      setRetrying(false)
     }
   }
 
@@ -230,6 +255,62 @@ export default function OrderDetailPage() {
                 </div>
               </div>
             </div>
+
+            {/* Shipment */}
+            {order.shipping_provider && (
+              <div className="bg-card rounded-lg border p-6">
+                <h2 className="text-xl font-bold mb-4 flex items-center gap-2">
+                  <Truck className="h-5 w-5" />
+                  Shipment
+                </h2>
+                <div className="space-y-3 text-sm">
+                  <div>
+                    <p className="text-muted-foreground">Courier</p>
+                    <p className="font-medium capitalize">{order.shipping_provider.replace("_", " ")}</p>
+                  </div>
+                  <div>
+                    <p className="text-muted-foreground">Status</p>
+                    <Badge
+                      className={`mt-1 ${
+                        order.shipping_status === "booked"
+                          ? "bg-green-100 text-green-800"
+                          : order.shipping_status === "failed"
+                            ? "bg-red-100 text-red-800"
+                            : "bg-amber-100 text-amber-800"
+                      }`}
+                    >
+                      {order.shipping_status === "booked"
+                        ? "Booked"
+                        : order.shipping_status === "failed"
+                          ? "Booking failed"
+                          : "Pending booking"}
+                    </Badge>
+                  </div>
+                  {order.shipping_tracking_number && (
+                    <div>
+                      <p className="text-muted-foreground">Tracking number</p>
+                      <p className="font-mono text-xs mt-1">{order.shipping_tracking_number}</p>
+                    </div>
+                  )}
+                  {order.shipping_tracking_url && (
+                    <a
+                      href={order.shipping_tracking_url}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="text-sm text-primary underline"
+                    >
+                      Track shipment
+                    </a>
+                  )}
+                  {order.shipping_status === "failed" && (
+                    <Button size="sm" variant="outline" onClick={retryShipmentBooking} disabled={retrying}>
+                      <RotateCw className={`h-4 w-4 mr-2 ${retrying ? "animate-spin" : ""}`} />
+                      Retry booking
+                    </Button>
+                  )}
+                </div>
+              </div>
+            )}
 
             {/* Order Timeline */}
             <div className="bg-card rounded-lg border p-6">

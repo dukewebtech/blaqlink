@@ -1,6 +1,8 @@
 import QRCode from "qrcode"
 import { createAdminClient } from "@/lib/supabase/server"
 import { sendEmail, getDigitalDownloadEmailForCustomer, getTicketEmailForCustomer } from "@/lib/email"
+import { bookShipment as bookTerminalShipment } from "@/lib/shipping/terminal-africa"
+import { createLabel as createShipbubbleLabel } from "@/lib/shipping/shipbubble"
 
 export interface FulfilmentOrderItem {
   id: string
@@ -150,5 +152,66 @@ async function decrementPhysicalStock(supabase: ReturnType<typeof createAdminCli
       p_qty: item.quantity,
     })
     if (ok === false) console.error(`[fulfilment] Product ${item.product_id} oversold on order_item ${item.id}`)
+  }
+}
+
+export interface ShipmentOrder {
+  id: string
+  user_id: string
+  shipping_provider: "terminal_africa" | "shipbubble" | null
+  shipping_rate_id: string | null
+  shipping_request_token: string | null
+}
+
+/**
+ * Order-level sibling to runOrderFulfilment (that one loops per order_item;
+ * booking a shipment happens once for the whole order). No-op for manual-mode
+ * orders (shipping_provider is null). Never throws — failure is recorded on
+ * the order as shipping_status: 'failed' for the vendor to retry manually,
+ * the same "log loudly, don't block the paid order" approach as the item loop.
+ *
+ * Each vendor books against their own Terminal Africa / Shipbubble account
+ * (no shared platform key), so this looks up the vendor's own API key first.
+ */
+export async function runShipmentBooking(order: ShipmentOrder): Promise<void> {
+  if (!order.shipping_provider || !order.shipping_rate_id) return
+
+  const supabase = createAdminClient()
+  try {
+    const { data: vendor } = await supabase
+      .from("users")
+      .select("terminal_africa_api_key, shipbubble_api_key")
+      .eq("id", order.user_id)
+      .single()
+
+    const apiKey =
+      order.shipping_provider === "terminal_africa" ? vendor?.terminal_africa_api_key : vendor?.shipbubble_api_key
+    if (!apiKey) throw new Error(`Vendor has no ${order.shipping_provider} API key configured`)
+
+    if (order.shipping_provider === "terminal_africa") {
+      const result = await bookTerminalShipment(apiKey, order.shipping_rate_id)
+      await supabase
+        .from("orders")
+        .update({
+          shipping_status: "booked",
+          shipping_tracking_number: result.trackingNumber,
+          shipping_tracking_url: result.trackingUrl,
+        })
+        .eq("id", order.id)
+    } else {
+      if (!order.shipping_request_token) throw new Error("Missing Shipbubble request token")
+      const result = await createShipbubbleLabel(apiKey, order.shipping_request_token, order.shipping_rate_id)
+      await supabase
+        .from("orders")
+        .update({
+          shipping_status: "booked",
+          shipping_tracking_number: result.orderId,
+          shipping_tracking_url: result.trackingUrl,
+        })
+        .eq("id", order.id)
+    }
+  } catch (error) {
+    console.error(`[fulfilment] Shipment booking failed for order ${order.id}:`, error)
+    await supabase.from("orders").update({ shipping_status: "failed" }).eq("id", order.id)
   }
 }

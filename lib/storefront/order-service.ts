@@ -19,6 +19,11 @@ export interface PendingOrderMetadata {
   delivery_postal_code: string | null
   customer_note: string | null
   items: PendingOrderItem[]
+  // Set only when the vendor uses a live-rate shipping mode (Terminal Africa / Shipbubble)
+  // and the shopper picked a courier — null for every manual-mode order (the default).
+  shipping_provider: "terminal_africa" | "shipbubble" | null
+  shipping_rate_id: string | null
+  shipping_request_token: string | null
 }
 
 export interface PendingOrderItem {
@@ -47,6 +52,9 @@ export function buildOrderMetadata(items: CartItem[], state: CheckoutState, tota
     delivery_city: totals.needsDelivery && state.method === "delivery" ? state.addressCity : null,
     delivery_postal_code: totals.needsDelivery && state.method === "delivery" ? state.addressPostalCode || null : null,
     customer_note: state.note || null,
+    shipping_provider: null,
+    shipping_rate_id: null,
+    shipping_request_token: null,
     items: items.map((item) => ({
       product_id: item.product_id,
       product_title: item.title,

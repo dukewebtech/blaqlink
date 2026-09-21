@@ -52,7 +52,7 @@ export default function DashboardPage() {
           const user = result.data?.user || result.user || result
           setUserStoreId(user.id)
           if (typeof window !== "undefined") {
-            setStoreUrl(`${window.location.origin}/store/${user.id}`)
+            setStoreUrl(`${window.location.origin}/${user.store_slug || user.id}`)
           }
         }
       } catch (error) {

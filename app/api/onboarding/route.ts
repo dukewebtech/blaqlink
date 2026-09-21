@@ -1,5 +1,6 @@
 import { createServerClient } from "@/lib/supabase/server"
 import { NextResponse } from "next/server"
+import { generateUniqueSlug } from "@/lib/utils/slug"
 
 export async function GET() {
   try {
@@ -49,17 +50,22 @@ export async function POST(request: Request) {
     switch (step) {
       // ── Step 1: Store Setup (the single onboarding gate) ──────────────────
       case 1: {
+        // The client sends its own slugified guess, but it never checked whether
+        // that slug was already taken — resolve it to a guaranteed-unique one
+        // here (appending -2, -3, ... on collision) rather than trusting it.
+        const resolvedSlug = await generateUniqueSlug(stepData.storeSlug || stepData.businessName, user.id)
+
         progressUpdates.business_info_completed = true
         progressUpdates.store_setup_completed   = true
         progressUpdates.onboarding_completed    = true
-        progressUpdates.store_slug              = stepData.storeSlug
+        progressUpdates.store_slug              = resolvedSlug
         progressUpdates.store_city              = stepData.city
         progressUpdates.store_state             = stepData.state
 
-        await supabase.from("users").update({
+        const { error: userUpdateError } = await supabase.from("users").update({
           business_name:   stepData.businessName,
           store_name:      stepData.businessName,
-          store_slug:      stepData.storeSlug,
+          store_slug:      resolvedSlug,
           business_category: stepData.businessCategory,
           store_city:      stepData.city,
           store_state:     stepData.state,
@@ -67,6 +73,11 @@ export async function POST(request: Request) {
           onboarding_completed: true,
           updated_at: new Date().toISOString(),
         }).eq("id", user.id)
+
+        if (userUpdateError) {
+          console.error("[onboarding/POST] users update error:", userUpdateError)
+          return NextResponse.json({ error: "Failed to save your store details. Please try again." }, { status: 500 })
+        }
         break
       }
 

@@ -11,7 +11,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Separator } from "@/components/ui/separator"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
-import { User, Mail, Phone, MapPin, Lock, Key, CheckCircle2, Upload, Chrome, Loader2 } from "lucide-react"
+import { User, Mail, Phone, MapPin, Lock, Key, CheckCircle2, Upload, Loader2 } from "lucide-react"
 import { useRouter, useSearchParams } from "next/navigation"
 
 interface UserProfile {
@@ -415,37 +415,6 @@ export default function AccountSettingsPage() {
                 </li>
               </ul>
             </div>
-          </CardContent>
-        </Card>
-
-        {/* Connected Accounts Card */}
-        <Card className="border-border/50 shadow-sm hover:shadow-md transition-shadow duration-300">
-          <CardHeader>
-            <CardTitle>Connected Accounts</CardTitle>
-            <CardDescription>Manage your third-party account connections</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            {/* Google Account */}
-            <div className="flex items-center justify-between p-4 rounded-lg border border-border bg-muted/30 hover:bg-muted/50 transition-colors duration-200 animate-in fade-in slide-in-from-left-2 duration-300">
-              <div className="flex items-center gap-4">
-                <div className="h-10 w-10 rounded-full bg-white flex items-center justify-center shadow-sm">
-                  <Chrome className="h-5 w-5 text-blue-500" />
-                </div>
-                <div>
-                  <p className="font-medium">Google Account</p>
-                  <p className="text-sm text-muted-foreground">guy.hawkins@gmail.com</p>
-                </div>
-              </div>
-              <Badge variant="secondary" className="bg-success/10 text-success hover:bg-success/20">
-                <CheckCircle2 className="h-3 w-3 mr-1" />
-                Connected
-              </Badge>
-            </div>
-
-            {/* Add More Accounts */}
-            <Button variant="outline" className="w-full transition-all duration-200 hover:bg-muted bg-transparent">
-              Connect Another Account
-            </Button>
           </CardContent>
         </Card>
 

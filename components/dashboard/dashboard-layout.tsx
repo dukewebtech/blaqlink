@@ -28,43 +28,63 @@ import {
   Menu,
   X,
   Wallet,
-  Palette,
   Sparkles,
   FolderTree,
   Tag,
+  Truck,
+  Store,
+  CreditCard,
 } from "lucide-react"
 import { Logo } from "@/components/logo"
 
-const navigation = [
-  { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
-  { name: "Product", href: "/products-list", icon: Package },
-  { name: "Categories", href: "/categories", icon: FolderTree },
-  { name: "Transaction", href: "/transactions", icon: Receipt },
-  { name: "Payouts", href: "/payouts", icon: Wallet },
-  { name: "Customers", href: "/customers", icon: Users },
-  { name: "Sales Report", href: "/sales", icon: BarChart3 },
-  { name: "Plan & Billing", href: "/plan", icon: Tag },
-]
-
-const tools = [
+const navigationGroups = [
   {
-    name: "Account & Settings",
-    href: "/settings/account",
-    icon: Settings,
-    children: [
-      { name: "Account Settings", href: "/settings/account" },
-      { name: "Payout Settings", href: "/settings/payout" },
-      { name: "Store Settings", href: "/settings/store" },
+    label: "Overview",
+    items: [{ name: "Dashboard", href: "/dashboard", icon: LayoutDashboard }],
+  },
+  {
+    label: "Catalog",
+    items: [
+      { name: "Products", href: "/products-list", icon: Package },
+      { name: "Categories", href: "/categories", icon: FolderTree },
     ],
   },
-  { name: "Store design", href: "/store-design", icon: Sparkles },
-  { name: "Templates", href: "/templates", icon: Palette },
-  { name: "Help", href: "/help", icon: HelpCircle },
+  {
+    label: "Orders & Sales",
+    items: [
+      { name: "Transactions", href: "/transactions", icon: Receipt },
+      { name: "Customers", href: "/customers", icon: Users },
+      { name: "Sales Reports", href: "/sales", icon: BarChart3 },
+    ],
+  },
+  {
+    label: "Finance",
+    items: [
+      { name: "Payouts", href: "/payouts", icon: Wallet },
+      { name: "Plan & Billing", href: "/plan", icon: Tag },
+    ],
+  },
+  {
+    label: "Store",
+    items: [{ name: "Store Design", href: "/store-design", icon: Sparkles }],
+  },
+  {
+    label: "Settings",
+    items: [
+      { name: "Store Settings", href: "/settings/store", icon: Store },
+      { name: "Payment Settings", href: "/settings/payout", icon: CreditCard },
+      { name: "Shipping Settings", href: "/shipping", icon: Truck },
+      { name: "Account Settings", href: "/settings/account", icon: Settings },
+    ],
+  },
+  {
+    label: "Support",
+    items: [{ name: "Help", href: "/help", icon: HelpCircle }],
+  },
 ]
 
 export function DashboardLayout({ children }: { children: React.ReactNode }) {
   const [sidebarOpen, setSidebarOpen] = useState(false)
-  const [settingsOpen, setSettingsOpen] = useState(false)
   const pathname = usePathname()
   const router = useRouter()
 
@@ -111,10 +131,6 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
   }
 
   const closeSidebar = () => setSidebarOpen(false)
-
-  const isSettingsActive = tools[0].children?.some(
-    (child) => pathname === child.href || pathname?.startsWith(child.href + "/"),
-  )
 
   return (
     <div className="min-h-screen bg-background">
@@ -176,90 +192,30 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
 
           {/* Nav */}
           <nav className="flex-1 overflow-y-auto p-3 space-y-1">
-            <div className="space-y-0.5">
-              <p className="px-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2 mt-1">
-                General
-              </p>
-              {navigation.map((item) => {
-                const isActive = pathname === item.href || pathname?.startsWith(item.href + "/")
-                return (
-                  <Link key={item.name} href={item.href} onClick={closeSidebar}>
-                    <Button
-                      variant={isActive ? "secondary" : "ghost"}
-                      className={cn(
-                        "w-full justify-start gap-3 h-11 transition-all duration-200",
-                        isActive && "bg-sidebar-accent font-medium",
-                      )}
-                    >
-                      <item.icon className="h-5 w-5 shrink-0" />
-                      <span className="flex-1 text-left">{item.name}</span>
-                    </Button>
-                  </Link>
-                )
-              })}
-            </div>
-
-            <div className="pt-4 space-y-0.5">
-              <p className="px-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">Tools</p>
-
-              {/* Settings with children */}
-              <div className="space-y-0.5">
-                <Button
-                  variant={isSettingsActive ? "secondary" : "ghost"}
-                  className={cn(
-                    "w-full justify-start gap-3 h-11 transition-all duration-200",
-                    isSettingsActive && "bg-sidebar-accent font-medium",
-                  )}
-                  onClick={() => setSettingsOpen(!settingsOpen)}
-                >
-                  <Settings className="h-5 w-5 shrink-0" />
-                  <span className="flex-1 text-left">Account & Settings</span>
-                  <ChevronDown
-                    className={cn("h-4 w-4 transition-transform duration-200 shrink-0", settingsOpen && "rotate-180")}
-                  />
-                </Button>
-                {settingsOpen && (
-                  <div className="ml-4 space-y-0.5 animate-in slide-in-from-top-2 duration-200">
-                    {tools[0].children!.map((child) => {
-                      const isChildActive = pathname === child.href || pathname?.startsWith(child.href + "/")
-                      return (
-                        <Link key={child.name} href={child.href} onClick={closeSidebar}>
-                          <Button
-                            variant={isChildActive ? "secondary" : "ghost"}
-                            className={cn(
-                              "w-full justify-start gap-3 text-sm h-10 transition-all duration-200",
-                              isChildActive && "bg-sidebar-accent/50 font-medium text-primary",
-                            )}
-                          >
-                            <span className="w-5 flex justify-center shrink-0">—</span>
-                            <span className="flex-1 text-left">{child.name}</span>
-                          </Button>
-                        </Link>
-                      )
-                    })}
-                  </div>
-                )}
+            {navigationGroups.map((group, groupIndex) => (
+              <div key={group.label} className={cn("space-y-0.5", groupIndex > 0 && "pt-4")}>
+                <p className="px-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">
+                  {group.label}
+                </p>
+                {group.items.map((item) => {
+                  const isActive = pathname === item.href || pathname?.startsWith(item.href + "/")
+                  return (
+                    <Link key={item.name} href={item.href} onClick={closeSidebar}>
+                      <Button
+                        variant={isActive ? "secondary" : "ghost"}
+                        className={cn(
+                          "w-full justify-start gap-3 h-11 transition-all duration-200",
+                          isActive && "bg-sidebar-accent font-medium",
+                        )}
+                      >
+                        <item.icon className="h-5 w-5 shrink-0" />
+                        <span className="flex-1 text-left">{item.name}</span>
+                      </Button>
+                    </Link>
+                  )
+                })}
               </div>
-
-              {/* Templates & Help */}
-              {tools.slice(1).map((item) => {
-                const isActive = pathname === item.href || pathname?.startsWith(item.href + "/")
-                return (
-                  <Link key={item.name} href={item.href} onClick={closeSidebar}>
-                    <Button
-                      variant={isActive ? "secondary" : "ghost"}
-                      className={cn(
-                        "w-full justify-start gap-3 h-11 transition-all duration-200",
-                        isActive && "bg-sidebar-accent font-medium",
-                      )}
-                    >
-                      <item.icon className="h-5 w-5 shrink-0" />
-                      {item.name}
-                    </Button>
-                  </Link>
-                )
-              })}
-            </div>
+            ))}
           </nav>
 
           {/* User profile */}

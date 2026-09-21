@@ -36,16 +36,35 @@ import {
 } from "lucide-react"
 import { Logo } from "@/components/logo"
 
-const navigation = [
-  { name: "Admin Dashboard", href: "/admin", icon: LayoutDashboard },
-  { name: "Withdrawal Requests", href: "/admin/withdrawals", icon: Wallet },
-  { name: "Users & Stores", href: "/admin/users", icon: Users },
-  { name: "Orders", href: "/admin/orders", icon: ShoppingBag },
-  { name: "Products", href: "/admin/products", icon: Package },
-  { name: "Pricing Plans", href: "/admin/pricing", icon: Tag },
-  { name: "Financial Reports", href: "/admin/reports", icon: BarChart3 },
-  { name: "Announcement", href: "/admin/announcement", icon: Megaphone }, // Renamed to Announcement
-  { name: "Settings", href: "/admin/settings", icon: Settings },
+const navigationGroups = [
+  {
+    label: "Overview",
+    items: [{ name: "Admin Dashboard", href: "/admin", icon: LayoutDashboard }],
+  },
+  {
+    label: "Operations",
+    items: [
+      { name: "Users & Stores", href: "/admin/users", icon: Users },
+      { name: "Orders", href: "/admin/orders", icon: ShoppingBag },
+      { name: "Products", href: "/admin/products", icon: Package },
+      { name: "Withdrawal Requests", href: "/admin/withdrawals", icon: Wallet },
+    ],
+  },
+  {
+    label: "Monetization",
+    items: [
+      { name: "Pricing Plans", href: "/admin/pricing", icon: Tag },
+      { name: "Financial Reports", href: "/admin/reports", icon: BarChart3 },
+    ],
+  },
+  {
+    label: "Communication",
+    items: [{ name: "Announcement", href: "/admin/announcement", icon: Megaphone }],
+  },
+  {
+    label: "Configuration",
+    items: [{ name: "Settings", href: "/admin/settings", icon: Settings }],
+  },
 ]
 
 export function AdminLayout({ children }: { children: React.ReactNode }) {
@@ -147,7 +166,7 @@ export function AdminLayout({ children }: { children: React.ReactNode }) {
         <div className="flex h-full flex-col">
           <div className="flex h-16 items-center justify-between border-b border-red-800 px-6">
             <Link href="/admin" className="flex items-center gap-2">
-              <Logo />
+              <Logo variant="white" />
               <Badge variant="destructive" className="bg-red-600">
                 ADMIN
               </Badge>
@@ -168,27 +187,34 @@ export function AdminLayout({ children }: { children: React.ReactNode }) {
               </div>
             </div>
 
-            <nav className="space-y-1">
-              {navigation.map((item) => {
-                const isActive = pathname === item.href || pathname?.startsWith(item.href + "/")
+            <nav className="space-y-4">
+              {navigationGroups.map((group) => (
+                <div key={group.label} className="space-y-1">
+                  <p className="px-3 text-xs font-semibold text-red-300 uppercase tracking-wider mb-1">
+                    {group.label}
+                  </p>
+                  {group.items.map((item) => {
+                    const isActive = pathname === item.href || pathname?.startsWith(item.href + "/")
 
-                return (
-                  <Link
-                    key={item.name}
-                    href={item.href}
-                    onClick={() => setSidebarOpen(false)}
-                    className={cn(
-                      "flex items-center gap-3 rounded-lg px-3 py-3 lg:py-2 text-sm font-medium transition-colors",
-                      isActive
-                        ? "bg-red-800 text-white shadow-lg"
-                        : "text-red-100 hover:bg-red-800/50 hover:text-white",
-                    )}
-                  >
-                    <item.icon className="h-5 w-5 shrink-0" />
-                    {item.name}
-                  </Link>
-                )
-              })}
+                    return (
+                      <Link
+                        key={item.name}
+                        href={item.href}
+                        onClick={() => setSidebarOpen(false)}
+                        className={cn(
+                          "flex items-center gap-3 rounded-lg px-3 py-3 lg:py-2 text-sm font-medium transition-colors",
+                          isActive
+                            ? "bg-red-800 text-white shadow-lg"
+                            : "text-red-100 hover:bg-red-800/50 hover:text-white",
+                        )}
+                      >
+                        <item.icon className="h-5 w-5 shrink-0" />
+                        {item.name}
+                      </Link>
+                    )
+                  })}
+                </div>
+              ))}
             </nav>
           </div>
 

@@ -1,9 +1,14 @@
 @import "tailwindcss";
 @import "tw-animate-css";
 
-/* Blaqora design system — source of truth: /design-system (see CLAUDE.md) */
-@import "../design-system/blaqora-tokens.css";
-@import "../design-system/blaqora-components.css";
+/* Blaqora design system — source of truth: /design-system (see CLAUDE.md).
+   Imported into Tailwind's "base" layer, not left unlayered — unlayered CSS
+   always beats every Tailwind utility regardless of specificity or source
+   order, which was silently overriding text-white/text-primary-foreground
+   etc. on every plain <button> app-wide via this file's `color: inherit`
+   reset (button, input, select, textarea { color: inherit }). */
+@import "../design-system/blaqora-tokens.css" layer(base);
+@import "../design-system/blaqora-components.css" layer(base);
 
 @custom-variant dark (&:is(.dark *));
 

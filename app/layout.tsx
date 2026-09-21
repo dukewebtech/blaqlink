@@ -63,6 +63,7 @@ export default function RootLayout({
     <html lang="en">
       <body
         className={`font-sans ${bricolageGrotesque.variable} ${plusJakartaSans.variable} ${fraunces.variable} ${inter.variable} ${spaceGrotesk.variable} ${playfairDisplay.variable} ${workSans.variable}`}
+        suppressHydrationWarning
       >
         {children}
         <Toaster />

@@ -167,7 +167,7 @@ export function StudioStorefront({ store, items }: { store: DaylightStore; items
       return
     }
     closeAll()
-    say(`${sheetItem.name} added`)
+    say("Added to bag")
   }
 
   // ---------- Cart / checkout (identical logic to Daylight) ----------
@@ -283,7 +283,7 @@ export function StudioStorefront({ store, items }: { store: DaylightStore; items
     const line = cart.items.find((i) => i.id === itemId)
     cartStore.removeItem(itemId)
     setCart(cartStore.getCart())
-    if (line) say(`${line.title} removed`)
+    if (line) say("Removed from bag")
   }
 
   function startCheckout() {

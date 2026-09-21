@@ -196,7 +196,7 @@ export function DaylightStorefront({ store, items }: { store: DaylightStore; ite
       return
     }
     closeAll()
-    say(`${sheetItem.name} added`)
+    say("Added to cart")
   }
 
   // ---------- Cart ----------
@@ -314,7 +314,7 @@ export function DaylightStorefront({ store, items }: { store: DaylightStore; ite
     const line = cart.items.find((i) => i.id === itemId)
     cartStore.removeItem(itemId)
     setCart(cartStore.getCart())
-    if (line) say(`${line.title} removed`)
+    if (line) say("Removed from cart")
   }
 
   function startCheckout() {

@@ -350,9 +350,10 @@ html { -webkit-text-size-adjust: 100%; }
   .done__btns { display: grid; gap: 9px; padding: 22px 16px calc(22px + env(safe-area-inset-bottom)); }
 
   /* ---------- Toast ---------- */
-  .toast { position: fixed; left: 50%; bottom: 88px; z-index: 90; display: flex; align-items: center; gap: 10px; padding: 12px 18px; border-radius: var(--r-pill); background: var(--ink); color: #fff; font-size: 14.5px; font-weight: 700; box-shadow: var(--sh-3); transform: translate(-50%, 24px); opacity: 0; pointer-events: none; transition: opacity .25s, transform .35s var(--spring); }
+  .toast { position: fixed; left: 50%; bottom: 88px; z-index: 90; display: flex; align-items: center; gap: 10px; padding: 12px 18px; max-width: calc(100% - 32px); border-radius: var(--r-md); background: var(--ink); color: #fff; font-size: 14.5px; font-weight: 700; box-shadow: var(--sh-3); transform: translate(-50%, 24px); opacity: 0; pointer-events: none; transition: opacity .25s, transform .35s var(--spring); }
   .toast.is-on { opacity: 1; transform: translate(-50%, 0); }
-  .toast svg { width: 18px; height: 18px; color: #7CF3BE; }
+  .toast svg { width: 18px; height: 18px; color: #7CF3BE; flex-shrink: 0; }
+  .toast span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
 
   /* ---------- Footer ---------- */
   .foot { margin-top: 20px; padding: 30px 16px calc(96px + env(safe-area-inset-bottom)); border-top: 1px solid var(--line); text-align: center; background: var(--bg-soft); }

@@ -213,7 +213,7 @@ export function EditorialStorefront({ store, items }: { store: EditorialStore; i
       return
     }
     setPageItem(null)
-    say(`${pageItem.name} added to bag`)
+    say("Added to bag")
   }
 
   // ---------- Bag ----------
@@ -329,7 +329,7 @@ export function EditorialStorefront({ store, items }: { store: EditorialStore; i
     const line = cart.items.find((i) => i.id === itemId)
     cartStore.removeItem(itemId)
     setCart(cartStore.getCart())
-    if (line) say(`${line.title} removed`)
+    if (line) say("Removed from bag")
   }
 
   function startCheckout() {

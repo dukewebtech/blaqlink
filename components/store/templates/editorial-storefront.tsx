@@ -12,8 +12,10 @@ import {
   type DaylightItem as EditorialItem,
   type DaylightStore as EditorialStore,
   type DaylightItemType as EditorialItemType,
+  type LiveDeliveryRate,
 } from "./daylight-types"
 import "./editorial-storefront.css"
+import { fontCssVars } from "@/lib/storefront/fonts"
 
 // Editorial computes --on-accent and --accent-soft dynamically from the vendor's
 // colour (contrast-based ink, not a fixed shade like Daylight) — copied exactly
@@ -61,6 +63,7 @@ export function EditorialStorefront({ store, items }: { store: EditorialStore; i
     email: "",
     method: "delivery" as "delivery" | "pickup",
     areaId: null as string | null,
+    quoteId: null as string | null,
     address: "",
     addressState: "",
     addressCity: "",
@@ -68,6 +71,9 @@ export function EditorialStorefront({ store, items }: { store: EditorialStore; i
     note: "",
   })
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({})
+  const [liveRates, setLiveRates] = useState<LiveDeliveryRate[] | null>(null)
+  const [fetchingRates, setFetchingRates] = useState(false)
+  const [rateError, setRateError] = useState<string | null>(null)
   const [toast, setToast] = useState<string | null>(null)
   const [paying, setPaying] = useState(false)
   const [payError, setPayError] = useState<string | null>(null)
@@ -211,14 +217,21 @@ export function EditorialStorefront({ store, items }: { store: EditorialStore; i
   }
 
   // ---------- Bag ----------
+  const isLiveRateMode = store.shippingMode !== "manual"
+  const selectedLiveRate = liveRates?.find((r) => r.id === order.areaId) ?? null
+  const selectedManualArea = store.deliveryAreas.find((a) => a.id === order.areaId)
+  const currentAreaName = isLiveRateMode ? (selectedLiveRate?.carrierName ?? null) : (selectedManualArea?.name ?? null)
+  const currentAreaFee =
+    order.method === "pickup" ? 0 : isLiveRateMode ? (selectedLiveRate?.amount ?? null) : (selectedManualArea?.fee ?? null)
+
   const totals = computeTotals(cart.items, {
     name: order.name,
     phone: order.phone,
     email: order.email,
     method: order.method,
     areaId: order.areaId,
-    areaName: store.deliveryAreas.find((a) => a.id === order.areaId)?.name ?? null,
-    areaFee: order.method === "pickup" ? 0 : store.deliveryAreas.find((a) => a.id === order.areaId)?.fee ?? null,
+    areaName: currentAreaName,
+    areaFee: currentAreaFee,
     address: order.address,
     addressState: order.addressState,
     addressCity: order.addressCity,
@@ -231,8 +244,70 @@ export function EditorialStorefront({ store, items }: { store: EditorialStore; i
     [order.addressState],
   )
 
+  function clearStaleQuote() {
+    if (isLiveRateMode) {
+      setLiveRates(null)
+      setRateError(null)
+      setOrder((o) => ({ ...o, areaId: null, quoteId: null }))
+    }
+  }
+
   function selectAddressState(nextState: string) {
     setOrder((o) => ({ ...o, addressState: nextState, addressCity: "" }))
+    clearStaleQuote()
+  }
+
+  // A delivery area can carry its own state/city — when it does, checkout
+  // auto-fills and locks those fields instead of asking twice. Only applies
+  // to manual zones; live rates always ask for the address up front.
+  const isAddressStateLocked = !isLiveRateMode && order.method === "delivery" && !!selectedManualArea?.state
+  const isAddressCityLocked = isAddressStateLocked && !!selectedManualArea?.city
+
+  function selectDeliveryArea(area: EditorialStore["deliveryAreas"][number]) {
+    setOrder((o) => ({
+      ...o,
+      areaId: area.id,
+      ...(area.state ? { addressState: area.state, addressCity: area.city || "" } : {}),
+    }))
+  }
+
+  async function fetchLiveRates() {
+    if (!order.address.trim() || !order.addressState || !order.addressCity) return
+    setFetchingRates(true)
+    setRateError(null)
+    setLiveRates(null)
+    setOrder((o) => ({ ...o, areaId: null, quoteId: null }))
+    try {
+      const res = await fetch("/api/shipping/rates", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          storeId: store.id,
+          items: cart.items.map((i) => ({ product_id: i.product_id, quantity: i.quantity })),
+          dropoff: {
+            name: order.name.trim() || "Customer",
+            phone: order.phone.trim(),
+            email: order.email.trim(),
+            address: order.address.trim(),
+            state: order.addressState,
+            city: order.addressCity,
+            postalCode: order.addressPostalCode.trim() || undefined,
+          },
+        }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || "Could not fetch delivery options")
+      setLiveRates(data.rates)
+      setOrder((o) => ({ ...o, quoteId: data.quoteId }))
+    } catch (err: any) {
+      setRateError(err.message || "Could not fetch delivery options")
+    } finally {
+      setFetchingRates(false)
+    }
+  }
+
+  function selectLiveRate(rate: LiveDeliveryRate) {
+    setOrder((o) => ({ ...o, areaId: rate.id }))
   }
 
   function lineOptionText(item: CartItem): string {
@@ -273,7 +348,7 @@ export function EditorialStorefront({ store, items }: { store: EditorialStore; i
       for (const e of validateDeliveryStep({
         needsDelivery: totals.needsDelivery,
         method: order.method,
-        areaFee: order.method === "pickup" ? 0 : store.deliveryAreas.find((a) => a.id === order.areaId)?.fee ?? null,
+        areaFee: currentAreaFee,
         address: order.address,
         state: order.addressState,
         city: order.addressCity,
@@ -313,7 +388,9 @@ export function EditorialStorefront({ store, items }: { store: EditorialStore; i
             phone: order.phone.trim(),
             email: order.email.trim(),
             method: order.method,
-            areaId: order.areaId ?? undefined,
+            areaId: !isLiveRateMode ? (order.areaId ?? undefined) : undefined,
+            quoteId: isLiveRateMode ? (order.quoteId ?? undefined) : undefined,
+            rateId: isLiveRateMode ? (order.areaId ?? undefined) : undefined,
             address: order.address.trim(),
             state: order.addressState,
             city: order.addressCity,
@@ -339,6 +416,7 @@ export function EditorialStorefront({ store, items }: { store: EditorialStore; i
     ["--accent" as any]: store.accent,
     ["--on-accent" as any]: onAccent,
     ["--accent-soft" as any]: accentSoft,
+    ...fontCssVars(store.fontPairing),
   }
 
   return (
@@ -783,12 +861,12 @@ export function EditorialStorefront({ store, items }: { store: EditorialStore; i
                           <span className="pk__p">Free</span>
                         </button>
                       </div>
-                      {order.method === "delivery" && (
+                      {order.method === "delivery" && !isLiveRateMode && (
                         <>
                           <p className="pick__l" style={{ marginBottom: 9 }}>Where are we delivering to?</p>
                           <div className="pick">
                             {store.deliveryAreas.map((a) => (
-                              <button key={a.id} className="pk" type="button" aria-pressed={order.areaId === a.id} onClick={() => setOrder((o) => ({ ...o, areaId: a.id }))}>
+                              <button key={a.id} className="pk" type="button" aria-pressed={order.areaId === a.id} onClick={() => selectDeliveryArea(a)}>
                                 <span className="pk__t" />
                                 <span className="pk__m"><b>{a.name}</b>{a.note && <small>{a.note}</small>}</span>
                                 <span className="pk__p money">{formatNaira(a.fee)}</span>
@@ -798,6 +876,44 @@ export function EditorialStorefront({ store, items }: { store: EditorialStore; i
                           <div className={`f${fieldErrors.address ? " err" : ""}`}>
                             <label htmlFor="ed-k-addr">Delivery address</label>
                             <textarea id="ed-k-addr" autoComplete="street-address" placeholder="House number, street, area, landmark" value={order.address} onChange={(e) => setOrder((o) => ({ ...o, address: e.target.value }))} />
+                            <span className="bad">{fieldErrors.address}</span>
+                          </div>
+                          <p className="pick__l" style={{ marginBottom: 9 }}>Shipping Address</p>
+                          <div className="f-row">
+                            <div className={`f${fieldErrors.state ? " err" : ""}`}>
+                              <label htmlFor="ed-k-state">State *</label>
+                              <select id="ed-k-state" autoComplete="address-level1" value={order.addressState} disabled={isAddressStateLocked} onChange={(e) => selectAddressState(e.target.value)}>
+                                <option value="">Select state</option>
+                                {getStatesList().map((s) => (
+                                  <option key={s} value={s}>{s}</option>
+                                ))}
+                              </select>
+                              <span className="bad">{fieldErrors.state}</span>
+                              {isAddressStateLocked && <span className="hint">Set from your delivery area.</span>}
+                            </div>
+                            <div className={`f${fieldErrors.city ? " err" : ""}`}>
+                              <label htmlFor="ed-k-city">City *</label>
+                              <select id="ed-k-city" autoComplete="address-level2" value={order.addressCity} disabled={!order.addressState || isAddressCityLocked} onChange={(e) => setOrder((o) => ({ ...o, addressCity: e.target.value }))}>
+                                <option value="">{order.addressState ? "Select city" : "Select a state first"}</option>
+                                {citiesForState.map((c) => (
+                                  <option key={c} value={c}>{c}</option>
+                                ))}
+                              </select>
+                              <span className="bad">{fieldErrors.city}</span>
+                              {isAddressCityLocked && <span className="hint">Set from your delivery area.</span>}
+                            </div>
+                          </div>
+                          <div className="f">
+                            <label htmlFor="ed-k-zip">Postal Code</label>
+                            <input id="ed-k-zip" autoComplete="postal-code" inputMode="numeric" placeholder="100001" value={order.addressPostalCode} onChange={(e) => setOrder((o) => ({ ...o, addressPostalCode: e.target.value }))} />
+                          </div>
+                        </>
+                      )}
+                      {order.method === "delivery" && isLiveRateMode && (
+                        <>
+                          <div className={`f${fieldErrors.address ? " err" : ""}`}>
+                            <label htmlFor="ed-k-addr">Delivery address</label>
+                            <textarea id="ed-k-addr" autoComplete="street-address" placeholder="House number, street, area, landmark" value={order.address} onChange={(e) => { setOrder((o) => ({ ...o, address: e.target.value })); clearStaleQuote() }} />
                             <span className="bad">{fieldErrors.address}</span>
                           </div>
                           <p className="pick__l" style={{ marginBottom: 9 }}>Shipping Address</p>
@@ -814,7 +930,7 @@ export function EditorialStorefront({ store, items }: { store: EditorialStore; i
                             </div>
                             <div className={`f${fieldErrors.city ? " err" : ""}`}>
                               <label htmlFor="ed-k-city">City *</label>
-                              <select id="ed-k-city" autoComplete="address-level2" value={order.addressCity} disabled={!order.addressState} onChange={(e) => setOrder((o) => ({ ...o, addressCity: e.target.value }))}>
+                              <select id="ed-k-city" autoComplete="address-level2" value={order.addressCity} disabled={!order.addressState} onChange={(e) => { setOrder((o) => ({ ...o, addressCity: e.target.value })); clearStaleQuote() }}>
                                 <option value="">{order.addressState ? "Select city" : "Select a state first"}</option>
                                 {citiesForState.map((c) => (
                                   <option key={c} value={c}>{c}</option>
@@ -827,6 +943,47 @@ export function EditorialStorefront({ store, items }: { store: EditorialStore; i
                             <label htmlFor="ed-k-zip">Postal Code</label>
                             <input id="ed-k-zip" autoComplete="postal-code" inputMode="numeric" placeholder="100001" value={order.addressPostalCode} onChange={(e) => setOrder((o) => ({ ...o, addressPostalCode: e.target.value }))} />
                           </div>
+
+                          {!liveRates && (
+                            <button
+                              type="button"
+                              className="btn btn--accent btn--block"
+                              disabled={!order.address.trim() || !order.addressState || !order.addressCity || fetchingRates}
+                              onClick={fetchLiveRates}
+                            >
+                              {fetchingRates ? "Finding delivery options…" : "See delivery options"}
+                            </button>
+                          )}
+                          {rateError && (
+                            <div className="f err" style={{ marginTop: 8 }}>
+                              <span className="bad" style={{ display: "block" }}>{rateError}</span>
+                            </div>
+                          )}
+                          {liveRates && (
+                            <>
+                              <p className="pick__l" style={{ marginBottom: 9 }}>Choose a delivery option</p>
+                              <div className="pick">
+                                {liveRates.map((r) => (
+                                  <button key={r.id} className="pk" type="button" aria-pressed={order.areaId === r.id} onClick={() => selectLiveRate(r)}>
+                                    <span className="pk__t" />
+                                    {r.carrierLogo && (
+                                      <img
+                                        src={r.carrierLogo}
+                                        alt=""
+                                        style={{ width: 28, height: 28, borderRadius: 6, objectFit: "contain", flex: "none" }}
+                                        onError={(e) => { e.currentTarget.style.display = "none" }}
+                                      />
+                                    )}
+                                    <span className="pk__m"><b>{r.carrierName}</b>{r.etaLabel && <small>{r.etaLabel}</small>}</span>
+                                    <span className="pk__p money">{formatNaira(r.amount)}</span>
+                                  </button>
+                                ))}
+                              </div>
+                              <button type="button" className="btn btn--line btn--sm" style={{ marginTop: 10 }} onClick={fetchLiveRates} disabled={fetchingRates}>
+                                {fetchingRates ? "Refreshing…" : "Refresh options"}
+                              </button>
+                            </>
+                          )}
                         </>
                       )}
                     </>

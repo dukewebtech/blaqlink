@@ -304,6 +304,7 @@ html { background: #08090F; }
   .f textarea { min-height: 88px; padding: 14px 16px; resize: vertical; line-height: 1.5; }
   .f input::placeholder, .f textarea::placeholder { color: var(--soft); }
   .f input:focus, .f textarea:focus, .f select:focus { border-color: var(--accent); }
+  .f select:disabled { background: var(--raise); color: var(--soft); cursor: not-allowed; }
   .f-row { display: grid; gap: 12px; margin-bottom: 15px; }
   @media (min-width: 560px) { .f-row { grid-template-columns: 1fr 1fr; } }
   .f-row .f { margin-bottom: 0; }

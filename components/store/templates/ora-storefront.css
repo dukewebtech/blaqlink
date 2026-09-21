@@ -1,0 +1,717 @@
+/* ==========================================================
+   Blaqora Storefront — Template 5 "Ora"
+   Ported from  storefront-templates/duke-accessories-store.html.
+   Scoped under .ora-store so it can't leak into or be overridden by the
+   app's own design tokens (both define an --accent custom property).
+   ========================================================== */
+
+html { -webkit-text-size-adjust: 100%; }
+
+@keyframes oraCardIn { from { opacity: 0; transform: translateY(10px); } }
+@keyframes oraShimmer { 0% { background-position: 100% 0; } 100% { background-position: -100% 0; } }
+@keyframes oraBump { 40% { transform: scale(1.22); } }
+
+.ora-store {
+  --font-display: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --font-body: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+
+  --bg: #f8f7f4;
+  --surface: #ffffff;
+  --text: #171717;
+  --muted: #737373;
+  --line: #e9e7e2;
+  --line-2: #ddd9d1;
+  --placeholder: #a2a09b;
+
+  /* Vendor accent — overridden inline per store */
+  --accent: #171717;
+  --accent-ink: #000000;
+  --on-accent: #ffffff;
+
+  --tix: #F2542D; --tix-50: #FFF0EA; --tix-ink: #B83A18;
+  --book: #7A5CFF; --book-50: #F1EDFF; --book-ink: #5A3FDB;
+  --prod: #B9832E; --prod-50: #FBF3E6; --prod-ink: #8A5F1E;
+  --dig: #0E9F6E; --dig-50: #E5F7EF; --dig-ink: #067650;
+  --danger: #d0342c; --danger-50: #FCEAE9; --danger-ink: #a3241d;
+  --success: #171717;
+
+  --radius-sm: 10px;
+  --radius-md: 16px;
+  --radius-lg: 24px;
+  --radius-pill: 999px;
+
+  --page: 16px;
+  --nav-height: 72px;
+
+  --sh-1: 0 1px 2px rgba(23,23,23,.05), 0 2px 8px -2px rgba(23,23,23,.06);
+  --sh-2: 0 1px 2px rgba(23,23,23,.04), 0 12px 28px -10px rgba(23,23,23,.16);
+  --sh-3: 0 2px 6px rgba(23,23,23,.05), 0 24px 50px -18px rgba(23,23,23,.32);
+
+  --ease: cubic-bezier(.22,1,.36,1);
+
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-body);
+  -webkit-font-smoothing: antialiased;
+  min-height: 100vh;
+  position: relative;
+}
+
+.ora-store * { box-sizing: border-box; }
+.ora-store button, .ora-store input, .ora-store select, .ora-store textarea { font: inherit; color: inherit; }
+.ora-store button { border: 0; cursor: pointer; background: none; }
+.ora-store img { display: block; max-width: 100%; }
+.ora-store .sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+.ora-store .i { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; flex: none; }
+.ora-store .money { font-variant-numeric: tabular-nums; }
+
+/* -----------------------------
+   HEADER
+------------------------------ */
+
+.ora-store .top {
+  position: sticky;
+  top: 0;
+  z-index: 100;
+
+  background: rgba(248,247,244,.88);
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+  border-bottom: 1px solid transparent;
+
+  transition: background .25s ease, border-color .25s ease;
+}
+
+.ora-store .top.is-on { border-color: var(--line); }
+
+.ora-store .top__inner {
+  max-width: 1280px;
+  margin: auto;
+
+  min-height: 64px;
+  padding: 0 var(--page);
+
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.ora-store .top__brand { display: flex; flex-direction: column; min-width: 0; }
+.ora-store .top__name { font-size: 15px; font-weight: 750; letter-spacing: -.02em; font-family: var(--font-display); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ora-store .top__meta { font-size: 11px; color: var(--muted); margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+.ora-store .top__actions { display: flex; align-items: center; gap: 8px; flex: none; }
+
+.ora-store .icon-btn {
+  width: 42px; height: 42px;
+  display: grid; place-items: center;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--text);
+  position: relative;
+
+  transition: background .2s ease, transform .2s var(--ease);
+}
+
+.ora-store .icon-btn:hover { background: #eceae5; }
+.ora-store .icon-btn:active { transform: scale(.94); }
+.ora-store .icon-btn.is-saved { color: var(--danger); }
+
+/* -----------------------------
+   MAIN
+------------------------------ */
+
+.ora-store main { max-width: 1280px; margin: auto; padding-bottom: calc(var(--nav-height) + 30px); }
+
+.ora-store .hero { padding: 38px var(--page) 26px; }
+.ora-store .eyebrow { font-size: 12px; font-weight: 650; letter-spacing: .04em; text-transform: uppercase; color: var(--muted); margin-bottom: 10px; }
+.ora-store .hero h1 { margin: 0; max-width: 600px; font-family: var(--font-display); font-size: clamp(34px, 7vw, 64px); font-weight: 800; line-height: .98; letter-spacing: -.045em; }
+.ora-store .hero-copy { margin-top: 16px; max-width: 520px; color: var(--muted); line-height: 1.55; }
+
+/* SEARCH */
+
+.ora-store .search { padding: 0 var(--page) 26px; }
+.ora-store .search-box {
+  height: 52px;
+  display: flex; align-items: center; gap: 10px;
+  padding: 0 16px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 15px;
+  transition: border-color .2s ease, box-shadow .2s ease;
+}
+.ora-store .search-box:focus-within { border-color: #bdb9b0; box-shadow: 0 0 0 4px rgba(0,0,0,.035); }
+.ora-store .search-box .i { color: var(--muted); }
+.ora-store .search-box input { width: 100%; border: 0; outline: 0; background: transparent; font-size: 15px; }
+.ora-store .search-box input::placeholder { color: var(--placeholder); }
+
+/* SECTIONS / CATEGORIES */
+
+.ora-store .section { padding: 10px var(--page) 30px; }
+.ora-store .section-heading { display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; gap: 10px; }
+.ora-store .section-heading h2 { margin: 0; font-family: var(--font-display); font-size: 18px; font-weight: 750; letter-spacing: -.025em; }
+.ora-store .section-heading span { font-size: 13px; color: var(--muted); white-space: nowrap; }
+.ora-store .section-link { background: none; color: var(--muted); font-size: 13px; font-weight: 600; }
+
+.ora-store .back-link { display: inline-flex; align-items: center; gap: 4px; background: none; color: var(--muted); font-size: 13px; font-weight: 650; padding: 4px 0; }
+
+.ora-store .browse-row { display: flex; justify-content: flex-end; padding-top: 0; padding-bottom: 4px; }
+
+.ora-store .category-row { display: flex; gap: 8px; overflow-x: auto; scrollbar-width: none; padding-bottom: 2px; }
+.ora-store .category-row::-webkit-scrollbar { display: none; }
+.ora-store .category-row--wrap { flex-wrap: wrap; overflow-x: visible; padding: 2px 0 4px; }
+
+.ora-store .filter-btn { position: relative; width: 38px; height: 38px; }
+.ora-store .filter-btn.is-active { background: var(--bg); color: var(--text); }
+.ora-store .filter-btn__dot { position: absolute; top: 7px; right: 7px; width: 8px; height: 8px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 0 2px var(--surface); }
+
+.ora-store .category {
+  flex: 0 0 auto;
+  display: flex; align-items: center; gap: 6px;
+  padding: 10px 15px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-pill);
+  background: var(--surface);
+  color: #555;
+  font-size: 13px;
+  font-weight: 600;
+  transition: background .2s ease, color .2s ease, border-color .2s ease, transform .2s var(--ease);
+}
+.ora-store .category:active { transform: scale(.96); }
+.ora-store .category.active { background: var(--accent); color: var(--on-accent); border-color: var(--accent); }
+.ora-store .category b { font-weight: 700; opacity: .6; }
+.ora-store .category.active b { opacity: .85; }
+
+/* -----------------------------
+   PRODUCT GRID
+------------------------------ */
+
+.ora-store .product-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 20px 10px; }
+
+.ora-store .product-card {
+  min-width: 0;
+  position: relative;
+  text-align: left;
+  display: block;
+  width: 100%;
+
+  animation: oraCardIn .5s var(--ease) both;
+  transition: transform .25s var(--ease), opacity .25s ease;
+}
+
+.ora-store .product-card:hover { transform: translateY(-4px); }
+.ora-store .product-card.is-out { opacity: .55; }
+
+.ora-store .product-image {
+  position: relative;
+  aspect-ratio: 1 / 1.08;
+  overflow: hidden;
+  border-radius: var(--radius-md);
+  background: #efeee9;
+}
+
+.ora-store .product-image img { width: 100%; height: 100%; object-fit: cover; transition: transform .55s var(--ease); }
+.ora-store .product-card:hover .product-image img { transform: scale(1.035); }
+
+.ora-store .product-image.skeleton { animation: oraShimmer 1.4s ease infinite, none; }
+
+.ora-store .product-tag {
+  position: absolute;
+  top: 10px; left: 10px;
+  z-index: 2;
+  padding: 4px 9px;
+  border-radius: var(--radius-pill);
+  background: rgba(255,255,255,.92);
+  backdrop-filter: blur(8px);
+  font-size: 10.5px;
+  font-weight: 750;
+  letter-spacing: .01em;
+}
+.ora-store .product-tag--tix { color: var(--tix-ink); }
+.ora-store .product-tag--book { color: var(--book-ink); }
+.ora-store .product-tag--prod { color: var(--prod-ink); }
+.ora-store .product-tag--dig { color: var(--dig-ink); }
+.ora-store .product-tag--out { background: rgba(23,23,23,.88); color: #fff; }
+.ora-store .product-tag--low { background: var(--danger-50); color: var(--danger-ink); }
+
+.ora-store .wishlist {
+  position: absolute;
+  top: 10px; right: 10px;
+  width: 34px; height: 34px;
+  display: grid; place-items: center;
+  border-radius: 50%;
+  background: rgba(255,255,255,.9);
+  backdrop-filter: blur(8px);
+  z-index: 2;
+  transition: transform .2s var(--ease), color .2s ease;
+}
+.ora-store .wishlist:active { transform: scale(.88); }
+.ora-store .wishlist.saved { color: var(--danger); }
+.ora-store .wishlist.saved .i { fill: currentColor; }
+
+.ora-store .product-info { padding-top: 11px; }
+
+.ora-store .product-name {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.35;
+  font-weight: 600;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.ora-store .product-meta { margin-top: 4px; font-size: 11.5px; color: var(--muted); display: flex; align-items: center; gap: 4px; }
+.ora-store .product-meta .i { width: 13px; height: 13px; }
+
+.ora-store .product-price-row { display: flex; align-items: center; justify-content: space-between; margin-top: 8px; gap: 8px; }
+.ora-store .product-price-group { display: flex; align-items: baseline; gap: 6px; min-width: 0; }
+.ora-store .product-price { font-size: 14px; font-weight: 750; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.ora-store .product-price-was { font-size: 11.5px; color: var(--muted); text-decoration: line-through; font-variant-numeric: tabular-nums; white-space: nowrap; }
+
+.ora-store .add-button {
+  width: 34px; height: 34px;
+  flex: none;
+  border-radius: 50%;
+  background: var(--accent);
+  color: var(--on-accent);
+  display: grid; place-items: center;
+  transition: transform .2s var(--ease), background .2s ease, opacity .2s ease;
+}
+.ora-store .add-button:active { transform: scale(.88); }
+.ora-store .add-button:disabled { opacity: .35; cursor: not-allowed; }
+
+/* EMPTY / LOADING */
+
+.ora-store .empty-state {
+  grid-column: 1 / -1;
+  padding: 56px 16px;
+  text-align: center;
+  color: var(--muted);
+}
+.ora-store .empty-state__art { display: flex; justify-content: center; gap: 6px; margin-bottom: 16px; }
+.ora-store .empty-state__art i { width: 34px; height: 34px; border-radius: var(--radius-sm); background: var(--line); display: block; }
+.ora-store .empty-state strong { display: block; color: var(--text); font-size: 16px; font-weight: 700; margin-bottom: 6px; }
+.ora-store .empty-state .btn { margin-top: 16px; }
+
+/* -----------------------------
+   MOBILE NAV
+------------------------------ */
+
+.ora-store .mobile-nav {
+  position: fixed; left: 0; right: 0; bottom: 0;
+  z-index: 200;
+  padding: 8px max(8px, env(safe-area-inset-left)) calc(8px + env(safe-area-inset-bottom)) max(8px, env(safe-area-inset-right));
+  background: rgba(255,255,255,.94);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border-top: 1px solid var(--line);
+}
+
+.ora-store .mobile-nav-inner { max-width: 520px; margin: auto; display: grid; grid-template-columns: repeat(5, 1fr); }
+
+.ora-store .nav-item {
+  min-height: 52px;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 4px;
+  position: relative;
+  background: transparent;
+  color: #8a8985;
+  font-size: 10px;
+  font-weight: 600;
+  transition: color .2s ease;
+}
+.ora-store .nav-item.active { color: var(--text); font-weight: 700; }
+.ora-store .nav-item .i { width: 19px; height: 19px; transition: transform .25s var(--ease); }
+.ora-store .nav-item.active .i { transform: translateY(-2px); }
+
+.ora-store .nav-badge {
+  position: absolute;
+  top: -2px; right: calc(50% - 20px);
+  min-width: 17px; height: 17px;
+  padding: 0 5px;
+  border-radius: var(--radius-pill);
+  background: var(--danger);
+  color: #fff;
+  font-size: 10px; font-weight: 700;
+  display: grid; place-items: center;
+}
+.ora-store .nav-badge[hidden] { display: none; }
+
+/* -----------------------------
+   BOTTOM SHEET (item detail / bag / checkout)
+------------------------------ */
+
+.ora-store .scrim {
+  position: fixed; inset: 0;
+  z-index: 300;
+  background: rgba(0,0,0,.28);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity .3s ease;
+}
+.ora-store .scrim.is-on { opacity: 1; pointer-events: auto; }
+
+.ora-store .cart-sheet {
+  position: fixed;
+  left: 0; right: 0; bottom: 0;
+  z-index: 301;
+
+  max-height: 90vh;
+  display: flex; flex-direction: column;
+
+  background: var(--surface);
+  border-radius: 24px 24px 0 0;
+  box-shadow: var(--sh-3);
+
+  transform: translateY(100%);
+  transition: transform .45s var(--ease);
+}
+
+.ora-store .cart-sheet.is-on { transform: translateY(0); }
+
+.ora-store .cart-sheet__scroll {
+  overflow-y: auto;
+  padding: 20px var(--page) calc(20px + env(safe-area-inset-bottom));
+}
+
+.ora-store .cart-handle { width: 36px; height: 4px; margin: -5px auto 20px; border-radius: 20px; background: #ddd; flex: none; }
+
+.ora-store .cart-title { display: flex; justify-content: space-between; align-items: center; padding: 0 var(--page); padding-top: 14px; }
+.ora-store .cart-title h2 { margin: 0; font-family: var(--font-display); font-size: 21px; font-weight: 750; }
+.ora-store .cart-title button { font-size: 14px; font-weight: 650; color: var(--muted); padding: 6px 4px; }
+
+/* Categories directory (opened from the bottom nav) */
+.ora-store .cat-group { padding: 16px 0; border-bottom: 1px solid var(--line); }
+.ora-store .cat-group:last-child { border-bottom: 0; }
+.ora-store .cat-group__head { display: flex; justify-content: space-between; align-items: center; }
+.ora-store .cat-group__head b { font-family: var(--font-display); font-size: 15px; font-weight: 750; }
+.ora-store .cat-tile-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; margin-top: 12px; }
+.ora-store .cat-tile { display: flex; flex-direction: column; text-align: left; transition: transform .2s var(--ease); }
+.ora-store .cat-tile:active { transform: scale(.97); }
+.ora-store .cat-tile__image { position: relative; aspect-ratio: 1/1; overflow: hidden; border-radius: var(--radius-md); background: #efeee9; }
+.ora-store .cat-tile__image img { width: 100%; height: 100%; object-fit: cover; }
+.ora-store .cat-tile__name { margin-top: 8px; font-size: 12.5px; font-weight: 650; line-height: 1.3; }
+.ora-store .cat-tile__count { margin-top: 2px; font-size: 11px; color: var(--muted); font-weight: 600; }
+
+/* Item detail sheet — same bottom-sheet chrome as the bag on mobile, but
+   becomes a centered two-column modal at desktop widths (matching the other
+   signature templates' item sheet, since the reference has no item-detail
+   view of its own to dictate this). */
+.ora-store .item-sheet {
+  position: fixed;
+  left: 0; right: 0; bottom: 0;
+  z-index: 301;
+  max-height: 94vh;
+  display: flex; flex-direction: column;
+  background: var(--surface);
+  border-radius: 24px 24px 0 0;
+  box-shadow: var(--sh-3);
+  transform: translateY(100%);
+  transition: transform .45s var(--ease);
+  overscroll-behavior: contain;
+}
+.ora-store .item-sheet.is-on { transform: translateY(0); }
+.ora-store .item-sheet__close { position: absolute; right: 12px; top: 12px; z-index: 3; background: rgba(255,255,255,.9); backdrop-filter: blur(8px); }
+.ora-store .item-sheet__scroll { overflow-y: auto; -webkit-overflow-scrolling: touch; flex: 1; }
+
+/* -----------------------------
+   ITEM SHEET (shared markup from daylight-storefront's ItemSheet)
+------------------------------ */
+
+.ora-store .pd { display: grid; gap: 0; }
+.ora-store .gallery { position: relative; aspect-ratio: 1/1; overflow: hidden; border-radius: var(--radius-md); background: #efeee9; margin: 0 var(--page); }
+.ora-store .gallery__track { display: flex; height: 100%; overflow-x: auto; scroll-snap-type: x mandatory; scrollbar-width: none; }
+.ora-store .gallery__track::-webkit-scrollbar { display: none; }
+.ora-store .gallery__track img { flex: 0 0 100%; width: 100%; height: 100%; object-fit: cover; scroll-snap-align: start; }
+.ora-store .dots { position: absolute; left: 0; right: 0; bottom: 10px; display: flex; justify-content: center; gap: 5px; }
+.ora-store .dots i { width: 5px; height: 5px; border-radius: 50%; background: rgba(255,255,255,.6); }
+.ora-store .dots i.on { background: #fff; width: 14px; border-radius: 3px; }
+
+.ora-store .pd__body { padding: 18px var(--page) 4px; }
+.ora-store .pd__cat { display: inline-flex; align-items: center; gap: 5px; padding: 5px 10px 5px 8px; border-radius: var(--radius-pill); font-size: 11.5px; font-weight: 700; background: var(--line); color: var(--muted); }
+.ora-store .pd__cat--tix { background: var(--tix-50); color: var(--tix-ink); }
+.ora-store .pd__cat--book { background: var(--book-50); color: var(--book-ink); }
+.ora-store .pd__cat--prod { background: var(--prod-50); color: var(--prod-ink); }
+.ora-store .pd__cat--dig { background: var(--dig-50); color: var(--dig-ink); }
+
+.ora-store .pd__name { margin: 12px 0 0; font-family: var(--font-display); font-weight: 750; font-size: clamp(24px, 7vw, 32px); line-height: 1.1; letter-spacing: -.03em; }
+.ora-store .pd__price { margin-top: 10px; display: flex; align-items: baseline; gap: 10px; }
+.ora-store .pd__price b { font-size: 22px; font-weight: 750; }
+.ora-store .pd__price s { color: var(--muted); font-weight: 500; font-size: 15px; }
+.ora-store .pd__save { font-size: 12px; font-weight: 700; color: var(--dig-ink); background: var(--dig-50); padding: 3px 8px; border-radius: var(--radius-pill); }
+
+.ora-store .pd__stock { display: flex; align-items: center; gap: 6px; margin: 12px 0 0; font-size: 13px; font-weight: 650; }
+.ora-store .pd__stock.ok { color: var(--dig-ink); }
+.ora-store .pd__stock.low { color: var(--danger-ink); }
+
+.ora-store .pd__desc { margin: 14px 0 0; color: var(--muted); line-height: 1.6; font-size: 14px; }
+
+.ora-store .opt { margin-top: 20px; }
+.ora-store .opt__label { display: flex; align-items: center; justify-content: space-between; font-size: 13px; font-weight: 700; margin-bottom: 9px; }
+.ora-store .opt__label em { font-style: normal; color: var(--muted); font-weight: 600; }
+.ora-store .opt__row { display: flex; flex-wrap: wrap; gap: 8px; }
+
+.ora-store .opt__btn {
+  min-height: 40px;
+  padding: 0 16px;
+  border-radius: var(--radius-pill);
+  border: 1px solid var(--line);
+  background: var(--surface);
+  font-size: 13px; font-weight: 650;
+  transition: border-color .2s ease, background .2s ease, color .2s ease, transform .2s var(--ease);
+}
+.ora-store .opt__btn:active { transform: scale(.96); }
+.ora-store .opt__btn[aria-pressed="true"] { background: var(--accent); color: var(--on-accent); border-color: var(--accent); }
+.ora-store .opt__btn:disabled { opacity: .4; text-decoration: line-through; cursor: not-allowed; }
+
+.ora-store .opt__btn.sw { width: 34px; height: 34px; padding: 0; border-radius: 50%; border: 2px solid var(--surface); box-shadow: 0 0 0 1px var(--line); }
+.ora-store .opt__btn.sw[aria-pressed="true"] { box-shadow: 0 0 0 2px var(--accent); }
+
+.ora-store .days { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; }
+.ora-store .day {
+  padding: 10px 4px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--line);
+  background: var(--surface);
+  display: flex; flex-direction: column; align-items: center; gap: 2px;
+  font-size: 11px; font-weight: 650; color: var(--muted);
+}
+.ora-store .day b { font-size: 15px; color: var(--text); }
+.ora-store .day[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: var(--on-accent); }
+.ora-store .day[aria-pressed="true"] b { color: var(--on-accent); }
+.ora-store .day:disabled { opacity: .35; cursor: not-allowed; }
+
+.ora-store .slots { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.ora-store .slot { padding: 10px 4px; border-radius: var(--radius-sm); border: 1px solid var(--line); background: var(--surface); font-size: 12.5px; font-weight: 650; }
+.ora-store .slot[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: var(--on-accent); }
+.ora-store .slot:disabled { opacity: .35; cursor: not-allowed; }
+
+.ora-store .qty { display: inline-flex; align-items: center; gap: 2px; padding: 3px; border-radius: var(--radius-pill); background: #f2f1ed; }
+.ora-store .qty button { width: 34px; height: 34px; border-radius: 50%; background: #fff; display: grid; place-items: center; transition: transform .2s var(--ease); box-shadow: var(--sh-1); }
+.ora-store .qty button:active { transform: scale(.9); }
+.ora-store .qty button:disabled { opacity: .35; cursor: not-allowed; }
+.ora-store .qty output, .ora-store .qty span { min-width: 30px; text-align: center; font-size: 14px; font-weight: 750; font-variant-numeric: tabular-nums; }
+
+.ora-store .qty--sm { transform: scale(.86); transform-origin: left center; }
+
+.ora-store .strip { margin-top: 22px; padding: 16px; border-radius: var(--radius-md); background: var(--bg); display: grid; gap: 12px; }
+.ora-store .strip > div { display: flex; align-items: flex-start; gap: 10px; font-size: 12.5px; color: var(--muted); line-height: 1.5; }
+.ora-store .strip .i { color: var(--text); margin-top: 1px; }
+.ora-store .strip b { color: var(--text); }
+
+.ora-store .actionbar { position: sticky; bottom: 0; display: flex; align-items: center; gap: 14px; padding: 14px var(--page) calc(14px + env(safe-area-inset-bottom)); background: var(--surface); border-top: 1px solid var(--line); margin-top: 20px; }
+.ora-store .actionbar__total { display: flex; flex-direction: column; }
+.ora-store .actionbar__total small { font-size: 11px; color: var(--muted); font-weight: 650; }
+.ora-store .actionbar__total b { font-size: 18px; font-weight: 750; }
+.ora-store .actionbar .btn { flex: 1; }
+
+@media (min-width: 900px) {
+  .ora-store .item-sheet {
+    left: 50%; right: auto; bottom: auto; top: 50%;
+    width: min(1000px, 92vw); max-height: 90vh;
+    border-radius: var(--radius-lg);
+    transform: translate(-50%, -46%) scale(.97);
+    opacity: 0;
+    transition: transform .4s var(--ease), opacity .3s ease;
+  }
+  .ora-store .item-sheet.is-on { transform: translate(-50%, -50%) scale(1); opacity: 1; }
+  .ora-store .item-sheet .cart-handle { display: none; }
+  .ora-store .pd { grid-template-columns: 1.05fr 1fr; align-items: stretch; }
+  .ora-store .gallery { display: flex; flex-direction: column; margin: 0; border-radius: 0; aspect-ratio: auto; }
+  .ora-store .gallery__track { flex: 1; min-height: 0; }
+  .ora-store .gallery__track img { height: 100%; min-height: 520px; }
+  .ora-store .pd__body { padding: 32px; overflow-y: auto; max-height: 90vh; }
+  .ora-store .actionbar { position: static; padding: 24px 32px 32px; background: none; border-top: 1px solid var(--line); margin-top: 0; }
+}
+
+/* -----------------------------
+   BAG
+------------------------------ */
+
+.ora-store .cart-items { flex: 1; min-height: 0; }
+.ora-store .cart-empty { padding: 40px 0; color: var(--muted); text-align: center; }
+.ora-store .cart-empty strong { display: block; color: var(--text); font-size: 15px; font-weight: 700; margin-bottom: 6px; }
+
+.ora-store .cart-line { display: flex; gap: 12px; padding: 14px 0; border-bottom: 1px solid var(--line); }
+.ora-store .cart-line img { width: 66px; height: 74px; object-fit: cover; border-radius: 12px; background: #efeee9; flex: none; }
+.ora-store .cart-line-main { flex: 1; min-width: 0; }
+.ora-store .cart-line-name { font-size: 13px; font-weight: 650; line-height: 1.35; margin: 0; }
+.ora-store .cart-line-opt { font-size: 11.5px; color: var(--muted); margin: 3px 0 0; }
+.ora-store .cart-line-row { display: flex; align-items: center; justify-content: space-between; margin-top: 10px; gap: 8px; }
+.ora-store .cart-line-price { font-size: 14px; font-weight: 750; font-variant-numeric: tabular-nums; }
+.ora-store .cart-line-remove { font-size: 12px; font-weight: 650; color: var(--danger-ink); margin-top: 6px; }
+
+.ora-store .cart-total { display: flex; justify-content: space-between; align-items: baseline; padding-top: 16px; }
+.ora-store .cart-total span { color: var(--muted); font-size: 14px; }
+.ora-store .cart-total strong { font-size: 20px; font-weight: 750; letter-spacing: -.02em; font-variant-numeric: tabular-nums; }
+
+.ora-store .checkout-button { width: 100%; height: 54px; margin-top: 20px; border-radius: 15px; background: var(--accent); color: var(--on-accent); font-weight: 750; font-size: 15px; transition: transform .2s var(--ease), opacity .2s ease; }
+.ora-store .checkout-button:active { transform: scale(.985); }
+.ora-store .checkout-button:disabled { opacity: .4; cursor: not-allowed; }
+
+/* -----------------------------
+   CHECKOUT (details / delivery / pay)
+------------------------------ */
+
+.ora-store .checkout-head { display: flex; align-items: center; gap: 8px; padding: 14px var(--page) 6px; }
+.ora-store .checkout-head b { flex: 1; text-align: center; font-family: var(--font-display); font-size: 16px; font-weight: 750; }
+
+.ora-store .steps { display: flex; align-items: center; padding: 4px var(--page) 18px; gap: 4px; }
+.ora-store .dot { display: flex; align-items: center; gap: 6px; font-size: 11px; font-weight: 650; color: var(--muted); }
+.ora-store .dot i { width: 20px; height: 20px; border-radius: 50%; background: var(--line); color: var(--muted); display: grid; place-items: center; font-style: normal; font-size: 11px; font-weight: 750; }
+.ora-store .dot.is-on { color: var(--text); }
+.ora-store .dot.is-on i { background: var(--accent); color: var(--on-accent); }
+.ora-store .dot.is-done i { background: var(--text); color: var(--on-accent); }
+.ora-store .steps__line { flex: 1; height: 1px; background: var(--line); }
+.ora-store .steps__line.is-done { background: var(--text); }
+
+.ora-store .form { display: grid; gap: 16px; padding: 0 var(--page) 18px; }
+
+.ora-store .field { display: grid; gap: 7px; }
+.ora-store .field label { font-size: 13px; font-weight: 700; }
+.ora-store .field input, .ora-store .field textarea, .ora-store .field select {
+  width: 100%; min-height: 50px; padding: 0 15px;
+  border-radius: var(--radius-sm);
+  border: 1.5px solid var(--line);
+  background: var(--surface);
+  font-size: 15px; font-weight: 500;
+  outline: 0;
+  transition: border-color .2s ease, box-shadow .2s ease;
+}
+.ora-store .field textarea { min-height: 84px; padding: 13px 15px; resize: vertical; line-height: 1.5; }
+.ora-store .field input:focus, .ora-store .field textarea:focus, .ora-store .field select:focus { border-color: #bdb9b0; box-shadow: 0 0 0 4px rgba(0,0,0,.035); }
+.ora-store .field select:disabled { background: var(--bg); color: var(--muted); cursor: not-allowed; }
+.ora-store .field .err { font-size: 12.5px; font-weight: 650; color: var(--danger-ink); display: none; }
+.ora-store .field.is-bad input, .ora-store .field.is-bad textarea, .ora-store .field.is-bad select { border-color: var(--danger); }
+.ora-store .field.is-bad .err { display: block; }
+.ora-store .field .hint { font-size: 12.5px; color: var(--muted); }
+
+.ora-store .field-row { display: grid; gap: 16px; }
+@media (min-width: 560px) { .ora-store .field-row { grid-template-columns: 1fr 1fr; } }
+
+.ora-store .opts__label { font-size: 13px; font-weight: 700; margin: 4px 0 2px; }
+.ora-store .opts { display: grid; gap: 10px; }
+
+.ora-store .opt-card {
+  display: flex; align-items: center; gap: 12px;
+  padding: 14px 15px;
+  border-radius: var(--radius-sm);
+  border: 1.5px solid var(--line);
+  background: var(--surface);
+  text-align: left;
+  transition: border-color .2s ease, background .2s ease;
+}
+.ora-store .opt-card[aria-pressed="true"] { border-color: var(--text); background: var(--bg); }
+.ora-store .opt-card__tick { width: 18px; height: 18px; border-radius: 50%; border: 1.5px solid var(--line-2); flex: none; position: relative; }
+.ora-store .opt-card[aria-pressed="true"] .opt-card__tick { border-color: var(--text); background: var(--text); }
+.ora-store .opt-card[aria-pressed="true"] .opt-card__tick::after { content: ""; position: absolute; inset: 4px; border-radius: 50%; background: var(--on-accent); }
+.ora-store .opt-card__main { flex: 1; display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.ora-store .opt-card__main b { font-size: 14px; font-weight: 650; }
+.ora-store .opt-card__main small { font-size: 12px; color: var(--muted); }
+.ora-store .opt-card__price { font-size: 13px; font-weight: 700; flex: none; }
+
+.ora-store .review { padding: 0 var(--page); display: grid; gap: 2px; }
+.ora-store .review__row { display: flex; justify-content: space-between; gap: 12px; padding: 9px 0; font-size: 13.5px; color: var(--muted); }
+.ora-store .review__row span:first-child { color: var(--muted); }
+.ora-store .review__row span:last-child { color: var(--text); text-align: right; }
+
+.ora-store .pay-note { display: flex; align-items: flex-start; gap: 8px; margin: 14px var(--page) 4px; padding: 12px 14px; border-radius: var(--radius-sm); background: var(--bg); font-size: 12px; color: var(--muted); line-height: 1.5; }
+.ora-store .pay-note .i { color: var(--text); margin-top: 1px; }
+
+.ora-store .checkout-foot { padding: 14px var(--page) calc(14px + env(safe-area-inset-bottom)); border-top: 1px solid var(--line); }
+
+/* -----------------------------
+   BUTTONS
+------------------------------ */
+
+.ora-store .btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+  height: 46px; padding: 0 20px;
+  border-radius: var(--radius-sm);
+  font-size: 14px; font-weight: 700;
+  text-decoration: none;
+  transition: transform .2s var(--ease), background .2s ease, opacity .2s ease;
+}
+.ora-store .btn:active { transform: scale(.97); }
+.ora-store .btn--accent { background: var(--accent); color: var(--on-accent); }
+.ora-store .btn--accent:disabled { opacity: .5; cursor: not-allowed; }
+.ora-store .btn--outline { background: transparent; border: 1.5px solid var(--line); color: var(--text); }
+.ora-store .btn--ghost { background: var(--bg); color: var(--text); }
+.ora-store .btn--line { background: transparent; border: 1.5px solid var(--line); color: var(--text); }
+.ora-store .btn--wa { background: #25D366; color: #fff; }
+.ora-store .btn--block { width: 100%; height: 54px; }
+.ora-store .btn--sm { height: 38px; padding: 0 16px; font-size: 13px; }
+
+.ora-store .link-danger { font-size: 12.5px; font-weight: 650; color: var(--danger-ink); margin-top: 6px; }
+
+/* -----------------------------
+   TOAST
+------------------------------ */
+
+.ora-store .toast {
+  position: fixed; left: 50%; bottom: calc(var(--nav-height) + 18px);
+  transform: translate(-50%, 12px);
+  z-index: 400;
+  display: flex; align-items: center; gap: 8px;
+  padding: 12px 18px;
+  max-width: calc(100% - 32px);
+  border-radius: var(--radius-md);
+  background: var(--text); color: #fff;
+  font-size: 13px; font-weight: 650;
+  box-shadow: var(--sh-3);
+  opacity: 0; pointer-events: none;
+  transition: opacity .25s ease, transform .25s var(--ease);
+}
+.ora-store .toast.is-on { opacity: 1; transform: translate(-50%, 0); }
+.ora-store .toast .i { width: 16px; height: 16px; color: #fff; flex-shrink: 0; }
+.ora-store .toast span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+
+/* -----------------------------
+   ORDER CONFIRMATION ("done" state, reused by app/[slug]/order/confirmed)
+------------------------------ */
+
+.ora-store .shell { max-width: 640px; margin: auto; padding: 0 var(--page); }
+.ora-store .done { padding: 60px 0 40px; text-align: center; }
+.ora-store .done__ring, .ora-store .done__mark { width: 68px; height: 68px; margin: 0 auto 22px; border-radius: 50%; background: var(--accent); color: var(--on-accent); display: grid; place-items: center; }
+.ora-store .done__ring .i, .ora-store .done__mark .i { width: 30px; height: 30px; }
+.ora-store .done h2 { font-family: var(--font-display); font-weight: 750; font-size: 26px; letter-spacing: -.03em; margin: 0; }
+.ora-store .done p { margin-top: 8px; color: var(--muted); }
+.ora-store .done__ref { display: inline-flex; align-items: center; gap: 10px; margin-top: 18px; padding: 10px 16px; border-radius: var(--radius-pill); background: var(--bg); border: 1px solid var(--line); font-size: 13px; font-weight: 650; }
+.ora-store .done__ref button { color: var(--muted); font-weight: 700; font-size: 12px; }
+.ora-store .next { margin-top: 28px; text-align: left; padding: 18px; border-radius: var(--radius-md); background: var(--bg); }
+.ora-store .next b { font-size: 13px; font-weight: 750; }
+.ora-store .next ol { margin: 10px 0 0; padding-left: 18px; color: var(--muted); font-size: 13.5px; line-height: 1.7; }
+.ora-store .done__btns { display: grid; gap: 10px; margin-top: 20px; }
+
+/* -----------------------------
+   DESKTOP
+------------------------------ */
+
+@media (min-width: 768px) {
+  .ora-store { --page: 28px; }
+  .ora-store .hero { padding-top: 70px; }
+  .ora-store .product-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 32px 18px; }
+  .ora-store .mobile-nav { display: none; }
+  .ora-store main { padding-bottom: 70px; }
+  .ora-store .toast { bottom: 28px; }
+}
+
+@media (min-width: 1100px) {
+  .ora-store .product-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+  .ora-store .hero h1 { max-width: 760px; }
+  .ora-store .product-image { border-radius: 20px; }
+}
+
+/* ACCESSIBILITY */
+
+@media (prefers-reduced-motion: reduce) {
+  .ora-store *, .ora-store *::before, .ora-store *::after {
+    animation-duration: .01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: .01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

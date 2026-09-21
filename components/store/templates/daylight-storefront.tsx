@@ -12,8 +12,10 @@ import {
   type DaylightItem,
   type DaylightStore,
   type DaylightItemType,
+  type LiveDeliveryRate,
 } from "./daylight-types"
 import "./daylight-storefront.css"
+import { fontCssVars } from "@/lib/storefront/fonts"
 
 function shadeColor(hex: string, amt: number): string {
   const n = Number.parseInt(hex.replace("#", ""), 16)
@@ -57,6 +59,7 @@ export function DaylightStorefront({ store, items }: { store: DaylightStore; ite
     email: "",
     method: "delivery" as "delivery" | "pickup",
     areaId: null as string | null,
+    quoteId: null as string | null,
     address: "",
     addressState: "",
     addressCity: "",
@@ -64,6 +67,9 @@ export function DaylightStorefront({ store, items }: { store: DaylightStore; ite
     note: "",
   })
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({})
+  const [liveRates, setLiveRates] = useState<LiveDeliveryRate[] | null>(null)
+  const [fetchingRates, setFetchingRates] = useState(false)
+  const [rateError, setRateError] = useState<string | null>(null)
   const [toast, setToast] = useState<string | null>(null)
   const [isTopOn, setIsTopOn] = useState(false)
   const [paying, setPaying] = useState(false)
@@ -194,14 +200,21 @@ export function DaylightStorefront({ store, items }: { store: DaylightStore; ite
   }
 
   // ---------- Cart ----------
+  const isLiveRateMode = store.shippingMode !== "manual"
+  const selectedLiveRate = liveRates?.find((r) => r.id === order.areaId) ?? null
+  const selectedManualArea = store.deliveryAreas.find((a) => a.id === order.areaId)
+  const currentAreaName = isLiveRateMode ? (selectedLiveRate?.carrierName ?? null) : (selectedManualArea?.name ?? null)
+  const currentAreaFee =
+    order.method === "pickup" ? 0 : isLiveRateMode ? (selectedLiveRate?.amount ?? null) : (selectedManualArea?.fee ?? null)
+
   const totals = computeTotals(cart.items, {
     name: order.name,
     phone: order.phone,
     email: order.email,
     method: order.method,
     areaId: order.areaId,
-    areaName: store.deliveryAreas.find((a) => a.id === order.areaId)?.name ?? null,
-    areaFee: order.method === "pickup" ? 0 : store.deliveryAreas.find((a) => a.id === order.areaId)?.fee ?? null,
+    areaName: currentAreaName,
+    areaFee: currentAreaFee,
     address: order.address,
     addressState: order.addressState,
     addressCity: order.addressCity,
@@ -214,8 +227,72 @@ export function DaylightStorefront({ store, items }: { store: DaylightStore; ite
     [order.addressState],
   )
 
+  // Live-rate quotes are tied to the exact address they were fetched for —
+  // changing it invalidates them, so clear out any prior quote/selection.
+  function clearStaleQuote() {
+    if (isLiveRateMode) {
+      setLiveRates(null)
+      setRateError(null)
+      setOrder((o) => ({ ...o, areaId: null, quoteId: null }))
+    }
+  }
+
   function selectAddressState(nextState: string) {
     setOrder((o) => ({ ...o, addressState: nextState, addressCity: "" }))
+    clearStaleQuote()
+  }
+
+  // A delivery area can carry its own state/city — when it does, checkout
+  // auto-fills and locks those fields instead of asking twice. Only applies
+  // to manual zones; live rates always ask for the address up front.
+  const isAddressStateLocked = !isLiveRateMode && order.method === "delivery" && !!selectedManualArea?.state
+  const isAddressCityLocked = isAddressStateLocked && !!selectedManualArea?.city
+
+  function selectDeliveryArea(area: DaylightStore["deliveryAreas"][number]) {
+    setOrder((o) => ({
+      ...o,
+      areaId: area.id,
+      ...(area.state ? { addressState: area.state, addressCity: area.city || "" } : {}),
+    }))
+  }
+
+  async function fetchLiveRates() {
+    if (!order.address.trim() || !order.addressState || !order.addressCity) return
+    setFetchingRates(true)
+    setRateError(null)
+    setLiveRates(null)
+    setOrder((o) => ({ ...o, areaId: null, quoteId: null }))
+    try {
+      const res = await fetch("/api/shipping/rates", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          storeId: store.id,
+          items: cart.items.map((i) => ({ product_id: i.product_id, quantity: i.quantity })),
+          dropoff: {
+            name: order.name.trim() || "Customer",
+            phone: order.phone.trim(),
+            email: order.email.trim(),
+            address: order.address.trim(),
+            state: order.addressState,
+            city: order.addressCity,
+            postalCode: order.addressPostalCode.trim() || undefined,
+          },
+        }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || "Could not fetch delivery options")
+      setLiveRates(data.rates)
+      setOrder((o) => ({ ...o, quoteId: data.quoteId }))
+    } catch (err: any) {
+      setRateError(err.message || "Could not fetch delivery options")
+    } finally {
+      setFetchingRates(false)
+    }
+  }
+
+  function selectLiveRate(rate: LiveDeliveryRate) {
+    setOrder((o) => ({ ...o, areaId: rate.id }))
   }
 
   function lineOptionText(item: CartItem): string {
@@ -255,7 +332,7 @@ export function DaylightStorefront({ store, items }: { store: DaylightStore; ite
       for (const e of validateDeliveryStep({
         needsDelivery: totals.needsDelivery,
         method: order.method,
-        areaFee: order.method === "pickup" ? 0 : store.deliveryAreas.find((a) => a.id === order.areaId)?.fee ?? null,
+        areaFee: currentAreaFee,
         address: order.address,
         state: order.addressState,
         city: order.addressCity,
@@ -297,7 +374,9 @@ export function DaylightStorefront({ store, items }: { store: DaylightStore; ite
             phone: order.phone.trim(),
             email: order.email.trim(),
             method: order.method,
-            areaId: order.areaId ?? undefined,
+            areaId: !isLiveRateMode ? (order.areaId ?? undefined) : undefined,
+            quoteId: isLiveRateMode ? (order.quoteId ?? undefined) : undefined,
+            rateId: isLiveRateMode ? (order.areaId ?? undefined) : undefined,
             address: order.address.trim(),
             state: order.addressState,
             city: order.addressCity,
@@ -342,7 +421,7 @@ export function DaylightStorefront({ store, items }: { store: DaylightStore; ite
             : "Downloads"
 
   return (
-    <div className="daylight-store" style={{ ["--accent" as any]: store.accent, ["--accent-ink" as any]: accentInk }}>
+    <div className="daylight-store" style={{ ["--accent" as any]: store.accent, ["--accent-ink" as any]: accentInk, ...fontCssVars(store.fontPairing) }}>
       <DaylightIconSprite />
 
       <div className="shell">
@@ -707,12 +786,12 @@ export function DaylightStorefront({ store, items }: { store: DaylightStore; ite
                       <span className="opt-card__price">Free</span>
                     </button>
                   </div>
-                  {order.method === "delivery" && (
+                  {order.method === "delivery" && !isLiveRateMode && (
                     <>
                       <p className="opts__label">Where are we delivering to?</p>
                       <div className="opts" role="group" aria-label="Delivery area">
                         {store.deliveryAreas.map((a) => (
-                          <button key={a.id} className="opt-card" type="button" aria-pressed={order.areaId === a.id} onClick={() => setOrder((o) => ({ ...o, areaId: a.id }))}>
+                          <button key={a.id} className="opt-card" type="button" aria-pressed={order.areaId === a.id} onClick={() => selectDeliveryArea(a)}>
                             <span className="opt-card__tick" />
                             <span className="opt-card__main"><b>{a.name}</b>{a.note && <small>{a.note}</small>}</span>
                             <span className="opt-card__price money">{formatNaira(a.fee)}</span>
@@ -722,6 +801,44 @@ export function DaylightStorefront({ store, items }: { store: DaylightStore; ite
                       <div className={`field${fieldErrors.address ? " is-bad" : ""}`}>
                         <label htmlFor="dl-c-addr">Delivery address</label>
                         <textarea id="dl-c-addr" autoComplete="street-address" placeholder="House number, street, area, landmark" value={order.address} onChange={(e) => setOrder((o) => ({ ...o, address: e.target.value }))} />
+                        <span className="err">{fieldErrors.address}</span>
+                      </div>
+                      <p className="opts__label">Shipping Address</p>
+                      <div className="field-row">
+                        <div className={`field${fieldErrors.state ? " is-bad" : ""}`}>
+                          <label htmlFor="dl-c-state">State *</label>
+                          <select id="dl-c-state" autoComplete="address-level1" value={order.addressState} disabled={isAddressStateLocked} onChange={(e) => selectAddressState(e.target.value)}>
+                            <option value="">Select state</option>
+                            {getStatesList().map((s) => (
+                              <option key={s} value={s}>{s}</option>
+                            ))}
+                          </select>
+                          <span className="err">{fieldErrors.state}</span>
+                          {isAddressStateLocked && <span className="hint">Set from your delivery area.</span>}
+                        </div>
+                        <div className={`field${fieldErrors.city ? " is-bad" : ""}`}>
+                          <label htmlFor="dl-c-city">City *</label>
+                          <select id="dl-c-city" autoComplete="address-level2" value={order.addressCity} disabled={!order.addressState || isAddressCityLocked} onChange={(e) => setOrder((o) => ({ ...o, addressCity: e.target.value }))}>
+                            <option value="">{order.addressState ? "Select city" : "Select a state first"}</option>
+                            {citiesForState.map((c) => (
+                              <option key={c} value={c}>{c}</option>
+                            ))}
+                          </select>
+                          <span className="err">{fieldErrors.city}</span>
+                          {isAddressCityLocked && <span className="hint">Set from your delivery area.</span>}
+                        </div>
+                      </div>
+                      <div className="field">
+                        <label htmlFor="dl-c-zip">Postal Code</label>
+                        <input id="dl-c-zip" autoComplete="postal-code" inputMode="numeric" placeholder="100001" value={order.addressPostalCode} onChange={(e) => setOrder((o) => ({ ...o, addressPostalCode: e.target.value }))} />
+                      </div>
+                    </>
+                  )}
+                  {order.method === "delivery" && isLiveRateMode && (
+                    <>
+                      <div className={`field${fieldErrors.address ? " is-bad" : ""}`}>
+                        <label htmlFor="dl-c-addr">Delivery address</label>
+                        <textarea id="dl-c-addr" autoComplete="street-address" placeholder="House number, street, area, landmark" value={order.address} onChange={(e) => { setOrder((o) => ({ ...o, address: e.target.value })); clearStaleQuote() }} />
                         <span className="err">{fieldErrors.address}</span>
                       </div>
                       <p className="opts__label">Shipping Address</p>
@@ -738,7 +855,7 @@ export function DaylightStorefront({ store, items }: { store: DaylightStore; ite
                         </div>
                         <div className={`field${fieldErrors.city ? " is-bad" : ""}`}>
                           <label htmlFor="dl-c-city">City *</label>
-                          <select id="dl-c-city" autoComplete="address-level2" value={order.addressCity} disabled={!order.addressState} onChange={(e) => setOrder((o) => ({ ...o, addressCity: e.target.value }))}>
+                          <select id="dl-c-city" autoComplete="address-level2" value={order.addressCity} disabled={!order.addressState} onChange={(e) => { setOrder((o) => ({ ...o, addressCity: e.target.value })); clearStaleQuote() }}>
                             <option value="">{order.addressState ? "Select city" : "Select a state first"}</option>
                             {citiesForState.map((c) => (
                               <option key={c} value={c}>{c}</option>
@@ -751,6 +868,47 @@ export function DaylightStorefront({ store, items }: { store: DaylightStore; ite
                         <label htmlFor="dl-c-zip">Postal Code</label>
                         <input id="dl-c-zip" autoComplete="postal-code" inputMode="numeric" placeholder="100001" value={order.addressPostalCode} onChange={(e) => setOrder((o) => ({ ...o, addressPostalCode: e.target.value }))} />
                       </div>
+
+                      {!liveRates && (
+                        <button
+                          type="button"
+                          className="btn btn--accent btn--block"
+                          disabled={!order.address.trim() || !order.addressState || !order.addressCity || fetchingRates}
+                          onClick={fetchLiveRates}
+                        >
+                          {fetchingRates ? "Finding delivery options…" : "See delivery options"}
+                        </button>
+                      )}
+                      {rateError && (
+                        <div className="field is-bad" style={{ marginTop: 8 }}>
+                          <span className="err" style={{ display: "block" }}>{rateError}</span>
+                        </div>
+                      )}
+                      {liveRates && (
+                        <>
+                          <p className="opts__label">Choose a delivery option</p>
+                          <div className="opts" role="group" aria-label="Delivery area">
+                            {liveRates.map((r) => (
+                              <button key={r.id} className="opt-card" type="button" aria-pressed={order.areaId === r.id} onClick={() => selectLiveRate(r)}>
+                                <span className="opt-card__tick" />
+                                {r.carrierLogo && (
+                                  <img
+                                    src={r.carrierLogo}
+                                    alt=""
+                                    style={{ width: 28, height: 28, borderRadius: 6, objectFit: "contain", flex: "none" }}
+                                    onError={(e) => { e.currentTarget.style.display = "none" }}
+                                  />
+                                )}
+                                <span className="opt-card__main"><b>{r.carrierName}</b>{r.etaLabel && <small>{r.etaLabel}</small>}</span>
+                                <span className="opt-card__price money">{formatNaira(r.amount)}</span>
+                              </button>
+                            ))}
+                          </div>
+                          <button type="button" className="btn btn--ghost btn--sm" style={{ marginTop: 10 }} onClick={fetchLiveRates} disabled={fetchingRates}>
+                            {fetchingRates ? "Refreshing…" : "Refresh options"}
+                          </button>
+                        </>
+                      )}
                     </>
                   )}
                 </>

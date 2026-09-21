@@ -205,6 +205,7 @@ html { -webkit-text-size-adjust: 100%; }
   .field input, .field textarea, .field select { width: 100%; min-height: 52px; padding: 0 15px; border-radius: var(--r-sm); border: 1.5px solid var(--line-2); background: #fff; font-size: 16px; font-weight: 500; outline: 0; transition: border-color .2s, box-shadow .2s; }
   .field textarea { min-height: 86px; padding: 13px 15px; resize: vertical; line-height: 1.5; }
   .field input:focus, .field textarea:focus, .field select:focus { border-color: var(--accent); box-shadow: 0 0 0 4px color-mix(in srgb, var(--accent) 15%, transparent); }
+  .field select:disabled { background: var(--bg-soft); color: var(--soft); cursor: not-allowed; }
   .field .err { font-size: 13px; font-weight: 600; color: var(--danger-ink); display: none; }
   .field.is-bad input, .field.is-bad textarea { border-color: var(--danger); }
   .field.is-bad .err { display: block; }

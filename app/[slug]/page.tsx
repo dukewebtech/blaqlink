@@ -6,9 +6,11 @@ import { DaylightStorefront } from "@/components/store/templates/daylight-storef
 import { EditorialStorefront } from "@/components/store/templates/editorial-storefront"
 import { StudioStorefront } from "@/components/store/templates/studio-storefront"
 import { BoutiqueStorefront } from "@/components/store/templates/boutique-storefront"
+import { OraStorefront } from "@/components/store/templates/ora-storefront"
 import type { DaylightBookingDay, DaylightItem, DaylightStore } from "@/components/store/templates/daylight-types"
+import { isStoreFontPairing } from "@/lib/storefront/fonts"
 
-const VALID_TEMPLATES = ["daylight", "editorial", "studio", "boutique"] as const
+const VALID_TEMPLATES = ["daylight", "editorial", "studio", "boutique", "ora"] as const
 
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL || "https://blaqora.store"
 const DOW_NAMES = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"]
@@ -19,7 +21,7 @@ export const dynamic = "force-dynamic"
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 const SELECT_FIELDS =
-  "id, business_name, full_name, store_bio, store_cover_image_url, profile_image, store_logo_url, store_brand_color, store_template, location, business_address, store_city, store_state, phone, email, admin_kyc_approved, created_at"
+  "id, business_name, full_name, store_bio, store_cover_image_url, profile_image, store_logo_url, store_brand_color, store_template, store_font, location, business_address, store_city, store_state, phone, email, admin_kyc_approved, created_at, shipping_mode"
 
 // Not every vendor has picked a store_slug yet (it's an onboarding-time field).
 // Until they do, their storefront is still reachable at /{their user id}.
@@ -77,7 +79,7 @@ async function loadStorefrontData(slug: string): Promise<{ store: DaylightStore;
 
   const supabase = createAdminClient()
 
-  const [{ data: products }, { data: deliveryAreas }, { count: ordersDelivered }] = await Promise.all([
+  const [{ data: products }, { data: deliveryAreas }, { count: ordersDelivered }, { data: categories }] = await Promise.all([
     supabase
       .from("products")
       .select("*")
@@ -86,12 +88,15 @@ async function loadStorefrontData(slug: string): Promise<{ store: DaylightStore;
       .order("created_at", { ascending: false }),
     supabase
       .from("delivery_areas")
-      .select("id, name, note, fee")
+      .select("id, name, note, fee, state, city")
       .eq("user_id", vendor.id)
       .eq("is_active", true)
       .order("sort_order", { ascending: true }),
     supabase.from("orders").select("id", { count: "exact", head: true }).eq("user_id", vendor.id).eq("payment_status", "success"),
+    supabase.from("categories").select("id, name, image_url").eq("user_id", vendor.id).eq("status", "active"),
   ])
+  const categoryNameById = new Map((categories ?? []).map((c) => [c.id, c.name]))
+  const categoryImageById = new Map((categories ?? []).map((c) => [c.id, c.image_url as string | null]))
 
   const allProducts = products ?? []
   const physicalIds = allProducts.filter((p) => p.product_type === "physical").map((p) => p.id)
@@ -136,6 +141,12 @@ async function loadStorefrontData(slug: string): Promise<{ store: DaylightStore;
       price: Number(p.price ?? 0),
       compareAtPrice: p.compare_at_price != null ? Number(p.compare_at_price) : null,
       images: (p.images && p.images.length ? p.images : ["/placeholder.svg"]) as string[],
+      // Product-category assignment lives in the legacy `category` TEXT column
+      // (holding the category's UUID as a string) — the same convention the
+      // product create/edit forms and products-list use; `category_id` is unused.
+      categoryId: p.category ?? null,
+      categoryName: p.category ? categoryNameById.get(p.category) ?? null : null,
+      categoryImageUrl: p.category ? categoryImageById.get(p.category) ?? null : null,
       stock: type === "physical" ? (stockFromVariants ?? p.stock_quantity ?? null) : null,
       variants: productVariants.map((v) => ({
         id: v.id,
@@ -176,7 +187,16 @@ async function loadStorefrontData(slug: string): Promise<{ store: DaylightStore;
     ordersDelivered: ordersDelivered ?? 0,
     memberSinceYear: vendor.created_at ? new Date(vendor.created_at).getFullYear() : new Date().getFullYear(),
     verified: !!vendor.admin_kyc_approved,
-    deliveryAreas: (deliveryAreas ?? []).map((a) => ({ id: a.id, name: a.name, note: a.note, fee: Number(a.fee) })),
+    deliveryAreas: (deliveryAreas ?? []).map((a) => ({
+      id: a.id,
+      name: a.name,
+      note: a.note,
+      fee: Number(a.fee),
+      state: a.state ?? null,
+      city: a.city ?? null,
+    })),
+    shippingMode: (vendor.shipping_mode as DaylightStore["shippingMode"]) || "manual",
+    fontPairing: isStoreFontPairing(vendor.store_font) ? vendor.store_font : "modern",
   }
 
   return { store, items }
@@ -232,6 +252,9 @@ export default async function StorefrontPage({ params }: { params: Promise<{ slu
   }
   if (template === "boutique") {
     return <BoutiqueStorefront store={data.store} items={data.items} />
+  }
+  if (template === "ora") {
+    return <OraStorefront store={data.store} items={data.items} />
   }
   return <DaylightStorefront store={data.store} items={data.items} />
 }

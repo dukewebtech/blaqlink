@@ -59,6 +59,18 @@ const templates = [
     style: "signature",
   },
   {
+    id: "ora",
+    name: "Ora",
+    description:
+      "Light, editorial storefront with a neutral palette, sticky search and a pill-chip category rail. Built for premium, minimal brands.",
+    href: "/templates/ora",
+    image: "/placeholder.svg?height=400&width=600",
+    features: ["Neutral Palette", "Quick Add", "All Item Types", "Brand Colour"],
+    badge: "Signature",
+    color: "from-neutral-400/20 to-stone-500/20",
+    style: "signature",
+  },
+  {
     id: "crystal-clear",
     name: "Crystal Clear",
     description:
@@ -133,6 +145,7 @@ const templates = [
 
 export default function TemplatesPage() {
   const [userStoreId, setUserStoreId] = useState<string | null>(null)
+  const [userStoreSlug, setUserStoreSlug] = useState<string | null>(null)
   const [currentTemplate, setCurrentTemplate] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
   const [settingTemplate, setSettingTemplate] = useState<string | null>(null)
@@ -143,7 +156,9 @@ export default function TemplatesPage() {
         const res = await fetch("/api/users/me")
         if (res.ok) {
           const data = await res.json()
-          setUserStoreId(data.data?.user?.id || data.id)
+          const user = data.data?.user || data
+          setUserStoreId(user?.id || null)
+          setUserStoreSlug(user?.store_slug || null)
           setCurrentTemplate(data.data?.user?.store_template || data.store_template || null)
         }
       } catch (error) {
@@ -447,7 +462,7 @@ export default function TemplatesPage() {
                 <h3 className="text-lg font-semibold mb-1">View Your Storefront</h3>
                 <p className="text-muted-foreground text-sm">See how your store looks with the selected template</p>
               </div>
-              <Link href={`/store/${userStoreId}`} target="_blank">
+              <Link href={`/${userStoreSlug || userStoreId}`} target="_blank">
                 <Button className="gap-2">
                   <Store className="h-4 w-4" />
                   Open My Store

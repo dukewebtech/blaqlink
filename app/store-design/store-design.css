@@ -1,0 +1,148 @@
+/* Store design page — content only. Uses design-system (--bq-*) tokens
+   throughout; sidebar/top bar chrome comes from DashboardLayout unchanged. */
+
+/* Grid/flex items default to min-width:auto, which stops any scrollable
+   descendant (the template strip, the phone preview) from ever shrinking
+   below its content's natural width — it silently pushes the whole page
+   wider instead of scrolling. min-width:0 down this chain, plus a hard
+   overflow-x:hidden safety net on the root, is the actual fix. */
+.sd-root { min-width: 0; overflow-x: hidden; }
+.sd-root > * { min-width: 0; }
+
+.sd-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+.sd-head h1 { font-family: var(--bq-font-display); font-size: 30px; font-weight: 800; letter-spacing: -0.02em; }
+.sd-head p { margin-top: 8px; color: var(--bq-soft); font-size: var(--bq-text-sm); }
+@media (max-width: 640px) {
+  .sd-head { display: block; }
+  .sd-head .bq-btn { margin-top: 14px; width: 100%; }
+}
+
+.sd-title { font-family: var(--bq-font-body); font-weight: 800; font-size: 14px; margin: 0 0 14px; }
+
+/* ---------- Template picker ---------- */
+.sd-templates { display: grid; grid-template-columns: repeat(5, 1fr); gap: 14px; margin-bottom: 28px; min-width: 0; }
+@media (max-width: 1024px) { .sd-templates { grid-template-columns: repeat(3, 1fr); } }
+@media (max-width: 640px) {
+  .sd-templates {
+    display: flex; overflow-x: auto; gap: 12px; margin: 0 calc(var(--bq-gutter, 20px) * -1) 28px;
+    padding: 2px var(--bq-gutter, 20px) 10px; scroll-snap-type: x proximity;
+  }
+  .sd-tpl { min-width: 208px; scroll-snap-align: start; }
+}
+
+.sd-tpl {
+  background: var(--bq-bg); border: 1px solid var(--bq-line); border-radius: var(--bq-radius-lg);
+  overflow: hidden; cursor: pointer; position: relative; text-align: left; padding: 0; font: inherit; color: inherit;
+  transition: border-color var(--bq-dur-fast) var(--bq-ease), box-shadow var(--bq-dur-fast) var(--bq-ease);
+}
+.sd-tpl:disabled { cursor: not-allowed; opacity: .6; }
+.sd-tpl.is-active { border: 2px solid var(--bq-blue); box-shadow: var(--bq-focus-ring); }
+
+.sd-preview { height: 112px; background: var(--bq-bg-soft); padding: 10px; }
+.sd-mini { height: 100%; background: var(--bq-bg); border-radius: var(--bq-radius-xs); overflow: hidden; border: 1px solid var(--bq-line); }
+.sd-bar { height: 24px; }
+.sd-blocks { display: grid; grid-template-columns: repeat(3, 1fr); gap: 5px; padding: 9px; }
+.sd-block { height: 42px; background: var(--bq-bg-soft); border-radius: 5px; }
+
+.sd-preview--dark .sd-mini { background: var(--bq-ink); border: 0; }
+.sd-preview--dark .sd-bar { background: #171923; }
+.sd-preview--dark .sd-block { background: #282B34; }
+
+.sd-preview--studio .sd-bar { background: var(--bq-bg); border-bottom: 1px solid var(--bq-line); }
+.sd-preview--studio .sd-block { border-radius: 8px; }
+
+.sd-preview--boutique .sd-bar { height: 42px; background: linear-gradient(100deg, #DB91AD, #C52C6A); }
+.sd-preview--boutique .sd-blocks { grid-template-columns: 1fr 1fr; }
+
+.sd-check {
+  display: none; position: absolute; right: 8px; top: 8px; width: 22px; height: 22px;
+  background: var(--bq-blue); color: #fff; border-radius: 50%; place-items: center; font-size: 12px;
+}
+.sd-tpl.is-active .sd-check { display: grid; }
+
+.sd-info { padding: 12px 14px 14px; }
+.sd-info b { font-size: 13px; font-family: var(--bq-font-body); font-weight: 800; }
+.sd-info p { font-size: 11.5px; line-height: 1.45; color: var(--bq-soft); margin: 4px 0 0; }
+
+/* ---------- Brand identity editor ---------- */
+.sd-editor { background: var(--bq-bg); border: 1px solid var(--bq-line); border-radius: var(--bq-radius-lg); box-shadow: var(--bq-shadow-2); padding: 24px; min-width: 0; }
+.sd-editor-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; margin-bottom: 22px; flex-wrap: wrap; }
+.sd-editor-head h2 { font-family: var(--bq-font-display); font-size: 18px; font-weight: 800; }
+.sd-editor-head p { margin-top: 5px; color: var(--bq-soft); font-size: 12.5px; }
+
+.sd-grid { display: grid; grid-template-columns: 330px 1fr; gap: 36px; min-width: 0; }
+@media (max-width: 1024px) { .sd-grid { grid-template-columns: 290px 1fr; gap: 24px; } }
+@media (max-width: 768px) { .sd-grid { display: flex; flex-direction: column; gap: 24px; } }
+@media (max-width: 640px) {
+  .sd-editor { padding: 18px; border-radius: var(--bq-radius-md); }
+  .sd-editor-head { display: block; }
+  .sd-editor-head .bq-btn { margin-top: 12px; width: 100%; }
+}
+
+.sd-label2 { font-size: 11px; font-weight: 800; margin: 22px 0 6px; }
+.sd-label2:first-child { margin-top: 0; }
+.sd-copy { font-size: 11.5px; color: var(--bq-soft); line-height: 1.5; margin-bottom: 6px; }
+
+.sd-swatches { display: flex; flex-wrap: wrap; gap: 10px; margin: 10px 0 18px; }
+.sd-sw { width: 32px; height: 32px; border-radius: 50%; border: 2px solid #fff; box-shadow: 0 0 0 1px var(--bq-line-2); cursor: pointer; padding: 0; }
+.sd-sw.is-sel { box-shadow: 0 0 0 2px var(--bq-blue); }
+.sd-sw--custom { position: relative; overflow: hidden; display: grid; place-items: center; background: conic-gradient(from 0deg, red, yellow, lime, cyan, blue, magenta, red); }
+.sd-sw--custom input { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
+
+/* ---------- Image upload rows ---------- */
+.sd-upload { display: flex; align-items: center; gap: 12px; border: 1px solid var(--bq-line); border-radius: var(--bq-radius-sm); padding: 10px; margin-bottom: 18px; }
+.sd-upload__thumb {
+  width: 52px; height: 52px; border-radius: var(--bq-radius-xs); background: var(--bq-bg-soft);
+  object-fit: cover; flex: none; display: grid; place-items: center; color: var(--bq-placeholder);
+}
+.sd-upload__thumb--banner { width: 88px; height: 52px; }
+.sd-upload__meta { flex: 1; min-width: 0; }
+.sd-upload__meta b { display: block; font-size: 12.5px; font-weight: 700; }
+.sd-upload__meta span { display: block; font-size: 11px; color: var(--bq-soft); margin-top: 2px; }
+
+/* ---------- Font picker ---------- */
+.sd-fonts { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 10px 0 18px; }
+.sd-font { border: 1px solid var(--bq-line); border-radius: var(--bq-radius-sm); padding: 12px; text-align: left; cursor: pointer; background: var(--bq-bg); }
+.sd-font.is-sel { border-color: var(--bq-blue); box-shadow: var(--bq-focus-ring); }
+.sd-font b { display: block; font-size: 16px; line-height: 1.2; }
+.sd-font span { display: block; font-size: 10.5px; color: var(--bq-soft); margin-top: 3px; }
+
+/* ---------- Live preview phone mockup ---------- */
+.sd-previewbox {
+  min-height: 560px; background: var(--bq-bg-soft); border: 1px solid var(--bq-line); border-radius: var(--bq-radius-md);
+  padding: 30px 20px 20px; display: flex; justify-content: center; align-items: flex-start; position: relative;
+  overflow: hidden; min-width: 0;
+}
+.sd-previewbox::before {
+  content: 'LIVE PREVIEW'; position: absolute; top: 14px; left: 18px; font-size: 10px; font-weight: 800;
+  letter-spacing: .1em; color: var(--bq-soft);
+}
+@media (max-width: 640px) { .sd-previewbox { min-height: 600px; padding: 32px 8px 12px; } }
+
+.sd-phone {
+  background: var(--bq-ink); border-radius: 40px; box-shadow: var(--bq-shadow-3);
+  padding: 9px; position: relative; margin-top: 10px;
+}
+.sd-phone__notch {
+  position: absolute; top: 20px; left: 50%; transform: translateX(-50%);
+  width: 84px; height: 18px; background: var(--bq-ink); border-radius: 20px; z-index: 2;
+}
+.sd-phone__screen { width: 100%; height: 100%; border-radius: 30px; overflow: hidden; background: #fff; pointer-events: none; }
+@media (max-width: 390px) { .sd-phone { transform: scale(.9); transform-origin: top center; margin-bottom: -12%; } }
+
+/* ---------- Save bar ---------- */
+.sd-savebar {
+  position: sticky; bottom: 16px; display: flex; align-items: center; justify-content: flex-end; gap: 12px;
+  padding: 16px; background: var(--bq-bg); border: 1px solid var(--bq-line); border-radius: var(--bq-radius-lg);
+  box-shadow: var(--bq-shadow-2); z-index: 3;
+}
+@media (max-width: 640px) {
+  .sd-savebar { position: fixed; left: 12px; right: 12px; bottom: 10px; margin: 0; }
+  .sd-savebar .bq-btn { width: 100%; }
+}

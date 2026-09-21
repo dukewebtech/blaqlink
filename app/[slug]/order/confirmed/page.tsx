@@ -10,8 +10,9 @@ import "@/components/store/templates/daylight-storefront.css"
 import "@/components/store/templates/editorial-storefront.css"
 import "@/components/store/templates/studio-storefront.css"
 import "@/components/store/templates/boutique-storefront.css"
+import "@/components/store/templates/ora-storefront.css"
 
-type ConfirmTemplate = "daylight" | "editorial" | "studio" | "boutique"
+type ConfirmTemplate = "daylight" | "editorial" | "studio" | "boutique" | "ora"
 
 interface VerifiedOrder {
   id: string
@@ -35,7 +36,9 @@ export default function OrderConfirmedPage({ params: paramsProp }: { params: Pro
   const storeId = searchParams.get("store")
   const templateParam = searchParams.get("template")
   const template: ConfirmTemplate =
-    templateParam === "editorial" || templateParam === "studio" || templateParam === "boutique" ? templateParam : "daylight"
+    templateParam === "editorial" || templateParam === "studio" || templateParam === "boutique" || templateParam === "ora"
+      ? templateParam
+      : "daylight"
   const [status, setStatus] = useState<"loading" | "success" | "error">("loading")
   const [order, setOrder] = useState<VerifiedOrder | null>(null)
   const [vendor, setVendor] = useState<VerifiedVendor | null>(null)
@@ -64,7 +67,15 @@ export default function OrderConfirmedPage({ params: paramsProp }: { params: Pro
 
   const storeName = vendor?.business_name || vendor?.full_name || "the seller"
   const rootClass =
-    template === "editorial" ? "editorial-store" : template === "studio" ? "studio-store" : template === "boutique" ? "boutique-store" : "daylight-store"
+    template === "editorial"
+      ? "editorial-store"
+      : template === "studio"
+        ? "studio-store"
+        : template === "boutique"
+          ? "boutique-store"
+          : template === "ora"
+            ? "ora-store"
+            : "daylight-store"
 
   if (status === "loading") {
     return (

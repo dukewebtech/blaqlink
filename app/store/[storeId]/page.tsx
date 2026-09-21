@@ -28,6 +28,8 @@ interface Category {
   status: string
 }
 
+const SIGNATURE_TEMPLATES = ["daylight", "editorial", "studio", "boutique", "ora"]
+
 interface StoreInfo {
   id: string
   business_name: string
@@ -65,10 +67,13 @@ export default function PublicStorePage({ params: paramsProp }: { params: Promis
   }, [params.storeId])
 
   useEffect(() => {
-    // Daylight is server-rendered (for SEO/link previews) at /{slug} rather than
-    // handled by this client-rendered switch — send vendors who picked it there,
-    // falling back to their user id when they haven't set a store_slug yet.
-    if (storeInfo?.store_template === "daylight") {
+    // The signature templates (daylight, editorial, studio, boutique, ora) are all
+    // server-rendered (for SEO/link previews) at /{slug} rather than handled by this
+    // client-rendered switch — send vendors who picked one of those there, falling
+    // back to their user id when they haven't set a store_slug yet. Anything else
+    // (the older crystal-clear/obsidian-glass/aurora-frost/default templates) stays
+    // on this page.
+    if (storeInfo && SIGNATURE_TEMPLATES.includes(storeInfo.store_template as any)) {
       router.replace(`/${storeInfo.store_slug || params.storeId}`)
     }
   }, [storeInfo, router, params.storeId])
@@ -156,7 +161,7 @@ export default function PublicStorePage({ params: paramsProp }: { params: Promis
     )
   }
 
-  if (storeInfo.store_template === "daylight") {
+  if (SIGNATURE_TEMPLATES.includes(storeInfo.store_template as any)) {
     // Redirecting to the server-rendered /{slug} route — see the effect above.
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">

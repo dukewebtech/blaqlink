@@ -16,6 +16,10 @@ export default function AdminSettingsPage() {
   const [commission, setCommission] = useState("")
   const [minWithdrawal, setMinWithdrawal] = useState("")
   const [autoWithdrawal, setAutoWithdrawal] = useState(false)
+  const [supportEmail, setSupportEmail] = useState("")
+  const [tawktoUrl, setTawktoUrl] = useState("")
+  const [whatsappCommunityUrl, setWhatsappCommunityUrl] = useState("")
+  const [savingHelp, setSavingHelp] = useState(false)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [needsSetup, setNeedsSetup] = useState(false)
@@ -36,6 +40,9 @@ export default function AdminSettingsPage() {
           setCommission(settingsResult.settings.commission_percentage?.toString() || "10")
           setMinWithdrawal(settingsResult.settings.minimum_withdrawal_amount?.toString() || "5000")
           setAutoWithdrawal(settingsResult.settings.auto_withdrawal_enabled ?? false)
+          setSupportEmail(settingsResult.settings.support_email || "")
+          setTawktoUrl(settingsResult.settings.tawkto_url || "")
+          setWhatsappCommunityUrl(settingsResult.settings.whatsapp_community_url || "")
           setNeedsSetup(settingsResult.needsSetup || false)
         }
       } catch (error) {
@@ -87,6 +94,32 @@ export default function AdminSettingsPage() {
       })
     } finally {
       setSaving(false)
+    }
+  }
+
+  const handleSaveHelpLinks = async () => {
+    try {
+      setSavingHelp(true)
+      const response = await fetch("/api/admin/settings", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          support_email: supportEmail.trim() || null,
+          tawkto_url: tawktoUrl.trim() || null,
+          whatsapp_community_url: whatsappCommunityUrl.trim() || null,
+        }),
+      })
+      const result = await response.json()
+      if (response.ok) {
+        toast({ title: "Help links saved", description: "The Help page now reflects these links." })
+      } else {
+        toast({ title: "Error", description: result.error || "Failed to save help links", variant: "destructive" })
+      }
+    } catch (error) {
+      console.error("[v0] Error saving help links:", error)
+      toast({ title: "Error", description: "Failed to save help links", variant: "destructive" })
+    } finally {
+      setSavingHelp(false)
     }
   }
 
@@ -200,6 +233,48 @@ export default function AdminSettingsPage() {
             </div>
             <Button onClick={handleSavePlatformSettings} disabled={saving}>
               {saving ? "Saving..." : "Save Platform Settings"}
+            </Button>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Help &amp; Support Links</CardTitle>
+            <CardDescription>Shown to every vendor on their Help page</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="tawkto-url">Tawk.to chat link</Label>
+              <Input
+                id="tawkto-url"
+                type="url"
+                placeholder="https://tawk.to/chat/..."
+                value={tawktoUrl}
+                onChange={(e) => setTawktoUrl(e.target.value)}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="whatsapp-url">WhatsApp community link</Label>
+              <Input
+                id="whatsapp-url"
+                type="url"
+                placeholder="https://chat.whatsapp.com/..."
+                value={whatsappCommunityUrl}
+                onChange={(e) => setWhatsappCommunityUrl(e.target.value)}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="support-email">Support email</Label>
+              <Input
+                id="support-email"
+                type="email"
+                placeholder="support@blaqora.store"
+                value={supportEmail}
+                onChange={(e) => setSupportEmail(e.target.value)}
+              />
+            </div>
+            <Button onClick={handleSaveHelpLinks} disabled={savingHelp}>
+              {savingHelp ? "Saving..." : "Save Help Links"}
             </Button>
           </CardContent>
         </Card>

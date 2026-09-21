@@ -110,7 +110,7 @@ export async function PUT(request: Request) {
     }
 
     const body = await request.json()
-    const { commission_percentage, minimum_withdrawal_amount, auto_withdrawal_enabled } = body
+    const { commission_percentage, minimum_withdrawal_amount, auto_withdrawal_enabled, support_email, tawkto_url, whatsapp_community_url } = body
 
     console.log("[v0] Update request:", { commission_percentage, minimum_withdrawal_amount })
 
@@ -154,6 +154,9 @@ export async function PUT(request: Request) {
           commission_percentage: commission_percentage ?? 10,
           minimum_withdrawal_amount: minimum_withdrawal_amount ?? 5000,
           auto_withdrawal_enabled: auto_withdrawal_enabled ?? false,
+          support_email: support_email ?? null,
+          tawkto_url: tawkto_url ?? null,
+          whatsapp_community_url: whatsapp_community_url ?? null,
         })
         .select()
         .single()
@@ -172,6 +175,9 @@ export async function PUT(request: Request) {
     if (commission_percentage !== undefined) updateData.commission_percentage = commission_percentage
     if (minimum_withdrawal_amount !== undefined) updateData.minimum_withdrawal_amount = minimum_withdrawal_amount
     if (auto_withdrawal_enabled !== undefined) updateData.auto_withdrawal_enabled = auto_withdrawal_enabled
+    if (support_email !== undefined) updateData.support_email = support_email || null
+    if (tawkto_url !== undefined) updateData.tawkto_url = tawkto_url || null
+    if (whatsapp_community_url !== undefined) updateData.whatsapp_community_url = whatsapp_community_url || null
 
     console.log("[v0] Updating settings with:", updateData)
 

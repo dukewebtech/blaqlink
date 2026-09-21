@@ -22,7 +22,7 @@ export async function updateSession(request: NextRequest) {
 
   const isPublicPath = publicPaths.some((path) => request.nextUrl.pathname.startsWith(path))
 
-  // Vendor storefronts render at a bare top-level slug (e.g. /queenchic, see
+  // Vendor storefronts render at a bare top-level slug (e.g. /samplestore, see
   // app/[slug]/page.tsx) — there's no fixed prefix to list, so anything that
   // isn't one of the app's own private routes is treated as a public storefront
   // and left for that page to 404 if the slug doesn't resolve to a vendor.
@@ -32,6 +32,7 @@ export async function updateSession(request: NextRequest) {
     "categories",
     "customers",
     "dashboard",
+    "help",
     "logout",
     "onboarding",
     "onboarding2",
@@ -42,6 +43,7 @@ export async function updateSession(request: NextRequest) {
     "products",
     "products-list",
     "sales",
+    "shipping",
     "store-design",
     "settings",
     "test-isolation",

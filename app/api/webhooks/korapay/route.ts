@@ -5,6 +5,7 @@ import { createAdminClient } from "@/lib/supabase/server"
 import { sendEmail, getNewOrderEmailForVendor, getOrderConfirmationEmailForCustomer } from "@/lib/email"
 import { getVendorPlan, computeOrderFee } from "@/lib/pricing"
 import { runOrderFulfilment, runShipmentBooking } from "@/lib/storefront/fulfilment"
+import { attachItemImages, buildVendorBranding, splitOrderTotal, formatDeliveryAddress } from "@/lib/storefront/order-emails"
 
 function verifySignature(rawBody: string, signature: string): boolean {
   const secret = process.env.KORA_SECRET_KEY
@@ -76,7 +77,7 @@ export async function POST(request: NextRequest) {
 
       const { data: vendorInfo } = await supabase
         .from("users")
-        .select("store_name, business_name, store_logo_url, email, full_name")
+        .select("business_name, full_name, store_logo_url, store_brand_color, store_slug, email, phone, business_address")
         .eq("id", vendorUserId)
         .single()
 
@@ -149,23 +150,25 @@ export async function POST(request: NextRequest) {
         runShipmentBooking(order).catch((err) => console.error("[korapay/webhook] Shipment booking error:", err))
       }
 
-      const emailItems = orderItems.map((i: any) => ({
-        product_title: i.product_title,
-        quantity: i.quantity,
-        price: i.price,
-        subtotal: i.subtotal,
-      }))
+      const emailItems = await attachItemImages(supabase, orderItems)
+      const branding = buildVendorBranding(vendorInfo, vendorUserId)
+      const { subtotal, deliveryFee } = splitOrderTotal(orderItems, order.total_amount, order.delivery_method)
+      const deliveryAddress = formatDeliveryAddress(order)
 
       if (vendorInfo?.email) {
         const ve = getNewOrderEmailForVendor({
-          vendorName: vendorInfo.full_name || vendorInfo.business_name || "Vendor",
           orderId: order.id,
+          createdAt: order.created_at,
           customerName: order.customer_name,
           customerEmail: order.customer_email,
           customerPhone: order.customer_phone,
           items: emailItems,
+          subtotal,
+          deliveryFee,
           totalAmount: order.total_amount,
-          shippingAddress: order.shipping_address,
+          deliveryAreaName: order.delivery_area,
+          deliveryAddress,
+          vendor: branding,
         })
         sendEmail({ to: vendorInfo.email, subject: ve.subject, html: ve.html }).catch(console.error)
       }
@@ -173,12 +176,15 @@ export async function POST(request: NextRequest) {
         const ce = getOrderConfirmationEmailForCustomer({
           customerName: order.customer_name,
           orderId: order.id,
+          createdAt: order.created_at,
           items: emailItems,
+          subtotal,
+          deliveryFee,
           totalAmount: order.total_amount,
-          vendorName: vendorInfo?.store_name || vendorInfo?.business_name || "Seller",
-          vendorEmail: vendorInfo?.email,
+          deliveryAreaName: order.delivery_area,
+          deliveryAddress,
           paymentReference: reference,
-          shippingAddress: order.shipping_address,
+          vendor: branding,
         })
         sendEmail({ to: order.customer_email, subject: ce.subject, html: ce.html }).catch(console.error)
       }

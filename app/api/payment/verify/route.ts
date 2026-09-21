@@ -3,6 +3,7 @@ import { createAdminClient } from "@/lib/supabase/server"
 import { sendEmail, getNewOrderEmailForVendor, getOrderConfirmationEmailForCustomer } from "@/lib/email"
 import { getVendorPlan, computeOrderFee } from "@/lib/pricing"
 import { runOrderFulfilment, runShipmentBooking } from "@/lib/storefront/fulfilment"
+import { attachItemImages, buildVendorBranding, splitOrderTotal, formatDeliveryAddress } from "@/lib/storefront/order-emails"
 
 export async function GET(request: NextRequest) {
   try {
@@ -50,7 +51,7 @@ export async function GET(request: NextRequest) {
       if (vendorUserId) {
         const { data: vendor } = await supabase
           .from("users")
-          .select("store_name, business_name, store_logo_url, email, phone, business_address, full_name")
+          .select("business_name, full_name, store_logo_url, store_brand_color, store_slug, email, phone, business_address")
           .eq("id", vendorUserId)
           .single()
         vendorInfo = vendor
@@ -181,24 +182,26 @@ export async function GET(request: NextRequest) {
       }
     })
 
-    const emailItems = orderItems.map((item: any) => ({
-      product_title: item.product_title,
-      quantity: item.quantity,
-      price: item.price,
-      subtotal: item.subtotal,
-    }))
+    const emailItems = await attachItemImages(supabase, orderItems)
+    const branding = buildVendorBranding(vendorInfo, vendorUserId)
+    const { subtotal, deliveryFee } = splitOrderTotal(orderItems, order.total_amount, order.delivery_method)
+    const deliveryAddress = formatDeliveryAddress(order)
 
     // Send email to vendor about new order
     if (vendorInfo?.email) {
       const vendorEmail = getNewOrderEmailForVendor({
-        vendorName: vendorInfo.full_name || vendorInfo.business_name || "Vendor",
         orderId: order.id,
+        createdAt: order.created_at,
         customerName: order.customer_name,
         customerEmail: order.customer_email,
         customerPhone: order.customer_phone,
         items: emailItems,
+        subtotal,
+        deliveryFee,
         totalAmount: order.total_amount,
-        shippingAddress: order.shipping_address,
+        deliveryAreaName: order.delivery_area,
+        deliveryAddress,
+        vendor: branding,
       })
 
       sendEmail({
@@ -213,12 +216,15 @@ export async function GET(request: NextRequest) {
       const customerEmail = getOrderConfirmationEmailForCustomer({
         customerName: order.customer_name,
         orderId: order.id,
+        createdAt: order.created_at,
         items: emailItems,
+        subtotal,
+        deliveryFee,
         totalAmount: order.total_amount,
-        vendorName: vendorInfo?.store_name || vendorInfo?.business_name || "Seller",
-        vendorEmail: vendorInfo?.email,
+        deliveryAreaName: order.delivery_area,
+        deliveryAddress,
         paymentReference: reference,
-        shippingAddress: order.shipping_address,
+        vendor: branding,
       })
 
       sendEmail({

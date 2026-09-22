@@ -20,81 +20,53 @@ export async function GET() {
       return NextResponse.json({ error: "User profile not found" }, { status: 404 })
     }
 
+    // Previously 6 separate round trips against `orders` (revenue sum, unique
+    // customers, transaction count, this-week revenue, last-week revenue —
+    // each re-querying the same table). One fetch of just the columns every
+    // metric below needs, computed in JS, is functionally identical and cuts
+    // this endpoint's query count from 8 round trips to 4.
     const { data: orders, error: ordersError } = await supabase
       .from("orders")
-      .select("total_amount, payment_status, created_at")
+      .select("total_amount, payment_status, customer_email, created_at")
       .eq("user_id", userProfile.id)
-      .in("payment_status", ["success", "paid"])
-
-    console.log("[v0] Dashboard stats - Orders with success/paid status:", orders?.length || 0)
-    console.log("[v0] Dashboard stats - Orders data:", orders)
 
     if (ordersError) {
       console.error("[v0] Dashboard stats - Orders error:", ordersError)
       throw ordersError
     }
 
-    const totalRevenue = orders?.reduce((sum, order) => sum + Number(order.total_amount || 0), 0) || 0
-    console.log("[v0] Dashboard stats - Total revenue:", totalRevenue)
-
-    const { data: customers, error: customersError } = await supabase
-      .from("orders")
-      .select("customer_email")
-      .eq("user_id", userProfile.id)
-      .not("customer_email", "is", null)
-
-    if (customersError) throw customersError
-
-    const uniqueCustomers = new Set(customers?.map((c) => c.customer_email)).size
-    console.log("[v0] Dashboard stats - Unique customers:", uniqueCustomers)
-
-    const { count: totalTransactions, error: transactionsError } = await supabase
-      .from("orders")
-      .select("*", { count: "exact", head: true })
-      .eq("user_id", userProfile.id)
-
-    console.log("[v0] Dashboard stats - Total transactions:", totalTransactions)
-
-    if (transactionsError) throw transactionsError
-
     const { count: totalProducts, error: productsError } = await supabase
       .from("products")
       .select("*", { count: "exact", head: true })
       .eq("user_id", user.id)
 
-    console.log("[v0] Dashboard stats - Total products:", totalProducts)
-
     if (productsError) throw productsError
 
-    // Calculate weekly changes (compare last 7 days vs previous 7 days)
     const now = new Date()
     const lastWeek = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000)
     const twoWeeksAgo = new Date(now.getTime() - 14 * 24 * 60 * 60 * 1000)
 
-    const { data: lastWeekOrders } = await supabase
-      .from("orders")
-      .select("total_amount")
-      .eq("user_id", userProfile.id)
-      .in("payment_status", ["success", "paid"])
-      .gte("created_at", lastWeek.toISOString())
+    const isPaid = (o: { payment_status: string | null }) => o.payment_status === "success" || o.payment_status === "paid"
 
-    const { data: previousWeekOrders } = await supabase
-      .from("orders")
-      .select("total_amount")
-      .eq("user_id", userProfile.id)
-      .in("payment_status", ["success", "paid"])
-      .gte("created_at", twoWeeksAgo.toISOString())
-      .lt("created_at", lastWeek.toISOString())
+    const totalRevenue = orders?.filter(isPaid).reduce((sum, o) => sum + Number(o.total_amount || 0), 0) || 0
+    const uniqueCustomers = new Set(orders?.filter((o) => o.customer_email).map((o) => o.customer_email)).size
+    const totalTransactions = orders?.length || 0
 
-    const lastWeekRevenue = lastWeekOrders?.reduce((sum, o) => sum + Number(o.total_amount || 0), 0) || 0
-    const previousWeekRevenue = previousWeekOrders?.reduce((sum, o) => sum + Number(o.total_amount || 0), 0) || 0
+    const lastWeekRevenue =
+      orders
+        ?.filter((o) => isPaid(o) && new Date(o.created_at) >= lastWeek)
+        .reduce((sum, o) => sum + Number(o.total_amount || 0), 0) || 0
+    const previousWeekRevenue =
+      orders
+        ?.filter((o) => isPaid(o) && new Date(o.created_at) >= twoWeeksAgo && new Date(o.created_at) < lastWeek)
+        .reduce((sum, o) => sum + Number(o.total_amount || 0), 0) || 0
     const revenueChange =
       previousWeekRevenue > 0 ? ((lastWeekRevenue - previousWeekRevenue) / previousWeekRevenue) * 100 : 0
 
     return NextResponse.json({
       totalRevenue,
       totalCustomers: uniqueCustomers,
-      totalTransactions: totalTransactions || 0,
+      totalTransactions,
       totalProducts: totalProducts || 0,
       revenueChange: revenueChange.toFixed(2),
     })

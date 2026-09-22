@@ -39,37 +39,11 @@ export default function CustomersPage() {
   const fetchCustomers = async () => {
     try {
       setLoading(true)
-      const response = await fetch("/api/orders")
+      const response = await fetch("/api/customers")
       const data = await response.json()
 
       if (response.ok) {
-        // Aggregate customer data from orders
-        const customerMap = new Map<string, Customer>()
-
-        data.orders?.forEach((order: any) => {
-          const email = order.customer_email
-          if (!email) return
-
-          if (customerMap.has(email)) {
-            const customer = customerMap.get(email)!
-            customer.totalPurchases += Number(order.total_amount || 0)
-            customer.orderCount += 1
-            if (new Date(order.created_at) > new Date(customer.lastOrderDate)) {
-              customer.lastOrderDate = order.created_at
-            }
-          } else {
-            customerMap.set(email, {
-              email,
-              name: order.customer_name || "Unknown",
-              phone: order.customer_phone || "N/A",
-              totalPurchases: Number(order.total_amount || 0),
-              orderCount: 1,
-              lastOrderDate: order.created_at,
-            })
-          }
-        })
-
-        setCustomers(Array.from(customerMap.values()))
+        setCustomers(data.customers || [])
       }
     } catch (error) {
       console.error("[v0] Failed to fetch customers:", error)

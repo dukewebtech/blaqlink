@@ -50,12 +50,13 @@ export default function OrderDetailPage() {
   const fetchOrder = async () => {
     try {
       setLoading(true)
-      const response = await fetch("/api/orders")
+      const response = await fetch(`/api/orders/${params.id}`)
       const data = await response.json()
 
       if (response.ok) {
-        const foundOrder = data.orders.find((o: Order) => o.id === params.id)
-        setOrder(foundOrder || null)
+        setOrder(data.order || null)
+      } else {
+        setOrder(null)
       }
     } catch (error) {
       console.error("[v0] Failed to fetch order:", error)

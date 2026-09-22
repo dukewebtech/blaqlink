@@ -91,30 +91,15 @@ export default function PayoutsPage() {
         console.log("[v0] Platform settings loaded:", settingsData.settings)
       }
 
-      const ordersResponse = await fetch("/api/orders")
-      const ordersData = await ordersResponse.json()
+      const summaryResponse = await fetch("/api/payouts/summary")
+      const summaryData = await summaryResponse.json()
 
       const withdrawalsResponse = await fetch("/api/withdrawals")
       const withdrawalsData = await withdrawalsResponse.json()
 
-      if (ordersResponse.ok && withdrawalsResponse.ok) {
-        const paidOrders = ordersData.orders?.filter(
-          (order: any) => order.payment_status === "paid" || order.payment_status === "success",
-        )
-        const totalRevenue =
-          paidOrders?.reduce((sum: number, order: any) => sum + Number(order.total_amount || 0), 0) || 0
-
-        // Orders created before per-plan fees existed have no platform_fee_amount —
-        // fall back to the old flat commission for those so historical totals don't shift.
-        const fallbackCommissionRate = settingsData.settings?.commission_percentage || 10
-        const totalFees =
-          paidOrders?.reduce((sum: number, order: any) => {
-            const fee =
-              order.platform_fee_amount ?? (Number(order.total_amount || 0) * fallbackCommissionRate) / 100
-            return sum + Number(fee)
-          }, 0) || 0
-        const netRevenue = totalRevenue - totalFees
-        console.log("[v0] Revenue calculation:", { totalRevenue, totalFees, netRevenue })
+      if (summaryResponse.ok && withdrawalsResponse.ok) {
+        const netRevenue = summaryData.netRevenue || 0
+        console.log("[v0] Revenue calculation:", summaryData)
 
         const allWithdrawals = withdrawalsData.withdrawals || []
         const completedWithdrawals = allWithdrawals.filter(

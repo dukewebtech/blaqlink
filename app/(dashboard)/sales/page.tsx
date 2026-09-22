@@ -75,7 +75,12 @@ export default function SalesReportPage() {
   const fetchSalesData = async () => {
     try {
       setLoading(true)
-      const response = await fetch("/api/orders")
+      // calculateStats also needs the *previous* period for its
+      // period-over-period comparison, so fetch back twice the selected
+      // range instead of the vendor's entire order history.
+      const since = new Date()
+      since.setDate(since.getDate() - Number.parseInt(dateRange) * 2)
+      const response = await fetch(`/api/orders?since=${since.toISOString()}`)
       const data = await response.json()
 
       if (response.ok) {

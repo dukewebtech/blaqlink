@@ -20,7 +20,12 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: "User profile not found" }, { status: 404 })
     }
 
-    const { data: orders, error } = await supabase
+    // Optional — bounds the query to orders on/after this date instead of the
+    // vendor's entire history. The Sales page uses this for its date-range
+    // filter instead of fetching everything and filtering client-side.
+    const since = request.nextUrl.searchParams.get("since")
+
+    let query = supabase
       .from("orders")
       .select(
         `
@@ -38,6 +43,12 @@ export async function GET(request: NextRequest) {
       )
       .eq("user_id", userProfile.id)
       .order("created_at", { ascending: false })
+
+    if (since) {
+      query = query.gte("created_at", since)
+    }
+
+    const { data: orders, error } = await query
 
     if (error) {
       console.error("[v0] Orders fetch error:", error)

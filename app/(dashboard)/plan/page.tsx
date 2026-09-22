@@ -8,6 +8,7 @@ import { PricingCalculator } from "@/components/pricing-calculator"
 import { useToast } from "@/hooks/use-toast"
 import { CheckCircle2 } from "lucide-react"
 import type { PricingPlan } from "@/lib/pricing"
+import { useVendorUser } from "@/components/dashboard/vendor-user-context"
 
 function formatNaira(amount: number) {
   return new Intl.NumberFormat("en-NG", {
@@ -19,21 +20,20 @@ function formatNaira(amount: number) {
 }
 
 export default function PlanPage() {
+  const { user: vendorUser } = useVendorUser()
   const [plans, setPlans] = useState<PricingPlan[]>([])
-  const [currentPlanId, setCurrentPlanId] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
   const [requestingPlanId, setRequestingPlanId] = useState<string | null>(null)
   const { toast } = useToast()
 
+  const currentPlanId = vendorUser?.plan_id || null
+
   useEffect(() => {
     async function fetchData() {
       try {
-        const [plansRes, userRes] = await Promise.all([fetch("/api/pricing-plans"), fetch("/api/users/me")])
+        const plansRes = await fetch("/api/pricing-plans")
         const plansData = await plansRes.json()
         if (plansRes.ok) setPlans(plansData.plans || [])
-
-        const userData = await userRes.json()
-        if (userRes.ok) setCurrentPlanId(userData.data?.user?.plan_id || null)
       } catch (error) {
         console.error("[v0] Failed to load plan data:", error)
       } finally {

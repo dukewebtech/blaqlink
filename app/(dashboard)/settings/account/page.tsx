@@ -12,6 +12,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
 import { User, Mail, Phone, MapPin, Lock, Key, CheckCircle2, Upload, Loader2 } from "lucide-react"
 import { useRouter, useSearchParams } from "next/navigation"
+import { useVendorUser } from "@/components/dashboard/vendor-user-context"
 
 interface UserProfile {
   id: string
@@ -31,9 +32,9 @@ export default function AccountSettingsPage() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const isCompleteProfile = searchParams.get("complete") === "true"
+  const { user: vendorUser, loading: isLoading, refetch: refetchVendorUser } = useVendorUser()
   const [isSaving, setIsSaving] = useState(false)
   const [saved, setSaved] = useState(false)
-  const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [isUploadingImage, setIsUploadingImage] = useState(false)
 
@@ -46,36 +47,13 @@ export default function AccountSettingsPage() {
     profile_image: "",
   })
 
+  // Populates the form from the shared vendor user (replaces this page's own
+  // fetch to /api/users/me) whenever it loads or changes.
   useEffect(() => {
-    fetchUserProfile()
-  }, [])
-
-  const fetchUserProfile = async () => {
-    try {
-      setIsLoading(true)
-      setError(null)
-
-      const response = await fetch("/api/users/me")
-      const data = await response.json()
-
-      if (!response.ok) {
-        if (isCompleteProfile) {
-          console.log("[v0] No profile found, showing complete profile form")
-          setIsLoading(false)
-          return
-        }
-        throw new Error(data.error || "Failed to fetch user profile")
-      }
-
-      console.log("[v0] User profile loaded:", data.data.user)
-      setFormData(data.data.user)
-    } catch (err) {
-      console.error("[v0] Error fetching user profile:", err)
-      setError(err instanceof Error ? err.message : "Failed to load profile")
-    } finally {
-      setIsLoading(false)
+    if (vendorUser) {
+      setFormData(vendorUser)
     }
-  }
+  }, [vendorUser])
 
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
@@ -160,6 +138,7 @@ export default function AccountSettingsPage() {
       }
 
       console.log("[v0] Profile saved successfully")
+      await refetchVendorUser()
 
       if (isCompleteProfile) {
         setTimeout(() => {

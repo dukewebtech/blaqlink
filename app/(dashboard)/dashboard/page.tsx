@@ -6,6 +6,7 @@ import { RecentOrders } from "@/components/dashboard/recent-orders"
 import { TrendingUp, Users, ShoppingCart, Package, Copy, Check } from "lucide-react"
 import { useEffect, useState } from "react"
 import { Button } from "@/components/ui/button"
+import { useVendorUser } from "@/components/dashboard/vendor-user-context"
 
 interface DashboardStats {
   totalRevenue: number
@@ -17,12 +18,14 @@ interface DashboardStats {
 
 
 export default function DashboardPage() {
+  const { user } = useVendorUser()
   const [stats, setStats] = useState<DashboardStats | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [userStoreId, setUserStoreId] = useState<string | null>(null)
   const [copied, setCopied] = useState(false)
   const [storeUrl, setStoreUrl] = useState<string>("")
+
+  const userStoreId = user?.id ?? null
 
   useEffect(() => {
     async function fetchStats() {
@@ -43,25 +46,14 @@ export default function DashboardPage() {
       }
     }
 
-    async function fetchUserProfile() {
-      try {
-        const response = await fetch("/api/users/me")
-        if (response.ok) {
-          const result = await response.json()
-          const user = result.data?.user || result.user || result
-          setUserStoreId(user.id)
-          if (typeof window !== "undefined") {
-            setStoreUrl(`${window.location.origin}/${user.store_slug || user.id}`)
-          }
-        }
-      } catch (error) {
-        console.error("[v0] Failed to fetch user profile:", error)
-      }
-    }
-
     fetchStats()
-    fetchUserProfile()
   }, [])
+
+  useEffect(() => {
+    if (user && typeof window !== "undefined") {
+      setStoreUrl(`${window.location.origin}/${user.store_slug || user.id}`)
+    }
+  }, [user])
 
   const copyToClipboard = async () => {
     try {

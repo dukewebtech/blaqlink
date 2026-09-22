@@ -16,6 +16,7 @@ import {
 import { Label } from "@/components/ui/label"
 import { Search, TrendingUp, ArrowUpRight, Wallet, CheckCircle2, Clock, XCircle } from "lucide-react"
 import { useRouter } from "next/navigation"
+import { useVendorUser } from "@/components/dashboard/vendor-user-context"
 
 interface UserBankDetails {
   bank_name: string | null
@@ -44,6 +45,7 @@ interface Withdrawal {
 
 export default function PayoutsPage() {
   const router = useRouter()
+  const { user: vendorUser } = useVendorUser()
   const [stats, setStats] = useState<PayoutStats | null>(null)
   const [withdrawals, setWithdrawals] = useState<Withdrawal[]>([])
   const [loading, setLoading] = useState(true)
@@ -62,6 +64,16 @@ export default function PayoutsPage() {
   }, [])
 
   useEffect(() => {
+    if (vendorUser) {
+      setUserBankDetails({
+        bank_name: vendorUser.bank_name,
+        account_number: vendorUser.account_number,
+        account_name: vendorUser.account_name,
+      })
+    }
+  }, [vendorUser])
+
+  useEffect(() => {
     if (showRequestModal && userBankDetails) {
       setBankName(userBankDetails.bank_name || "")
       setAccountNumber(userBankDetails.account_number || "")
@@ -77,21 +89,6 @@ export default function PayoutsPage() {
       if (settingsData.ok) {
         setPlatformSettings(settingsData.settings)
         console.log("[v0] Platform settings loaded:", settingsData.settings)
-      }
-
-      const profileResponse = await fetch("/api/users/me")
-      const profileData = await profileResponse.json()
-      if (profileResponse.ok && profileData.data?.user) {
-        setUserBankDetails({
-          bank_name: profileData.data.user.bank_name,
-          account_number: profileData.data.user.account_number,
-          account_name: profileData.data.user.account_name,
-        })
-        console.log("[v0] Bank details loaded:", {
-          bank_name: profileData.data.user.bank_name,
-          account_number: profileData.data.user.account_number,
-          account_name: profileData.data.user.account_name,
-        })
       }
 
       const ordersResponse = await fetch("/api/orders")

@@ -7,6 +7,7 @@ import { Sparkles, ArrowRight, Store, Zap, Check, Eye } from "lucide-react"
 import Link from "next/link"
 import { useState, useEffect } from "react"
 import { toast } from "sonner"
+import { useVendorUser } from "@/components/dashboard/vendor-user-context"
 
 const templates = [
   {
@@ -143,31 +144,18 @@ const templates = [
 ]
 
 export default function TemplatesPage() {
-  const [userStoreId, setUserStoreId] = useState<string | null>(null)
-  const [userStoreSlug, setUserStoreSlug] = useState<string | null>(null)
+  const { user: vendorUser, loading } = useVendorUser()
   const [currentTemplate, setCurrentTemplate] = useState<string | null>(null)
-  const [loading, setLoading] = useState(true)
   const [settingTemplate, setSettingTemplate] = useState<string | null>(null)
 
+  const userStoreId = vendorUser?.id ?? null
+  const userStoreSlug = vendorUser?.store_slug ?? null
+
   useEffect(() => {
-    const fetchUserData = async () => {
-      try {
-        const res = await fetch("/api/users/me")
-        if (res.ok) {
-          const data = await res.json()
-          const user = data.data?.user || data
-          setUserStoreId(user?.id || null)
-          setUserStoreSlug(user?.store_slug || null)
-          setCurrentTemplate(data.data?.user?.store_template || data.store_template || null)
-        }
-      } catch (error) {
-        console.error("Error fetching user data:", error)
-      } finally {
-        setLoading(false)
-      }
+    if (vendorUser) {
+      setCurrentTemplate(vendorUser.store_template || null)
     }
-    fetchUserData()
-  }, [])
+  }, [vendorUser])
 
   const handleSetDefault = async (templateId: string) => {
     setSettingTemplate(templateId)

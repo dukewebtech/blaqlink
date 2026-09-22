@@ -9,6 +9,7 @@ import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Banknote, Loader2, CheckCircle2, AlertCircle, ShieldCheck } from "lucide-react"
 import { BANK_NAMES } from "@/components/onboarding/identity-upload-step"
+import { useVendorUser } from "@/components/dashboard/vendor-user-context"
 
 function normalize(name: string) {
   return name.toUpperCase().replace(/\s+/g, " ").trim()
@@ -22,6 +23,7 @@ function namesMatch(a: string, b: string): boolean {
 }
 
 export default function PayoutSettingsPage() {
+  const { user: vendorUser, loading: loadingVendorUser, refetch: refetchVendorUser } = useVendorUser()
   const [bankName, setBankName] = useState("")
   const [accountNumber, setAccountNumber] = useState("")
   const [resolvedAccountName, setResolvedAccountName] = useState("")
@@ -30,37 +32,43 @@ export default function PayoutSettingsPage() {
   const [error, setError] = useState<string | null>(null)
   const [saved, setSaved] = useState(false)
   const [verifiedName, setVerifiedName] = useState<string | null>(null)
-  const [isVerified, setIsVerified] = useState(false)
-  const [loadingProfile, setLoadingProfile] = useState(true)
+  // undefined = not yet loaded, so the ?? fallback to vendorUser below can't
+  // fire prematurely with a false-negative while /api/onboarding is in flight.
+  const [progressKycCompleted, setProgressKycCompleted] = useState<boolean | undefined>(undefined)
+  const [loadingProgress, setLoadingProgress] = useState(true)
 
+  const loadingProfile = loadingVendorUser || loadingProgress
+  // Preserves the original precedence exactly: prefer onboarding progress's
+  // flag when it's defined, otherwise fall back to the user row's own flag.
+  const isVerified = progressKycCompleted ?? vendorUser?.payout_verified ?? false
+
+  // Onboarding progress isn't part of the shared vendor user — fetched once here.
   useEffect(() => {
-    async function load() {
+    async function loadProgress() {
       try {
-        const [profileRes, progressRes] = await Promise.all([
-          fetch("/api/users/me"),
-          fetch("/api/onboarding"),
-        ])
-        const profileData = profileRes.ok ? await profileRes.json() : null
+        const progressRes = await fetch("/api/onboarding")
         const progressData = progressRes.ok ? await progressRes.json() : null
-
-        const user = profileData?.data?.user ?? {}
         const progress = progressData?.progress ?? {}
-
-        const kycDone = progress.kyc_info_completed ?? user.payout_verified ?? false
-        setIsVerified(kycDone)
-        setVerifiedName(user.legal_name ?? null)
-
-        if (user.bank_name) setBankName(user.bank_name)
-        if (user.account_number) setAccountNumber(user.account_number)
-        if (user.account_name) setResolvedAccountName(user.account_name)
+        setProgressKycCompleted(progress.kyc_info_completed)
       } catch (e) {
-        console.error("[payout] load error", e)
+        console.error("[payout] progress load error", e)
       } finally {
-        setLoadingProfile(false)
+        setLoadingProgress(false)
       }
     }
-    load()
+    loadProgress()
   }, [])
+
+  // Populates from the shared vendor user (replaces this page's own fetch to
+  // /api/users/me) whenever it loads or changes.
+  useEffect(() => {
+    if (vendorUser) {
+      setVerifiedName(vendorUser.legal_name ?? null)
+      if (vendorUser.bank_name) setBankName(vendorUser.bank_name)
+      if (vendorUser.account_number) setAccountNumber(vendorUser.account_number)
+      if (vendorUser.account_name) setResolvedAccountName(vendorUser.account_name)
+    }
+  }, [vendorUser])
 
   async function resolveAccount(bank: string, account: string) {
     if (account.length !== 10 || !bank) return
@@ -124,6 +132,7 @@ export default function PayoutSettingsPage() {
         }),
       })
       if (!res.ok) throw new Error("Failed to save bank information. Please try again.")
+      await refetchVendorUser()
       setSaved(true)
       setTimeout(() => setSaved(false), 3000)
     } catch (err: any) {

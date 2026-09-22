@@ -1,7 +1,7 @@
 "use client"
 
 import type React from "react"
-import { useState, useEffect } from "react"
+import { useState } from "react"
 import Link from "next/link"
 import { usePathname, useRouter } from "next/navigation"
 import { cn } from "@/lib/utils"
@@ -36,6 +36,7 @@ import {
   CreditCard,
 } from "lucide-react"
 import { Logo } from "@/components/logo"
+import { useVendorUser } from "@/components/dashboard/vendor-user-context"
 
 const navigationGroups = [
   {
@@ -88,31 +89,7 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname()
   const router = useRouter()
 
-  const [userData, setUserData] = useState<{
-    full_name: string
-    business_name: string
-    role: string
-    email: string
-    profile_image?: string
-  } | null>(null)
-  const [loading, setLoading] = useState(true)
-
-  useEffect(() => {
-    const fetchUserData = async () => {
-      try {
-        const response = await fetch("/api/users/me")
-        const result = await response.json()
-        if (result.ok && result.data?.user) {
-          setUserData(result.data.user)
-        }
-      } catch (error) {
-        console.error("[v0] Error fetching user data:", error)
-      } finally {
-        setLoading(false)
-      }
-    }
-    fetchUserData()
-  }, [])
+  const { user: userData, loading } = useVendorUser()
 
   const getUserInitials = () => {
     if (!userData?.full_name) return "U"

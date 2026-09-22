@@ -10,6 +10,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { NigerianLocationSelect } from "@/components/checkout/nigerian-location-select"
 import { Store, Loader2, CheckCircle2, AlertCircle, Copy, Check, ExternalLink } from "lucide-react"
+import { useVendorUser } from "@/components/dashboard/vendor-user-context"
 
 const BUSINESS_CATEGORIES = [
   "Fashion & Apparel",
@@ -30,7 +31,7 @@ const BUSINESS_CATEGORIES = [
 const BIO_MAX_LENGTH = 200
 
 export default function StoreSettingsPage() {
-  const [loadingProfile, setLoadingProfile] = useState(true)
+  const { user: vendorUser, loading: loadingProfile, refetch: refetchVendorUser } = useVendorUser()
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -48,29 +49,21 @@ export default function StoreSettingsPage() {
 
   useEffect(() => {
     setOrigin(window.location.origin)
-
-    async function load() {
-      try {
-        const res = await fetch("/api/users/me")
-        const data = await res.json()
-        const user = data?.data?.user
-        if (user) {
-          setStoreName(user.business_name || user.store_name || "")
-          setStoreSlug(user.store_slug || "")
-          setStoreBio(user.store_bio || "")
-          setBusinessCategory(user.business_category || "")
-          setBusinessAddress(user.business_address || "")
-          setStoreState(user.store_state || "")
-          setStoreCity(user.store_city || "")
-        }
-      } catch (e) {
-        console.error("[store-settings] load error", e)
-      } finally {
-        setLoadingProfile(false)
-      }
-    }
-    load()
   }, [])
+
+  // Populates the form from the shared vendor user (replaces this page's own
+  // fetch to /api/users/me) whenever it loads or changes.
+  useEffect(() => {
+    if (vendorUser) {
+      setStoreName(vendorUser.business_name || vendorUser.store_name || "")
+      setStoreSlug(vendorUser.store_slug || "")
+      setStoreBio(vendorUser.store_bio || "")
+      setBusinessCategory(vendorUser.business_category || "")
+      setBusinessAddress(vendorUser.business_address || "")
+      setStoreState(vendorUser.store_state || "")
+      setStoreCity(vendorUser.store_city || "")
+    }
+  }, [vendorUser])
 
   function handleSlugChange(value: string) {
     const cleaned = value
@@ -106,6 +99,7 @@ export default function StoreSettingsPage() {
       if (data.slugWasTaken) {
         setNotice(`That store URL was already taken — we saved it as ${origin}/${data.data.user.store_slug} instead.`)
       }
+      await refetchVendorUser()
       setSaved(true)
       setTimeout(() => setSaved(false), 3000)
     } catch (err: any) {

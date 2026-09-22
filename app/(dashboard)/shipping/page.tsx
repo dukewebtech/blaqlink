@@ -22,6 +22,7 @@ import {
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Truck, Rocket, MapPinned, Plus, Pencil, Trash2, Upload, CheckCircle2, XCircle, Loader2, ShieldCheck, Info } from "lucide-react"
 import { getStatesList, getCitiesByState, type NigerianState } from "@/lib/nigerian-locations"
+import { useVendorUser } from "@/components/dashboard/vendor-user-context"
 
 type ShippingMode = "manual" | "terminal_africa" | "shipbubble"
 
@@ -164,6 +165,7 @@ function parseCSV(content: string): ParsedRow[] {
 }
 
 export default function ShippingPage() {
+  const { user: vendorUser, refetch: refetchVendorUser } = useVendorUser()
   const [areas, setAreas] = useState<DeliveryArea[]>([])
   const [loading, setLoading] = useState(true)
 
@@ -200,14 +202,17 @@ export default function ShippingPage() {
 
   useEffect(() => {
     fetchAreas()
-    fetchProfile()
   }, [])
 
-  async function fetchProfile() {
+  // Re-derives local form/profile state whenever the shared vendor user
+  // changes — on first load, and again after refetch() following a save
+  // below (replaces this page's own fetch to /api/users/me).
+  useEffect(() => {
+    applyUserToProfile(vendorUser)
+  }, [vendorUser])
+
+  function applyUserToProfile(user: any) {
     try {
-      const res = await fetch("/api/users/me")
-      const data = await res.json()
-      const user = data?.data?.user
       if (user) {
         setProfile({
           shipping_mode: user.shipping_mode ?? "manual",
@@ -327,7 +332,7 @@ export default function ShippingPage() {
       const res = await fetch("/api/shipping/validate-pickup-address", { method: "POST" })
       const data = await res.json()
       if (res.ok) {
-        await fetchProfile()
+        await refetchVendorUser()
       } else {
         alert(data.error || "Could not validate this address")
       }

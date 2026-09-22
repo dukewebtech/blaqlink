@@ -11,6 +11,7 @@ import { OraStorefront } from "@/components/store/templates/ora-storefront"
 import { createPreviewItems, createPreviewStore } from "@/components/store/templates/preview-mock-data"
 import type { DaylightItem } from "@/components/store/templates/daylight-types"
 import { STORE_FONT_PAIRINGS, STORE_FONT_PAIRING_IDS, isStoreFontPairing, type StoreFontPairing } from "@/lib/storefront/fonts"
+import { useVendorUser } from "@/components/dashboard/vendor-user-context"
 import "./store-design.css"
 
 interface StoreTemplate {
@@ -42,7 +43,7 @@ const DEFAULTS = {
 }
 
 export default function StoreDesignPage() {
-  const [loading, setLoading] = useState(true)
+  const { user: vendorUser, loading, refetch: refetchVendorUser } = useVendorUser()
   const [saving, setSaving] = useState(false)
   const [userId, setUserId] = useState<string | null>(null)
   const [storeSlug, setStoreSlug] = useState<string | null>(null)
@@ -67,39 +68,35 @@ export default function StoreDesignPage() {
   const bannerInputRef = useRef<HTMLInputElement>(null)
   const logoInputRef = useRef<HTMLInputElement>(null)
 
+  // Populates from the shared vendor user (replaces this page's own fetch to
+  // /api/users/me) whenever it loads or changes.
   useEffect(() => {
-    fetch("/api/users/me")
-      .then(async (res) => {
-        const json = await res.json()
-        const user = json.data?.user
-        if (!user) return
+    if (!vendorUser) return
+    const user = vendorUser
 
-        setUserId(user.id)
-        setStoreSlug(user.store_slug ?? null)
-        setStoreName(user.business_name || user.store_name || "SampleStore")
-        setStoreEmail(user.email || "hello@samplestore.com")
+    setUserId(user.id)
+    setStoreSlug(user.store_slug ?? null)
+    setStoreName(user.business_name || user.store_name || "SampleStore")
+    setStoreEmail(user.email || "hello@samplestore.com")
 
-        const template = TEMPLATES.some((t) => t.id === user.store_template && t.available) ? user.store_template : DEFAULTS.template
-        const color = user.store_brand_color && HEX_RE.test(user.store_brand_color) ? user.store_brand_color : DEFAULTS.color
-        const font = isStoreFontPairing(user.store_font) ? user.store_font : DEFAULTS.font
-        const banner: string | null = user.store_cover_image_url ?? null
-        const logo: string | null = user.store_logo_url ?? null
+    const template = TEMPLATES.some((t) => t.id === user.store_template && t.available) ? user.store_template : DEFAULTS.template
+    const color = user.store_brand_color && HEX_RE.test(user.store_brand_color) ? user.store_brand_color : DEFAULTS.color
+    const font = isStoreFontPairing(user.store_font) ? user.store_font : DEFAULTS.font
+    const banner: string | null = user.store_cover_image_url ?? null
+    const logo: string | null = user.store_logo_url ?? null
 
-        setSavedTemplate(template)
-        setDraftTemplate(template)
-        setSavedColor(color)
-        setDraftColor(color)
-        setColorInput(color)
-        setSavedFont(font)
-        setDraftFont(font)
-        setSavedBanner(banner)
-        setDraftBanner(banner)
-        setSavedLogo(logo)
-        setDraftLogo(logo)
-      })
-      .catch(() => toast.error("Could not load your store settings"))
-      .finally(() => setLoading(false))
-  }, [])
+    setSavedTemplate(template)
+    setDraftTemplate(template)
+    setSavedColor(color)
+    setDraftColor(color)
+    setColorInput(color)
+    setSavedFont(font)
+    setDraftFont(font)
+    setSavedBanner(banner)
+    setDraftBanner(banner)
+    setSavedLogo(logo)
+    setDraftLogo(logo)
+  }, [vendorUser])
 
   const hasChanges =
     draftTemplate !== savedTemplate ||
@@ -190,6 +187,7 @@ export default function StoreDesignPage() {
       setSavedFont(draftFont)
       setSavedBanner(draftBanner)
       setSavedLogo(draftLogo)
+      await refetchVendorUser()
       toast.success("Store design saved", { description: "Your live storefront now reflects these changes." })
     } catch {
       toast.error("Failed to save your store design")

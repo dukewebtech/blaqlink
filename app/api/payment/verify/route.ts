@@ -147,8 +147,12 @@ export async function GET(request: NextRequest) {
       console.log("[v0] Order items created successfully:", orderItems.length, "items")
     }
 
+    // Both awaited deliberately — on a serverless host the function can be
+    // torn down the instant this handler returns, and these were getting
+    // killed mid-request (silently dropping download/ticket emails and
+    // shipment bookings) before finishing.
     if (insertedItems && insertedItems.length > 0) {
-      runOrderFulfilment(
+      await runOrderFulfilment(
         {
           orderId: order.id,
           customerName: order.customer_name,
@@ -160,7 +164,7 @@ export async function GET(request: NextRequest) {
     }
 
     if (order.shipping_provider) {
-      runShipmentBooking(order).catch((err) => console.error("[v0] Shipment booking error:", err))
+      await runShipmentBooking(order).catch((err) => console.error("[v0] Shipment booking error:", err))
     }
 
     const productIds = orderData.items.map((item: any) => item.product_id)
@@ -204,7 +208,10 @@ export async function GET(request: NextRequest) {
         vendor: branding,
       })
 
-      sendEmail({
+      // Awaited deliberately — on a serverless host the function can be torn
+      // down the instant this handler returns, and an un-awaited send here
+      // was getting killed mid-request before it ever reached Resend.
+      await sendEmail({
         to: vendorInfo.email,
         subject: vendorEmail.subject,
         html: vendorEmail.html,
@@ -227,7 +234,7 @@ export async function GET(request: NextRequest) {
         vendor: branding,
       })
 
-      sendEmail({
+      await sendEmail({
         to: order.customer_email,
         subject: customerEmail.subject,
         html: customerEmail.html,

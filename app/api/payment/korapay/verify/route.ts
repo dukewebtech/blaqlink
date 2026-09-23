@@ -139,8 +139,12 @@ export async function GET(request: NextRequest) {
     const { data: insertedItems, error: itemsError } = await supabase.from("order_items").insert(orderItems).select()
     if (itemsError) console.error("[korapay] Order items error:", itemsError.message)
 
+    // Both awaited deliberately — on a serverless host the function can be
+    // torn down the instant this handler returns, and these were getting
+    // killed mid-request (silently dropping download/ticket emails and
+    // shipment bookings) before finishing.
     if (insertedItems && insertedItems.length > 0) {
-      runOrderFulfilment(
+      await runOrderFulfilment(
         {
           orderId: order.id,
           customerName: order.customer_name,
@@ -152,7 +156,7 @@ export async function GET(request: NextRequest) {
     }
 
     if (order.shipping_provider) {
-      runShipmentBooking(order).catch((err) => console.error("[korapay] Shipment booking error:", err))
+      await runShipmentBooking(order).catch((err) => console.error("[korapay] Shipment booking error:", err))
     }
 
     const emailItems = await attachItemImages(supabase, orderItems)
@@ -175,7 +179,10 @@ export async function GET(request: NextRequest) {
         deliveryAddress,
         vendor: branding,
       })
-      sendEmail({ to: vendorInfo.email, subject: vendorEmail.subject, html: vendorEmail.html }).catch(console.error)
+      // Awaited deliberately — on a serverless host the function can be torn
+      // down the instant this handler returns, and an un-awaited send here
+      // was getting killed mid-request before it ever reached Resend.
+      await sendEmail({ to: vendorInfo.email, subject: vendorEmail.subject, html: vendorEmail.html }).catch(console.error)
     }
 
     if (order.customer_email) {
@@ -192,7 +199,7 @@ export async function GET(request: NextRequest) {
         paymentReference: reference,
         vendor: branding,
       })
-      sendEmail({ to: order.customer_email, subject: custEmail.subject, html: custEmail.html }).catch(console.error)
+      await sendEmail({ to: order.customer_email, subject: custEmail.subject, html: custEmail.html }).catch(console.error)
     }
 
     return NextResponse.json({

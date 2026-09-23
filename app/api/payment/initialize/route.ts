@@ -1,5 +1,6 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { initializeTransaction } from "@/lib/paystack"
+import { getAppUrl } from "@/lib/utils/app-url"
 
 export async function POST(request: NextRequest) {
   try {
@@ -13,8 +14,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Payment gateway not configured. Please contact support." }, { status: 500 })
     }
 
-    const appUrl = process.env.NEXT_PUBLIC_APP_URL
-    const callbackUrl = clientCallbackUrl || `${appUrl}/store/payment/verify`
+    const callbackUrl = clientCallbackUrl || `${getAppUrl()}/store/payment/verify`
     console.log("[v0] Callback URL:", callbackUrl)
 
     const data = await initializeTransaction({ email, amount, metadata, callbackUrl })

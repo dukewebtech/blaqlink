@@ -3,6 +3,7 @@ import { createAdminClient } from "@/lib/supabase/server"
 import { sendEmail, getDigitalDownloadEmailForCustomer, getTicketEmailForCustomer } from "@/lib/email"
 import { bookShipment as bookTerminalShipment } from "@/lib/shipping/terminal-africa"
 import { createLabel as createShipbubbleLabel } from "@/lib/shipping/shipbubble"
+import { getAppUrl } from "@/lib/utils/app-url"
 
 export interface FulfilmentOrderItem {
   id: string
@@ -62,7 +63,7 @@ async function fulfilDigital(supabase: ReturnType<typeof createAdminClient>, ctx
   const fileUrls: string[] = product?.file_urls ?? []
   if (fileUrls.length === 0) return
 
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL || "https://blaqora.store"
+  const appUrl = getAppUrl()
   const files = fileUrls.map((url) => ({
     title: product?.title || item.product_title,
     url: `${appUrl}/api/download-digital?path=${encodeURIComponent(url)}&orderId=${ctx.orderId}`,
@@ -96,7 +97,7 @@ async function fulfilTicket(supabase: ReturnType<typeof createAdminClient>, ctx:
   }
 
   const ticketReference = item.id
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL || "https://blaqora.store"
+  const appUrl = getAppUrl()
   const qrDataUrl = await QRCode.toDataURL(`${appUrl}/tickets/${ticketReference}`, { margin: 1, width: 440 })
 
   const email = getTicketEmailForCustomer({

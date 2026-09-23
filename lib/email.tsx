@@ -1,6 +1,8 @@
 // Email notification system using Resend
 // Environment variables required: RESEND_API_KEY, EMAIL_FROM
 
+import { getAppUrl } from "@/lib/utils/app-url"
+
 const RESEND_API_KEY = process.env.RESEND_API_KEY
 const EMAIL_FROM = process.env.EMAIL_FROM || "onboarding@resend.dev"
 
@@ -95,7 +97,7 @@ function formatCurrency(amount: number): string {
   return `₦${amount.toLocaleString("en-NG", { maximumFractionDigits: 0 })}`
 }
 
-const APP_URL = process.env.NEXT_PUBLIC_APP_URL || "https://blaqora.store"
+const APP_URL = getAppUrl()
 const DEFAULT_BRAND_COLOR = "#155DFD"
 const HEX_COLOR_RE = /^#[0-9a-fA-F]{6}$/
 
@@ -384,7 +386,7 @@ export function getWithdrawalUpdateEmailForVendor(params: WithdrawalEmailParams)
       
       ${adminNote ? `<p><strong>Note from Admin:</strong> ${adminNote}</p>` : ""}
       
-      <a href="${process.env.NEXT_PUBLIC_APP_URL || "https://blaqora.store"}/payouts" class="btn">View Payouts</a>
+      <a href="${APP_URL}/payouts" class="btn">View Payouts</a>
     </div>
   `
 

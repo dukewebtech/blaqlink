@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server"
 import { createClient, createAdminClient } from "@/lib/supabase/server"
 import { sendEmail, getSystemUpdateEmail } from "@/lib/email"
+import { getAppUrl } from "@/lib/utils/app-url"
 
 // Vendors can't self-assign a paid plan (no billing collection yet) — this
 // notifies admins, who assign the plan from /admin/vendors once payment is confirmed.
@@ -44,7 +45,7 @@ export async function POST(request: Request) {
       title: "Plan Upgrade Request",
       message: `${vendor.business_name || vendor.full_name} (${vendor.email}) has requested to move to the ${requestedPlan.name} plan.\n\nAssign it from the Vendors page once payment is confirmed.`,
       ctaText: "Open Vendors",
-      ctaUrl: `${process.env.NEXT_PUBLIC_APP_URL || "https://blaqora.store"}/admin/vendors`,
+      ctaUrl: `${getAppUrl()}/admin/vendors`,
     })
 
     await Promise.all(

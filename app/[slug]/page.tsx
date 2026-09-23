@@ -9,10 +9,11 @@ import { BoutiqueStorefront } from "@/components/store/templates/boutique-storef
 import { OraStorefront } from "@/components/store/templates/ora-storefront"
 import type { DaylightBookingDay, DaylightItem, DaylightStore } from "@/components/store/templates/daylight-types"
 import { isStoreFontPairing } from "@/lib/storefront/fonts"
+import { getAppUrl } from "@/lib/utils/app-url"
 
 const VALID_TEMPLATES = ["daylight", "editorial", "studio", "boutique", "ora"] as const
 
-const APP_URL = process.env.NEXT_PUBLIC_APP_URL || "https://blaqora.store"
+const APP_URL = getAppUrl()
 const DOW_NAMES = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"]
 
 // Vendor edits (template, brand colour, items...) must show up on the next

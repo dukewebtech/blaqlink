@@ -4,6 +4,7 @@ import { validateDetailsStep, validateDeliveryStep } from "@/lib/storefront/vali
 import { needsDelivery as computeNeedsDelivery } from "@/lib/storefront/delivery"
 import { getDeliveryAreas } from "@/lib/storefront/delivery-server"
 import { createCheckoutSession, type PendingOrderItem, type PendingOrderMetadata } from "@/lib/storefront/order-service"
+import { getAppUrl } from "@/lib/utils/app-url"
 
 interface CheckoutLineInput {
   product_id: string
@@ -200,8 +201,7 @@ export async function POST(request: NextRequest) {
     const subtotal = resolvedItems.reduce((sum, i) => sum + i.subtotal, 0)
     const total = subtotal + deliveryFee
 
-    const appUrl = process.env.NEXT_PUBLIC_APP_URL || "https://blaqora.store"
-    const callbackUrl = body.callbackUrl || `${appUrl}/store/${storeId}/payment`
+    const callbackUrl = body.callbackUrl || `${getAppUrl()}/store/${storeId}/payment`
 
     const metadata: PendingOrderMetadata = {
       customer_name: details.name.trim(),

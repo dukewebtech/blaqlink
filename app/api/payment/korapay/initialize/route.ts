@@ -1,6 +1,7 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { initializeCharge } from "@/lib/korapay"
 import { createAdminClient } from "@/lib/supabase/server"
+import { getAppUrl } from "@/lib/utils/app-url"
 
 export async function POST(request: NextRequest) {
   try {
@@ -14,10 +15,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "KoraPay gateway not configured. Please contact support." }, { status: 500 })
     }
 
-    const appUrl = process.env.NEXT_PUBLIC_APP_URL
-    if (!appUrl) {
-      return NextResponse.json({ error: "Application URL not configured." }, { status: 500 })
-    }
+    const appUrl = getAppUrl()
 
     const reference = `KPY-${Date.now()}-${Math.random().toString(36).slice(2, 8).toUpperCase()}`
 

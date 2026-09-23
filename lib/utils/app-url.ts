@@ -1,19 +1,19 @@
 /**
  * The canonical public URL for the app — safe to use anywhere the link ends
  * up somewhere other than the developer's own browser: email bodies, digital
- * download links, ticket QR codes, payment-provider callback/redirect URLs.
+ * download links, ticket QR codes, payment-provider callback/redirect URLs,
+ * the storefront's og:url for WhatsApp/Instagram link previews.
  *
- * NEXT_PUBLIC_APP_URL is meant to be overridable per-environment, but a local
- * dev value (http://localhost:3000, left in .env.local) must never leak into
- * something a real customer's mail client or browser is asked to open — that
- * produced broken "shop again" links, dead digital-download links, and
- * tickets whose QR code pointed at a machine only the developer can reach.
- * Falls back to the known-good production domain instead.
+ * Deliberately hardcoded rather than read from NEXT_PUBLIC_APP_URL. That env
+ * var has been found pointing at a local dev address (http://localhost:3000)
+ * and, separately, at a v0.app preview deployment (*.vusercontent.net) — two
+ * different wrong values in production, both silently breaking every link
+ * built from it (dead "shop again" links, a Blaqora logo that fails to load,
+ * digital-download links customers can't reach, a Korapay webhook URL that
+ * would mean payments never confirm). Rather than trying to pattern-match
+ * every way that variable can be wrong, every consumer of "the site's real
+ * URL" goes through here, and here always resolves to the one true domain.
  */
 export function getAppUrl(): string {
-  const configured = process.env.NEXT_PUBLIC_APP_URL
-  if (configured && !/localhost|127\.0\.0\.1|0\.0\.0\.0/i.test(configured)) {
-    return configured.replace(/\/+$/, "")
-  }
   return "https://blaqora.store"
 }

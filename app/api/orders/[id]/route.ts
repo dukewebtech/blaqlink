@@ -36,7 +36,13 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
           product_type,
           quantity,
           price,
-          subtotal
+          subtotal,
+          product_variant_id,
+          variant_label,
+          ticket_tier_id,
+          ticket_tier_name,
+          appointment_date,
+          appointment_time
         )
       `,
       )
@@ -51,6 +57,18 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
 
     if (!order) {
       return NextResponse.json({ error: "Order not found" }, { status: 404 })
+    }
+
+    // Order items don't store a product image directly — look each one up so
+    // the order detail page can show a thumbnail per line item.
+    const productIds = [...new Set((order.order_items ?? []).map((item: any) => item.product_id).filter(Boolean))]
+    if (productIds.length > 0) {
+      const { data: products } = await supabase.from("products").select("id, images").in("id", productIds)
+      const imageById = new Map((products ?? []).map((p: any) => [p.id, (p.images && p.images[0]) || null]))
+      order.order_items = (order.order_items ?? []).map((item: any) => ({
+        ...item,
+        product_image: imageById.get(item.product_id) ?? null,
+      }))
     }
 
     return NextResponse.json({ order })

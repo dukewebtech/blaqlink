@@ -348,6 +348,118 @@ export function getOrderConfirmationEmailForCustomer(params: CustomerOrderEmailP
   }
 }
 
+const ORDER_STATUS_COPY: Record<string, { label: string; headline: string; message: string }> = {
+  pending: {
+    label: "Pending",
+    headline: "Order pending",
+    message: "Your order is on hold and will be processed shortly.",
+  },
+  confirmed: {
+    label: "Confirmed",
+    headline: "Order confirmed",
+    message: "Your order is confirmed and being prepared.",
+  },
+  processing: {
+    label: "Processing",
+    headline: "Order processing",
+    message: "Your order is being prepared for delivery.",
+  },
+  shipped: {
+    label: "Shipped",
+    headline: "Your order has shipped",
+    message: "Your order is on its way to you.",
+  },
+  delivered: {
+    label: "Delivered",
+    headline: "Order delivered",
+    message: "Your order has been delivered. We hope you love it!",
+  },
+  cancelled: {
+    label: "Cancelled",
+    headline: "Order cancelled",
+    message: "Your order has been cancelled. If this wasn't expected, contact the seller below.",
+  },
+}
+
+interface OrderStatusUpdateEmailParams {
+  customerName: string
+  orderId: string
+  status: string
+  trackingNumber?: string | null
+  trackingUrl?: string | null
+  vendor: VendorBranding
+}
+
+// Email for customers when a vendor manually changes an order's status from
+// the order detail page — vendor opts in per change, not sent automatically
+// for every status (that would be spammy for internal-only transitions).
+export function getOrderStatusUpdateEmailForCustomer(params: OrderStatusUpdateEmailParams): {
+  subject: string
+  html: string
+} {
+  const { customerName, orderId, status, trackingNumber, trackingUrl, vendor } = params
+  const accent = resolveBrandColor(vendor.brandColor)
+  const logo = vendor.logoUrl || `${APP_URL}/blaqora-icon.png`
+  const ref = orderRef(orderId)
+  const copy = ORDER_STATUS_COPY[status] ?? {
+    label: status.charAt(0).toUpperCase() + status.slice(1),
+    headline: "Order update",
+    message: `Your order status changed to "${status}".`,
+  }
+  const contactLines = [
+    vendor.email ? `Email &nbsp;<a href="mailto:${vendor.email}" style="color:${accent};">${vendor.email}</a>` : null,
+    vendor.phone ? `Call &nbsp;${vendor.phone}` : null,
+  ].filter(Boolean)
+
+  const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><style>
+    body{margin:0;padding:0;background:#F1EEE9;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;}
+    table{border-collapse:collapse;} img{border:0;display:block;} a{text-decoration:none;}
+  </style></head><body>
+    <table role="presentation" width="100%" style="background:#F1EEE9;padding:32px 0;"><tr><td align="center">
+    <table role="presentation" width="600" style="max-width:600px;width:100%;background:#ffffff;border-radius:14px;overflow:hidden;">
+
+      <tr><td style="background:${accent};padding:36px 32px 28px;" align="center">
+        <img src="${logo}" width="56" height="56" style="width:56px;height:56px;border-radius:50%;border:3px solid rgba(255,255,255,0.6);object-fit:cover;" alt="">
+        <p style="margin:14px 0 4px;font-size:20px;color:#ffffff;font-weight:700;">${vendor.name}</p>
+        <p style="margin:0;font-size:13px;color:rgba(255,255,255,0.85);letter-spacing:0.04em;text-transform:uppercase;">${copy.label}</p>
+      </td></tr>
+
+      <tr><td style="padding:32px;">
+        <p style="margin:0 0 4px;font-size:15px;color:#1C1A17;">Hi ${customerName},</p>
+        <p style="margin:0 0 24px;font-size:15px;color:#1C1A17;font-weight:600;">${copy.headline}</p>
+        <p style="margin:-16px 0 24px;font-size:14px;color:#5C574F;line-height:1.6;">${copy.message}</p>
+
+        <table role="presentation" width="100%" style="background:#FAF9F6;border-radius:10px;margin-bottom:24px;"><tr><td style="padding:16px 18px;font-size:13px;color:#5C574F;">
+          <strong style="color:#1C1A17;">Order</strong> &nbsp;#${ref}<br>
+          <strong style="color:#1C1A17;">Status</strong> &nbsp;${copy.label}
+          ${trackingNumber ? `<br><strong style="color:#1C1A17;">Tracking number</strong> &nbsp;${trackingNumber}` : ""}
+        </td></tr></table>
+
+        <table role="presentation" width="100%"><tr><td align="center" style="padding:8px 0 28px;">
+          <a href="${trackingUrl || storeUrl(vendor)}" style="display:inline-block;background:${accent};color:#ffffff;font-size:14px;font-weight:600;padding:14px 32px;border-radius:8px;">${trackingUrl ? "Track your order" : `Visit ${vendor.name}`}</a>
+        </td></tr></table>
+
+        ${
+          contactLines.length > 0
+            ? `<table role="presentation" width="100%" style="border-top:1px solid #EEE9E2;"><tr><td style="padding-top:20px;">
+                <p style="margin:0 0 8px;font-size:13px;font-weight:600;color:#1C1A17;">Questions about this order?</p>
+                <p style="margin:0;font-size:13px;color:#5C574F;line-height:1.7;">${contactLines.join("<br>")}</p>
+              </td></tr></table>`
+            : ""
+        }
+      </td></tr>
+
+      ${brandedFooter(`This update was sent by ${vendor.name} via Blaqora.`)}
+
+    </table></td></tr></table>
+  </body></html>`
+
+  return {
+    subject: `${copy.headline} — #${ref}`,
+    html,
+  }
+}
+
 interface WithdrawalEmailParams {
   vendorName: string
   amount: number

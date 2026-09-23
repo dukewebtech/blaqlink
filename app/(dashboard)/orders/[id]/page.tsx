@@ -4,8 +4,9 @@ import { useEffect, useState } from "react"
 import { useParams, useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
+import { Checkbox } from "@/components/ui/checkbox"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { ArrowLeft, Package, User, MapPin, CreditCard, Calendar, Truck, RotateCw } from "lucide-react"
+import { ArrowLeft, Package, User, MapPin, CreditCard, Calendar, Truck, RotateCw, Store } from "lucide-react"
 
 interface OrderItem {
   id: string
@@ -14,6 +15,11 @@ interface OrderItem {
   quantity: number
   price: number
   subtotal: number
+  product_image: string | null
+  variant_label: string | null
+  ticket_tier_name: string | null
+  appointment_date: string | null
+  appointment_time: string | null
 }
 
 interface Order {
@@ -22,6 +28,13 @@ interface Order {
   customer_email: string
   customer_phone: string
   shipping_address: any
+  delivery_method: "delivery" | "pickup" | null
+  delivery_area: string | null
+  delivery_address: string | null
+  delivery_city: string | null
+  delivery_state: string | null
+  delivery_postal_code: string | null
+  customer_note: string | null
   total_amount: number
   status: string
   payment_status: string
@@ -42,6 +55,8 @@ export default function OrderDetailPage() {
   const [loading, setLoading] = useState(true)
   const [updating, setUpdating] = useState(false)
   const [retrying, setRetrying] = useState(false)
+  const [notifyCustomer, setNotifyCustomer] = useState(true)
+  const [notified, setNotified] = useState(false)
 
   useEffect(() => {
     fetchOrder()
@@ -69,6 +84,7 @@ export default function OrderDetailPage() {
     if (!order) return
 
     setUpdating(true)
+    setNotified(false)
     try {
       const response = await fetch("/api/orders", {
         method: "PATCH",
@@ -78,11 +94,16 @@ export default function OrderDetailPage() {
         body: JSON.stringify({
           order_id: order.id,
           status: newStatus,
+          notifyCustomer,
         }),
       })
 
       if (response.ok) {
         setOrder({ ...order, status: newStatus })
+        if (notifyCustomer) {
+          setNotified(true)
+          setTimeout(() => setNotified(false), 4000)
+        }
       }
     } catch (error) {
       console.error("[v0] Failed to update order:", error)
@@ -147,20 +168,27 @@ export default function OrderDetailPage() {
               <p className="text-muted-foreground font-mono text-sm">#{order.id.slice(0, 8)}</p>
             </div>
           </div>
-          <div className="flex items-center gap-3">
-            <Select value={order.status} onValueChange={updateOrderStatus} disabled={updating}>
-              <SelectTrigger className="w-48">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="pending">Pending</SelectItem>
-                <SelectItem value="confirmed">Confirmed</SelectItem>
-                <SelectItem value="processing">Processing</SelectItem>
-                <SelectItem value="shipped">Shipped</SelectItem>
-                <SelectItem value="delivered">Delivered</SelectItem>
-                <SelectItem value="cancelled">Cancelled</SelectItem>
-              </SelectContent>
-            </Select>
+          <div className="flex flex-col items-end gap-2">
+            <div className="flex items-center gap-3">
+              <Select value={order.status} onValueChange={updateOrderStatus} disabled={updating}>
+                <SelectTrigger className="w-48">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="pending">Pending</SelectItem>
+                  <SelectItem value="confirmed">Confirmed</SelectItem>
+                  <SelectItem value="processing">Processing</SelectItem>
+                  <SelectItem value="shipped">Shipped</SelectItem>
+                  <SelectItem value="delivered">Delivered</SelectItem>
+                  <SelectItem value="cancelled">Cancelled</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <label className="flex items-center gap-2 text-sm text-muted-foreground cursor-pointer">
+              <Checkbox checked={notifyCustomer} onCheckedChange={(v) => setNotifyCustomer(v === true)} />
+              Notify customer by email
+            </label>
+            {notified && <p className="text-xs text-green-600">Customer notified ✓</p>}
           </div>
         </div>
 
@@ -175,14 +203,33 @@ export default function OrderDetailPage() {
               </h2>
               <div className="space-y-4">
                 {order.order_items.map((item) => (
-                  <div key={item.id} className="flex justify-between items-start pb-4 border-b last:border-0">
-                    <div>
-                      <h3 className="font-semibold">{item.product_title}</h3>
-                      <p className="text-sm text-muted-foreground capitalize">Type: {item.product_type}</p>
-                      <p className="text-sm text-muted-foreground">Quantity: {item.quantity}</p>
-                      <p className="text-sm font-medium mt-1">NGN {item.price.toLocaleString()} each</p>
+                  <div key={item.id} className="flex justify-between items-start gap-4 pb-4 border-b last:border-0">
+                    <div className="flex gap-3 min-w-0">
+                      <img
+                        src={item.product_image || "/placeholder.svg"}
+                        alt=""
+                        className="h-14 w-14 rounded-md border object-cover shrink-0 bg-muted"
+                      />
+                      <div className="min-w-0">
+                        <h3 className="font-semibold truncate">{item.product_title}</h3>
+                        <p className="text-sm text-muted-foreground capitalize">Type: {item.product_type}</p>
+                        {item.variant_label && (
+                          <p className="text-sm text-muted-foreground">Option: {item.variant_label}</p>
+                        )}
+                        {item.ticket_tier_name && (
+                          <p className="text-sm text-muted-foreground">Tier: {item.ticket_tier_name}</p>
+                        )}
+                        {item.appointment_date && (
+                          <p className="text-sm text-muted-foreground">
+                            Appointment: {item.appointment_date}
+                            {item.appointment_time ? ` at ${item.appointment_time}` : ""}
+                          </p>
+                        )}
+                        <p className="text-sm text-muted-foreground">Quantity: {item.quantity}</p>
+                        <p className="text-sm font-medium mt-1">NGN {item.price.toLocaleString()} each</p>
+                      </div>
                     </div>
-                    <p className="text-lg font-bold">NGN {item.subtotal.toLocaleString()}</p>
+                    <p className="text-lg font-bold shrink-0">NGN {item.subtotal.toLocaleString()}</p>
                   </div>
                 ))}
                 <div className="flex justify-between items-center pt-4 border-t">
@@ -192,20 +239,38 @@ export default function OrderDetailPage() {
               </div>
             </div>
 
-            {/* Shipping Address */}
-            {order.shipping_address && (
+            {/* Delivery / Pickup */}
+            {order.delivery_method && (
               <div className="bg-card rounded-lg border p-6">
                 <h2 className="text-xl font-bold mb-4 flex items-center gap-2">
-                  <MapPin className="h-5 w-5" />
-                  Shipping Address
+                  {order.delivery_method === "pickup" ? (
+                    <Store className="h-5 w-5" />
+                  ) : (
+                    <MapPin className="h-5 w-5" />
+                  )}
+                  {order.delivery_method === "pickup" ? "Pickup" : "Delivery Address"}
                 </h2>
-                <div className="space-y-2 text-sm">
-                  <p>{order.shipping_address.address}</p>
-                  <p>
-                    {order.shipping_address.city}, {order.shipping_address.state}
-                  </p>
-                  {order.shipping_address.zip_code && <p>{order.shipping_address.zip_code}</p>}
-                </div>
+                {order.delivery_method === "pickup" ? (
+                  <p className="text-sm text-muted-foreground">Customer will pick this order up in person.</p>
+                ) : (
+                  <div className="space-y-2 text-sm">
+                    {order.delivery_area && <p className="font-medium">{order.delivery_area}</p>}
+                    {order.delivery_address && <p>{order.delivery_address}</p>}
+                    {(order.delivery_city || order.delivery_state) && (
+                      <p>{[order.delivery_city, order.delivery_state].filter(Boolean).join(", ")}</p>
+                    )}
+                    {order.delivery_postal_code && <p>{order.delivery_postal_code}</p>}
+                    {!order.delivery_address && !order.delivery_area && (
+                      <p className="text-muted-foreground">No address on file for this order.</p>
+                    )}
+                  </div>
+                )}
+                {order.customer_note && (
+                  <div className="mt-4 pt-4 border-t">
+                    <p className="text-xs text-muted-foreground mb-1">Customer note</p>
+                    <p className="text-sm">{order.customer_note}</p>
+                  </div>
+                )}
               </div>
             )}
           </div>

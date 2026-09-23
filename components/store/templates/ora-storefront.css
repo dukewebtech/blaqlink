@@ -97,7 +97,10 @@ html { -webkit-text-size-adjust: 100%; }
   justify-content: space-between;
 }
 
-.ora-store .top__brand { display: flex; flex-direction: column; min-width: 0; }
+.ora-store .top__brand { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.ora-store .top__logo { width: 32px; height: 32px; border-radius: 9px; object-fit: cover; flex: none; background: var(--bg-soft); }
+.ora-store .top__logo--fallback { display: grid; place-items: center; color: #fff; font-weight: 800; font-size: 12px; }
+.ora-store .top__brand-text { display: flex; flex-direction: column; min-width: 0; }
 .ora-store .top__name { font-size: 15px; font-weight: 750; letter-spacing: -.02em; font-family: var(--font-display); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .ora-store .top__meta { font-size: 11px; color: var(--muted); margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 

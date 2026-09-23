@@ -527,8 +527,17 @@ export function OraStorefront({ store, items }: { store: DaylightStore; items: D
       <header className={`top${isTopOn ? " is-on" : ""}`}>
         <div className="top__inner">
           <div className="top__brand">
-            <span className="top__name">{store.name}</span>
-            {store.location && <span className="top__meta">{store.location}</span>}
+            {store.avatarUrl ? (
+              <img className="top__logo" src={store.avatarUrl} alt="" />
+            ) : (
+              <div className="top__logo top__logo--fallback" style={{ background: store.accent }}>
+                {store.name.slice(0, 2).toUpperCase()}
+              </div>
+            )}
+            <div className="top__brand-text">
+              <span className="top__name">{store.name}</span>
+              {store.location && <span className="top__meta">{store.location}</span>}
+            </div>
           </div>
           <div className="top__actions">
             <button className={`icon-btn${savedCount > 0 ? " is-saved" : ""}`} type="button" aria-label="Saved items" onClick={goSaved}>

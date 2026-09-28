@@ -22,5 +22,6 @@ export async function GET() {
     KORA_SECRET_KEY: inspect("KORA_SECRET_KEY"),
     KORAPAY_SECRET_KEY: inspect("KORAPAY_SECRET_KEY"),
     VERCEL_ENV: process.env.VERCEL_ENV ?? null,
+    COMMIT: process.env.VERCEL_GIT_COMMIT_SHA?.slice(0, 7) ?? null,
   })
 }

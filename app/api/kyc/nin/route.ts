@@ -30,6 +30,17 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "NIN, full name, and date of birth are required." }, { status: 400 })
     }
 
+    // Same check app/api/payment/korapay/initialize/route.ts already does —
+    // without it, a missing key made koraFetch() throw and this whole route
+    // fall into the generic catch-all below with no indication of why.
+    if (!process.env.KORA_SECRET_KEY) {
+      console.error("[kyc/nin] KORA_SECRET_KEY is not set")
+      return NextResponse.json(
+        { error: "Identity verification is not configured yet. Please contact support." },
+        { status: 500 },
+      )
+    }
+
     let ninName: string
     let ninDob: string
 
@@ -38,7 +49,18 @@ export async function POST(req: Request) {
       ninName = fullName.trim()
       ninDob = dateOfBirth.trim()
     } else {
-      const result = await lookupNIN(nin)
+      let result: any
+      try {
+        result = await lookupNIN(nin)
+      } catch (lookupErr: any) {
+        // Surfaces the real reason (network failure, malformed response,
+        // etc.) instead of letting it fall through to the generic message.
+        console.error("[kyc/nin] lookupNIN threw:", lookupErr)
+        return NextResponse.json(
+          { error: `Could not reach the identity verification service: ${lookupErr?.message || "unknown error"}.` },
+          { status: 502 },
+        )
+      }
       console.log("[kyc/nin] KoraPay response:", JSON.stringify(result))
 
       if (!result?.data) {

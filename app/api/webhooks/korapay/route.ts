@@ -11,6 +11,8 @@ function verifySignature(rawBody: string, signature: string): boolean {
   const secret = process.env.KORA_SECRET_KEY
   if (!secret) return false
   const expected = crypto.createHmac("sha256", secret).update(rawBody).digest("hex")
+  // timingSafeEqual throws on length mismatch — treat that as a bad signature
+  if (signature.length !== expected.length) return false
   return crypto.timingSafeEqual(Buffer.from(expected), Buffer.from(signature))
 }
 

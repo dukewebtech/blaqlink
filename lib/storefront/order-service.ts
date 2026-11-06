@@ -1,5 +1,6 @@
 import type { CartItem } from "@/lib/cart-store"
 import { initializeTransaction } from "@/lib/paystack"
+import { createAdminClient } from "@/lib/supabase/server"
 import type { CheckoutState, CheckoutTotals } from "@/lib/storefront/checkout"
 
 /**
@@ -99,6 +100,19 @@ export async function createCheckoutSession(params: {
 
   if (!data.status) {
     throw new Error(data.message || "Payment initialization failed")
+  }
+
+  // Paystack metadata can be forged (any transaction can carry any metadata),
+  // so verify reads the server-priced order and expected amount from here.
+  const { error: sessionError } = await createAdminClient()
+    .from("payment_sessions")
+    .insert({
+      reference: data.data.reference,
+      gateway: "paystack",
+      order_data: { ...params.metadata, expected_amount: params.amount },
+    })
+  if (sessionError) {
+    throw new Error(`Failed to save checkout session: ${sessionError.message}`)
   }
 
   return {

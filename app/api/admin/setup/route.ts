@@ -5,8 +5,10 @@ export async function POST(request: Request) {
   try {
     const { email, password, fullName, setupKey } = await request.json()
 
-    // Validate setup key
-    if (setupKey !== process.env.ADMIN_SETUP_KEY) {
+    // Validate setup key — fail closed when the env var is missing, otherwise
+    // an omitted setupKey (undefined) would match an unset key (undefined).
+    const expectedKey = process.env.ADMIN_SETUP_KEY
+    if (!expectedKey || typeof setupKey !== "string" || setupKey !== expectedKey) {
       return NextResponse.json({ error: "Invalid setup key" }, { status: 403 })
     }
 

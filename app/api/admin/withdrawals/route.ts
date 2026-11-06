@@ -1,8 +1,12 @@
 import { createAdminClient } from "@/lib/supabase/server"
 import { NextResponse } from "next/server"
+import { requireAdmin } from "@/lib/utils/api-helpers"
 
 export async function GET() {
   try {
+    const auth = await requireAdmin()
+    if (!auth.success) return auth.error
+
     const adminClient = createAdminClient()
 
     const { data: withdrawals, error: withdrawalsError } = await adminClient

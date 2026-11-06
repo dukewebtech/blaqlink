@@ -1,5 +1,7 @@
 "use client"
 
+import { use } from "react"
+
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -53,8 +55,8 @@ const orderData = {
   total: 69.35,
 }
 
-export default function OrderDetailsPage({ params }: { params: { id: string } }) {
-  const { id } = params
+export default function OrderDetailsPage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = use(params)
 
   return (
     <>

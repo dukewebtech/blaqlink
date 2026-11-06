@@ -11,6 +11,15 @@ export function slugify(value: string): string {
     .replace(/^-+|-+$/g, "")
 }
 
+// Top-level app routes always win over app/[slug], so a store with one of
+// these slugs would be unreachable at blaqora.store/{slug}.
+const RESERVED_SLUGS = new Set([
+  "admin", "api", "auth", "login", "logout", "signup", "onboarding", "onboarding2",
+  "order", "orders", "products", "products-list", "store", "templates", "dashboard",
+  "categories", "customers", "help", "payouts", "plan", "sales", "settings", "shipping",
+  "store-design", "transactions", "terms", "privacy", "refunds", "about", "pricing",
+])
+
 /**
  * Resolves `desiredSlug` (or a fallback if it slugifies to empty) to one that's
  * free in `users.store_slug`, appending -2, -3, ... on collision. Used both by
@@ -34,7 +43,7 @@ export async function generateUniqueSlug(desiredName: string, excludeUserId?: st
     if (excludeUserId) query = query.neq("id", excludeUserId)
     const { data } = await query.maybeSingle()
 
-    if (!data) return candidate
+    if (!data && !RESERVED_SLUGS.has(candidate)) return candidate
     candidate = `${base}-${suffix}`
     suffix++
   }

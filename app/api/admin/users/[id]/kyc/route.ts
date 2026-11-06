@@ -1,7 +1,8 @@
 import { createServerClient, createAdminClient } from "@/lib/supabase/server"
 import { NextResponse } from "next/server"
 
-export async function GET(request: Request, { params }: { params: { id: string } }) {
+export async function GET(request: Request, { params: paramsPromise }: { params: Promise<{ id: string }> }) {
+  const params = await paramsPromise
   try {
     const supabase = await createServerClient()
 
@@ -17,7 +18,7 @@ export async function GET(request: Request, { params }: { params: { id: string }
     const adminClient = createAdminClient()
 
     // Check if user is admin
-    const { data: adminData } = await adminClient.from("users").select("is_admin, role").eq("id", user.id).single()
+    const { data: adminData } = await adminClient.from("users").select("is_admin, role").eq("auth_id", user.id).single()
 
     if (!adminData?.is_admin && adminData?.role !== "admin") {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 })
@@ -63,7 +64,8 @@ export async function GET(request: Request, { params }: { params: { id: string }
   }
 }
 
-export async function POST(request: Request, { params }: { params: { id: string } }) {
+export async function POST(request: Request, { params: paramsPromise }: { params: Promise<{ id: string }> }) {
+  const params = await paramsPromise
   try {
     const supabase = await createServerClient()
 
@@ -79,7 +81,7 @@ export async function POST(request: Request, { params }: { params: { id: string 
     const adminClient = createAdminClient()
 
     // Check if user is admin
-    const { data: adminData } = await adminClient.from("users").select("is_admin, role").eq("id", user.id).single()
+    const { data: adminData } = await adminClient.from("users").select("is_admin, role").eq("auth_id", user.id).single()
 
     if (!adminData?.is_admin && adminData?.role !== "admin") {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 })

@@ -108,10 +108,14 @@ export async function POST(req: Request) {
     if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
 
     // Save verified name + mark payout_verified
+    // Filters by auth_id, not id — public.users.id is its own generated key
+    // that only coincidentally matches the auth UUID for most rows; some
+    // legacy accounts (including at least one real vendor) have it diverge,
+    // which silently no-ops an .eq("id", ...) update with zero indication.
     await supabase
       .from("users")
       .update({ legal_name: ninName, payout_verified: true })
-      .eq("id", user.id)
+      .eq("auth_id", user.id)
 
     // Mark KYC completed in onboarding_progress
     await supabase

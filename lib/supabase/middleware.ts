@@ -14,7 +14,6 @@ export async function updateSession(request: NextRequest) {
     "/store",
     "/_next",
     "/api",
-    "/api-test",
     "/",
     "/admin/login",
     "/admin/setup",
@@ -76,7 +75,7 @@ export async function updateSession(request: NextRequest) {
       },
     )
 
-    const timeoutPromise = new Promise((_, reject) => {
+    const timeoutPromise = new Promise<never>((_, reject) => {
       setTimeout(() => reject(new Error("Auth timeout")), 1000)
     })
 

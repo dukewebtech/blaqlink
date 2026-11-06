@@ -1,6 +1,6 @@
 import { cache } from "react"
 import type { Metadata } from "next"
-import { notFound, redirect } from "next/navigation"
+import { notFound } from "next/navigation"
 import { createAdminClient } from "@/lib/supabase/server"
 import { DaylightStorefront } from "@/components/store/templates/daylight-storefront"
 import { EditorialStorefront } from "@/components/store/templates/editorial-storefront"
@@ -237,10 +237,11 @@ export default async function StorefrontPage({ params }: { params: Promise<{ slu
   const vendor = await getVendorBySlug(slug)
   if (!vendor) notFound()
 
-  const template = vendor.store_template || "daylight"
-  if (!VALID_TEMPLATES.includes(template as (typeof VALID_TEMPLATES)[number])) {
-    redirect(`/store/${vendor.id}`)
-  }
+  // Unknown/legacy template values fall back to Daylight rather than the old
+  // /store/[id] storefront, whose payment flow trusted client-side prices.
+  const template = VALID_TEMPLATES.includes(vendor.store_template as (typeof VALID_TEMPLATES)[number])
+    ? vendor.store_template
+    : "daylight"
 
   const data = await loadStorefrontData(slug)
   if (!data) notFound()

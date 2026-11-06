@@ -59,27 +59,35 @@ export default function AdminDashboardPage() {
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
           <StatsCard
             title="Total Users"
-            value={loading ? "..." : stats?.totalUsers || 0}
+            value={loading ? "..." : String(stats?.totalUsers || 0)}
             icon={Users}
-            trend={{ value: 0, isPositive: true }}
+            change="—"
+            changeLabel="All time"
+            trend="up"
           />
           <StatsCard
             title="Total Products"
-            value={loading ? "..." : stats?.totalProducts || 0}
+            value={loading ? "..." : String(stats?.totalProducts || 0)}
             icon={Package}
-            trend={{ value: 0, isPositive: true }}
+            change="—"
+            changeLabel="All time"
+            trend="up"
           />
           <StatsCard
             title="Total Orders"
-            value={loading ? "..." : stats?.totalOrders || 0}
+            value={loading ? "..." : String(stats?.totalOrders || 0)}
             icon={ShoppingCart}
-            trend={{ value: 0, isPositive: true }}
+            change="—"
+            changeLabel="All time"
+            trend="up"
           />
           <StatsCard
             title="Platform Revenue"
             value={loading ? "..." : formatCurrency(stats?.totalRevenue || 0)}
             icon={TrendingUp}
-            trend={{ value: 0, isPositive: true }}
+            change="—"
+            changeLabel="All time"
+            trend="up"
           />
         </div>
 

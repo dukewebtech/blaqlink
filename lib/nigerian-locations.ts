@@ -45,5 +45,5 @@ export function getStatesList(): NigerianState[] {
 }
 
 export function getCitiesByState(state: NigerianState): string[] {
-  return NIGERIAN_STATES[state] || []
+  return [...(NIGERIAN_STATES[state] || [])]
 }

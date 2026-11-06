@@ -463,7 +463,6 @@ export default function StorePage() {
         product={selectedProduct}
         open={isModalOpen}
         onOpenChange={setIsModalOpen}
-        onAddToCart={handleAddToCart}
         storeName={storeInfo?.business_name || storeInfo?.full_name}
       />
     </div>

@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server"
 import { createAdminClient } from "@/lib/supabase/server"
 
-export async function GET(_request: Request, { params }: { params: { orderId: string } }) {
+export async function GET(_request: Request, { params: paramsPromise }: { params: Promise<{ orderId: string }> }) {
+  const params = await paramsPromise
   try {
     const { orderId } = params
     const supabase = createAdminClient()

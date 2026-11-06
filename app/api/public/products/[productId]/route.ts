@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server"
 import { createPublicClient } from "@/lib/supabase/public"
 
-export async function GET(request: Request, { params }: { params: { productId: string } }) {
+export async function GET(request: Request, { params: paramsPromise }: { params: Promise<{ productId: string }> }) {
+  const params = await paramsPromise
   try {
     const { searchParams } = new URL(request.url)
     const storeId = searchParams.get("storeId")

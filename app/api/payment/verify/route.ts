@@ -35,9 +35,30 @@ export async function GET(request: NextRequest) {
     const supabase = createAdminClient()
     const paymentData = data.data
 
-    // Get order details from metadata
-    const orderData = paymentData.metadata
-    console.log("[v0] Order metadata:", JSON.stringify(orderData).substring(0, 200) + "...")
+    // Get order details from the server-side session saved at checkout — never
+    // from Paystack metadata, which the payer controls.
+    const { data: session } = await supabase
+      .from("payment_sessions")
+      .select("order_data")
+      .eq("reference", reference)
+      .eq("gateway", "paystack")
+      .maybeSingle()
+
+    if (!session?.order_data) {
+      console.error("[v0] No checkout session for reference:", reference)
+      return NextResponse.json({ error: "Payment could not be matched to a checkout" }, { status: 400 })
+    }
+
+    const orderData = session.order_data
+    const expectedAmount = Number(orderData.expected_amount)
+    if (
+      paymentData.currency !== "NGN" ||
+      !Number.isFinite(expectedAmount) ||
+      Math.round(paymentData.amount) < Math.round(expectedAmount * 100)
+    ) {
+      console.error("[v0] Paid amount does not match checkout:", { reference, paid: paymentData.amount, expectedAmount })
+      return NextResponse.json({ error: "Paid amount does not match the order total" }, { status: 400 })
+    }
 
     // This assumes all products in an order belong to the same vendor
     let vendorUserId = null
@@ -111,6 +132,16 @@ export async function GET(request: NextRequest) {
       })
       .select()
       .single()
+
+    if (orderError?.code === "23505") {
+      // Lost a race with a concurrent verify for the same reference
+      const { data: raced } = await supabase
+        .from("orders")
+        .select("*, order_items(*)")
+        .eq("payment_reference", reference)
+        .single()
+      return NextResponse.json({ success: true, order_id: raced?.id, reference, order: raced })
+    }
 
     if (orderError) {
       console.error("[v0] Order creation error:", orderError.message)

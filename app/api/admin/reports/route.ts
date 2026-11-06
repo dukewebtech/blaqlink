@@ -1,8 +1,12 @@
 import { NextResponse } from "next/server"
 import { createAdminClient } from "@/lib/supabase/server"
+import { requireAdmin } from "@/lib/utils/api-helpers"
 
 export async function GET() {
   try {
+    const auth = await requireAdmin()
+    if (!auth.success) return auth.error
+
     console.log("[v0] Fetching admin reports...")
     const adminClient = createAdminClient()
 

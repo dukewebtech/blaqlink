@@ -53,7 +53,7 @@ export function Footer({ onTabLink }: { onTabLink: (tab: UseCaseTab) => void }) 
             ).map(([tab, label]) => (
               <a
                 key={tab}
-                href="#sell"
+                href="/#sell"
                 onClick={(e) => {
                   e.preventDefault()
                   onTabLink(tab)
@@ -67,8 +67,8 @@ export function Footer({ onTabLink }: { onTabLink: (tab: UseCaseTab) => void }) 
           <nav className={styles.footCol} aria-label="Company">
             <p>Company</p>
             <a href="/about">About</a>
-            <a href="#pricing">Pricing</a>
-            <a href="#faq">FAQ</a>
+            <a href="/#pricing">Pricing</a>
+            <a href="/#faq">FAQ</a>
             <a href="mailto:hello@blaqora.store">Contact</a>
           </nav>
 
@@ -83,8 +83,9 @@ export function Footer({ onTabLink }: { onTabLink: (tab: UseCaseTab) => void }) 
         <div className={styles.footBase}>
           <span>© 2026 Blaqora. All rights reserved.</span>
           <div className={styles.footLegal}>
-            <a href="#terms">Terms</a>
-            <a href="#privacy">Privacy</a>
+            <Link href="/terms">Terms</Link>
+            <Link href="/privacy">Privacy</Link>
+            <Link href="/refunds">Refunds</Link>
           </div>
         </div>
       </div>

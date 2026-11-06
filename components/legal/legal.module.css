@@ -1,0 +1,214 @@
+.header {
+  background: var(--bq-bg-soft);
+  border-bottom: 1px solid var(--bq-line);
+  padding: var(--bq-space-12) 0 var(--bq-space-10);
+}
+@media (min-width: 1024px) {
+  .header {
+    padding: var(--bq-space-20) 0 var(--bq-space-16);
+  }
+}
+
+.eyebrow {
+  font-size: var(--bq-text-sm);
+  font-weight: var(--bq-weight-bold);
+  color: var(--bq-blue);
+}
+
+.title {
+  margin-top: var(--bq-space-3);
+  max-width: 18ch;
+}
+
+.intro {
+  margin-top: var(--bq-space-5);
+  max-width: 62ch;
+  color: var(--bq-body);
+}
+
+.updated {
+  display: block;
+  margin-top: var(--bq-space-5);
+}
+
+.layout {
+  display: grid;
+  gap: var(--bq-space-8);
+  padding-block: var(--bq-space-10) var(--bq-space-20);
+}
+@media (min-width: 1024px) {
+  .layout {
+    grid-template-columns: 260px minmax(0, 1fr);
+    gap: var(--bq-space-16);
+    padding-block: var(--bq-space-16) var(--bq-space-32);
+  }
+}
+
+.aside {
+  display: grid;
+  gap: var(--bq-space-6);
+  align-content: start;
+}
+@media (min-width: 1024px) {
+  .aside {
+    position: sticky;
+    top: calc(var(--bq-nav-height) + var(--bq-space-6));
+  }
+}
+
+.docs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--bq-space-2);
+}
+@media (min-width: 1024px) {
+  .docs {
+    flex-direction: column;
+    gap: var(--bq-space-1);
+  }
+}
+
+.doc {
+  padding: var(--bq-space-2) var(--bq-space-4);
+  border-radius: var(--bq-radius-pill);
+  border: 1px solid var(--bq-line);
+  font-size: var(--bq-text-sm);
+  font-weight: var(--bq-weight-semibold);
+  color: var(--bq-ink-2);
+  transition: background var(--bq-dur-fast) var(--bq-ease), border-color var(--bq-dur-fast) var(--bq-ease);
+}
+.doc:hover {
+  border-color: var(--bq-line-2);
+}
+.doc:focus-visible,
+.tocLink:focus-visible,
+.article a:focus-visible {
+  outline: none;
+  box-shadow: var(--bq-focus-ring);
+}
+.docActive {
+  background: var(--bq-blue-50);
+  border-color: transparent;
+  color: var(--bq-blue-700);
+}
+@media (min-width: 1024px) {
+  .doc {
+    border-color: transparent;
+    border-radius: var(--bq-radius-sm);
+  }
+  .doc:hover {
+    background: var(--bq-bg-soft);
+    border-color: transparent;
+  }
+  .docActive:hover {
+    background: var(--bq-blue-50);
+  }
+}
+
+.toc {
+  border: 1px solid var(--bq-line);
+  border-radius: var(--bq-radius-md);
+  padding: var(--bq-space-4);
+}
+.toc summary {
+  cursor: pointer;
+  font-size: var(--bq-text-sm);
+  font-weight: var(--bq-weight-bold);
+  color: var(--bq-ink);
+}
+.toc ol {
+  display: grid;
+  gap: var(--bq-space-1);
+  margin-top: var(--bq-space-3);
+  counter-reset: toc;
+}
+.tocLink {
+  display: block;
+  padding: var(--bq-space-1) 0;
+  border-radius: var(--bq-radius-xs);
+  font-size: var(--bq-text-sm);
+  color: var(--bq-body);
+}
+.tocLink:hover {
+  color: var(--bq-blue);
+}
+@media (min-width: 1024px) {
+  .toc {
+    border: 0;
+    padding: 0;
+  }
+}
+
+.article {
+  max-width: 70ch;
+  color: var(--bq-body);
+  font-size: var(--bq-text-body);
+  line-height: var(--bq-leading-body);
+}
+
+.section + .section {
+  margin-top: var(--bq-space-12);
+  padding-top: var(--bq-space-12);
+  border-top: 1px solid var(--bq-line);
+}
+.section {
+  scroll-margin-top: calc(var(--bq-nav-height) + var(--bq-space-6));
+}
+
+.sectionTitle {
+  font-family: var(--bq-font-display);
+  font-size: var(--bq-text-title);
+  font-weight: var(--bq-weight-bold);
+  line-height: var(--bq-leading-snug);
+  letter-spacing: var(--bq-track-title);
+  color: var(--bq-ink);
+  margin-bottom: var(--bq-space-4);
+}
+
+.article p + p,
+.article p + ul,
+.article ul + p,
+.article p + h3,
+.article ul + h3 {
+  margin-top: var(--bq-space-4);
+}
+.article h3 {
+  font-size: var(--bq-text-body);
+  font-weight: var(--bq-weight-bold);
+  color: var(--bq-ink);
+}
+.article h3 + p,
+.article h3 + ul {
+  margin-top: var(--bq-space-2);
+}
+.article ul {
+  display: grid;
+  gap: var(--bq-space-2);
+  padding-left: var(--bq-space-5);
+  list-style: disc;
+}
+.article strong {
+  color: var(--bq-ink);
+  font-weight: var(--bq-weight-semibold);
+}
+.article a {
+  color: var(--bq-blue);
+  font-weight: var(--bq-weight-semibold);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  border-radius: var(--bq-radius-xs);
+  overflow-wrap: anywhere;
+}
+.article a:hover {
+  color: var(--bq-blue-700);
+}
+
+.contact {
+  max-width: 70ch;
+  margin-top: var(--bq-space-16);
+}
+.contactBtn {
+  margin-top: var(--bq-space-5);
+  max-width: 100%;
+  overflow-wrap: anywhere;
+}

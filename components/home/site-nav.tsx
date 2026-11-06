@@ -131,7 +131,7 @@ export function SiteNav({ onTabLink }: { onTabLink: (tab: string) => void }) {
                     <a
                       key={item.tab}
                       className={styles.ddItem}
-                      href="#sell"
+                      href="/#sell"
                       onClick={(e) => {
                         e.preventDefault()
                         setDdOpen(false)
@@ -150,19 +150,19 @@ export function SiteNav({ onTabLink }: { onTabLink: (tab: string) => void }) {
                 </div>
                 <div className={styles.ddFoot}>
                   Sell all four from the same store link.
-                  <a href="#how" onClick={() => setDdOpen(false)}>
+                  <a href="/#how" onClick={() => setDdOpen(false)}>
                     See how it works
                   </a>
                 </div>
               </div>
             </div>
-            <a className={styles.navLink} href="#how">
+            <a className={styles.navLink} href="/#how">
               How it works
             </a>
-            <a className={styles.navLink} href="#pricing">
+            <a className={styles.navLink} href="/#pricing">
               Pricing
             </a>
-            <a className={styles.navLink} href="#faq">
+            <a className={styles.navLink} href="/#faq">
               FAQ
             </a>
           </nav>
@@ -208,7 +208,7 @@ export function SiteNav({ onTabLink }: { onTabLink: (tab: string) => void }) {
             {SELL_ITEMS.map((item) => (
               <a
                 key={item.tab}
-                href="#sell"
+                href="/#sell"
                 onClick={(e) => {
                   e.preventDefault()
                   closeDrawer()
@@ -224,13 +224,13 @@ export function SiteNav({ onTabLink }: { onTabLink: (tab: string) => void }) {
           </div>
 
           <nav className={styles.drawerLinks} aria-label="Mobile">
-            <a href="#how" onClick={closeDrawer}>
+            <a href="/#how" onClick={closeDrawer}>
               How it works
             </a>
-            <a href="#pricing" onClick={closeDrawer}>
+            <a href="/#pricing" onClick={closeDrawer}>
               Pricing
             </a>
-            <a href="#faq" onClick={closeDrawer}>
+            <a href="/#faq" onClick={closeDrawer}>
               FAQ
             </a>
             <Link href="/login" onClick={closeDrawer}>

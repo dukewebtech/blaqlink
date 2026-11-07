@@ -1,4 +1,6 @@
-import { createServerClient } from "@/lib/supabase/server"
+import { createAdminClient, createServerClient } from "@/lib/supabase/server"
+import { getBankCode, resolveBankAccount } from "@/lib/korapay"
+import { namesMatch } from "@/lib/payouts"
 import { NextResponse } from "next/server"
 import { generateUniqueSlug } from "@/lib/utils/slug"
 
@@ -72,7 +74,7 @@ export async function POST(request: Request) {
           store_logo_url:  stepData.storeLogo || null,
           onboarding_completed: true,
           updated_at: new Date().toISOString(),
-        }).eq("id", user.id)
+        }).eq("auth_id", user.id)
 
         if (userUpdateError) {
           console.error("[onboarding/POST] users update error:", userUpdateError)
@@ -82,30 +84,56 @@ export async function POST(request: Request) {
       }
 
       // ── KYC / Identity Verification ────────────────────────────────────────
+      // Verification itself happens in /api/kyc/nin. This step used to mark the
+      // account verified with whatever name the browser sent, so it now only
+      // records progress for accounts that really are verified.
       case "kyc": {
+        const { data: me } = await createAdminClient()
+          .from("users").select("payout_verified").eq("auth_id", user.id).maybeSingle()
+        if (!me?.payout_verified) {
+          return NextResponse.json({ error: "Verify your NIN first." }, { status: 403 })
+        }
         progressUpdates.kyc_info_completed = true
-
-        await supabase.from("users").update({
-          legal_name:    stepData.legalName,
-          full_name:     stepData.legalName,
-          date_of_birth: stepData.dateOfBirth,
-          kyc_status:    "verified",
-          payout_verified: true,
-          updated_at: new Date().toISOString(),
-        }).eq("id", user.id)
         break
       }
 
       // ── Bank Account / Payout Setup ─────────────────────────────────────────
+      // Payouts go to this account, so the name is resolved here with Korapay
+      // rather than trusting the one the browser sends, and must match the
+      // NIN-verified legal name when there is one.
       case "bank": {
-        progressUpdates.bank_info_completed = true
+        const accountNumber = String(stepData?.accountNumber ?? "")
+        const bankCode = getBankCode(String(stepData?.bankName ?? ""))
+        if (!bankCode || !/^\d{10}$/.test(accountNumber)) {
+          return NextResponse.json({ error: "Choose your bank and enter a 10-digit account number." }, { status: 400 })
+        }
+        const resolved = await resolveBankAccount(bankCode, accountNumber)
+        const accountName: string = resolved?.data?.account_name ?? ""
+        if (!resolved?.status || !accountName) {
+          return NextResponse.json({ error: "We couldn't verify that account. Check the number and bank." }, { status: 400 })
+        }
 
-        await supabase.from("users").update({
+        const adminClient = createAdminClient()
+        const { data: me } = await adminClient
+          .from("users").select("legal_name").eq("auth_id", user.id).maybeSingle()
+        if (me?.legal_name && !namesMatch(accountName, me.legal_name)) {
+          return NextResponse.json(
+            { error: "This account isn't in the name on your verified NIN. Use a bank account in your own name." },
+            { status: 422 },
+          )
+        }
+
+        const { error: bankError } = await adminClient.from("users").update({
           bank_name:      stepData.bankName,
-          account_number: stepData.accountNumber,
-          account_name:   stepData.accountName,
+          account_number: accountNumber,
+          account_name:   accountName,
           updated_at: new Date().toISOString(),
-        }).eq("id", user.id)
+        }).eq("auth_id", user.id)
+        if (bankError) {
+          console.error("[onboarding/POST] bank save error:", bankError.message)
+          return NextResponse.json({ error: "Failed to save bank information. Please try again." }, { status: 500 })
+        }
+        progressUpdates.bank_info_completed = true
         break
       }
 

@@ -1,5 +1,7 @@
 import { createServerClient } from "@/lib/supabase/server"
 import { type NextRequest, NextResponse } from "next/server"
+import { getAuthenticatedUser } from "@/lib/utils/api-helpers"
+import { getVendorPlan } from "@/lib/pricing"
 
 export async function GET(request: NextRequest, { params: paramsPromise }: { params: Promise<{ id: string }> }) {
   const params = await paramsPromise
@@ -20,11 +22,14 @@ export async function GET(request: NextRequest, { params: paramsPromise }: { par
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
+    const authResult = await getAuthenticatedUser()
+    if (!authResult.success) return authResult.error
+
     const { data: product, error } = await supabase
       .from("products")
       .select("*")
       .eq("id", params.id)
-      .eq("user_id", user.id)
+      .eq("user_id", authResult.user.userId)
       .single()
 
     if (error) {
@@ -60,9 +65,23 @@ export async function PUT(request: NextRequest, { params: paramsPromise }: { par
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
+    const authResult = await getAuthenticatedUser()
+    if (!authResult.success) return authResult.error
+    const vendorId = authResult.user.userId
+
     const body = await request.json()
 
-    console.log("[v0] Updating product with images:", body.images)
+    // Same plan rule as creating a product — otherwise switching an existing
+    // item's type would get around it.
+    if (body.product_type !== undefined) {
+      const plan = await getVendorPlan(vendorId)
+      if (!plan.allowed_selling_types.includes(body.product_type)) {
+        return NextResponse.json(
+          { error: `Your ${plan.name} plan doesn't allow ${body.product_type} products. Upgrade to unlock this selling type.` },
+          { status: 403 },
+        )
+      }
+    }
 
     // Remove fields that shouldn't be updated
     delete body.id
@@ -74,7 +93,7 @@ export async function PUT(request: NextRequest, { params: paramsPromise }: { par
       .from("products")
       .update(body)
       .eq("id", params.id)
-      .eq("user_id", user.id)
+      .eq("user_id", vendorId)
       .select()
       .single()
 
@@ -112,7 +131,10 @@ export async function DELETE(request: NextRequest, { params: paramsPromise }: { 
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
-    const { error } = await supabase.from("products").delete().eq("id", params.id).eq("user_id", user.id)
+    const authResult = await getAuthenticatedUser()
+    if (!authResult.success) return authResult.error
+
+    const { error } = await supabase.from("products").delete().eq("id", params.id).eq("user_id", authResult.user.userId)
 
     if (error) {
       return NextResponse.json({ error: error.message }, { status: 500 })

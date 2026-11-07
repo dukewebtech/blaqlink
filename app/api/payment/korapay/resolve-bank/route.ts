@@ -1,8 +1,16 @@
 import { NextResponse } from "next/server"
 import { getBankCode, resolveBankAccount } from "@/lib/korapay"
+import { createServerClient } from "@/lib/supabase/server"
 
 export async function POST(request: Request) {
   try {
+    // Signed-in vendors only — otherwise this is a free account-name lookup
+    const supabase = await createServerClient()
+    const {
+      data: { user },
+    } = await supabase.auth.getUser()
+    if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+
     const { bank_name, account_number } = await request.json()
 
     if (!bank_name || !account_number) {

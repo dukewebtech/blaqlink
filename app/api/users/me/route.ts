@@ -1,6 +1,13 @@
 import { NextResponse } from "next/server"
 import { createServerClient } from "@/lib/supabase/server"
 
+const SELF_EDITABLE_FIELDS = new Set([
+  "full_name", "email", "phone", "location", "business_name", "profile_image",
+  "store_template", "store_brand_color", "store_font", "store_cover_image_url", "store_logo_url",
+  "shipping_mode", "pickup_street", "pickup_city", "pickup_state", "pickup_lga", "pickup_phone",
+  "pickup_line2", "pickup_postal_code", "default_parcel_weight_kg", "terminal_africa_api_key", "shipbubble_api_key",
+])
+
 // Get current user profile
 export async function GET() {
   try {
@@ -135,8 +142,17 @@ export async function PUT(request: Request) {
       return NextResponse.json({ error: "Session not found. Please log in again." }, { status: 401 })
     }
 
-    const body = await request.json()
-    console.log("[v0] Update data:", { ...body, profile_image: body.profile_image ? "..." : null })
+    const rawBody = await request.json()
+    // Only fields the vendor may edit themselves. Anything else (is_admin, role,
+    // plan_id, payout_verified, legal_name, bank details, ...) is dropped — the
+    // account page posts the whole user object back, so unknown keys are
+    // ignored rather than rejected.
+    const body = Object.fromEntries(
+      Object.entries(rawBody ?? {}).filter(([key]) => SELF_EDITABLE_FIELDS.has(key)),
+    )
+    if (Object.keys(body).length === 0) {
+      return NextResponse.json({ error: "No editable fields provided" }, { status: 400 })
+    }
 
     // The handle_new_user() trigger creates profiles automatically on signup
     let userProfile
@@ -170,7 +186,7 @@ export async function PUT(request: Request) {
     const { data: updatedProfile, error: updateError } = await supabase
       .from("users")
       .update(body)
-      .eq("id", authUser.id)
+      .eq("id", userProfile.id)
       .select()
       .single()
 

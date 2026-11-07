@@ -126,7 +126,8 @@ export async function resolveBankAccount(bankCode: string, accountNumber: string
 }
 
 export async function lookupNIN(nin: string) {
-  return koraFetch("POST", "/misc/nin", { nin })
+  // https://developers.korapay.com/docs/nigeria-nin
+  return koraFetch("POST", "/identities/ng/nin", { id: nin, verification_consent: true })
 }
 
 export async function initializeDisbursement(params: KoraDisbursementParams) {

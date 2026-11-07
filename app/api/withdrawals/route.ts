@@ -3,6 +3,7 @@ import { NextResponse } from "next/server"
 import { getAuthenticatedUser, handleApiError } from "@/lib/utils/api-helpers"
 import { validateBody, withdrawalSchema } from "@/lib/utils/validation"
 import { getBankCode, initializeDisbursement } from "@/lib/korapay"
+import { getAvailableBalance } from "@/lib/payouts"
 
 export async function GET() {
   try {
@@ -44,9 +45,26 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: validation.error }, { status: 400 })
     }
 
-    const { amount, bank_name, account_number, account_name } = validation.data
+    const { amount } = validation.data
 
     const supabase = await createClient()
+    const adminClient = createAdminClient()
+
+    // Pay only to the verified account saved on the profile — never to bank
+    // details in the request body — and only from a balance that exists.
+    const { data: vendor } = await adminClient
+      .from("users")
+      .select("payout_verified, bank_name, account_number, account_name")
+      .eq("id", authResult.user.userId)
+      .single()
+
+    if (!vendor?.payout_verified) {
+      return NextResponse.json({ error: "Verify your identity before withdrawing." }, { status: 403 })
+    }
+    if (!vendor.bank_name || !vendor.account_number || !vendor.account_name) {
+      return NextResponse.json({ error: "Add your bank account in Payout settings first." }, { status: 400 })
+    }
+    const { bank_name, account_number, account_name } = vendor
 
     let minWithdrawal = 5000
     let autoWithdrawalEnabled = false
@@ -69,7 +87,13 @@ export async function POST(request: Request) {
       )
     }
 
-    const adminClient = createAdminClient()
+    const available = await getAvailableBalance(authResult.user.userId)
+    if (amount > available) {
+      return NextResponse.json(
+        { error: `You can withdraw up to ₦${Math.max(available, 0).toLocaleString("en-NG")}.` },
+        { status: 400 },
+      )
+    }
 
     const { data: withdrawal, error: insertError } = await adminClient
       .from("withdrawal_requests")

@@ -154,8 +154,7 @@ export function IdentityUploadStep({ onComplete, onSkip, showSkip = true }: Prop
             className="h-11 font-mono tracking-wider"
           />
           <p className="text-xs text-muted-foreground">
-            Your 11-digit National Identification Number.{" "}
-            <span className="text-amber-600 font-medium">Test mode: use NIN 00000000000</span>
+            Your 11-digit National Identification Number.
           </p>
         </div>
 

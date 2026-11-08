@@ -11,7 +11,7 @@ const QA = [
   },
   {
     q: "How much does it cost?",
-    a: "₦4,999 a month, plus 3.5% and ₦100 on each sale. The ₦100 isn't charged on sales under ₦2,500. Everything is included in the one plan.",
+    a: "Every store starts on the Free plan, with no monthly fee and a fee on each sale. Paid plans add a monthly fee and lower your fee per sale. The Pricing section above shows the current prices and what each plan includes.",
   },
   {
     q: "How do my customers pay?",

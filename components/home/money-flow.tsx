@@ -33,7 +33,7 @@ function useReveal() {
 const CARDS = [
   { icon: ShieldCheck, title: "Secure by default", desc: "Payments are processed by Paystack, so card details never touch your store." },
   { icon: ListChecks, title: "A record of every sale", desc: "Find any transaction, see who paid and what for, and check your sales report anytime." },
-  { icon: Clock, title: "No surprise charges", desc: "One plan and one fee per sale. The calculator below shows exactly what you keep." },
+  { icon: Clock, title: "No surprise charges", desc: "Each plan has one clear fee per sale. The calculator below shows exactly what you keep." },
 ]
 
 function MoneyCard({ card }: { card: (typeof CARDS)[number] }) {

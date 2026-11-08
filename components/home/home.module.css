@@ -3219,17 +3219,64 @@
 }
 
 /* ---------- Pricing ---------- */
-.priceGrid {
+.planGrid {
   display: grid;
-  gap: 20px;
-  max-width: 1040px;
+  gap: var(--bq-space-5);
+  max-width: var(--bq-container);
   margin: 0 auto;
 }
-@media (min-width: 900px) {
-  .priceGrid {
-    grid-template-columns: 0.9fr 1.1fr;
-    gap: 24px;
+@media (min-width: 1024px) {
+  .planGrid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    align-items: stretch;
   }
+}
+.planFeatured {
+  border-color: var(--bq-blue);
+}
+@media (min-width: 1024px) {
+  /* Three cards are narrower than the original single plan: keep prices on one
+     baseline and let the figure fit beside "/month". */
+  .planGrid .planNum {
+    font-size: var(--bq-text-h3);
+  }
+  .planGrid .planDesc {
+    min-height: calc(2 * var(--bq-text-sm) * var(--bq-leading-body));
+  }
+}
+.planDesc {
+  margin-top: var(--bq-space-2);
+  font-size: var(--bq-text-sm);
+  color: var(--bq-body);
+}
+.planStart {
+  margin: var(--bq-space-6) auto 0;
+  max-width: 62ch;
+  text-align: center;
+  font-size: var(--bq-text-sm);
+  color: var(--bq-body);
+}
+.planLoading {
+  max-width: var(--bq-container);
+  min-height: 560px;
+  margin: 0 auto;
+  border-radius: var(--bq-radius-xl);
+  background: var(--bq-bg-soft);
+}
+.planError {
+  max-width: 480px;
+  margin: 0 auto;
+}
+.calcWrap {
+  max-width: 680px;
+  margin: var(--bq-space-10) auto 0;
+}
+.calcPlans {
+  position: relative;
+  z-index: 1;
+  align-self: flex-start;
+  margin-top: var(--bq-space-4);
+  margin-bottom: var(--bq-space-6);
 }
 .plan,
 .calc {

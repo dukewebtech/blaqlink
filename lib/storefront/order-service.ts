@@ -1,13 +1,12 @@
-import type { CartItem } from "@/lib/cart-store"
 import { initializeTransaction } from "@/lib/paystack"
+import { randomUUID } from "crypto"
 import { createAdminClient } from "@/lib/supabase/server"
-import type { CheckoutState, CheckoutTotals } from "@/lib/storefront/checkout"
+import type { CheckoutLine } from "@/lib/storefront/checkout-lines"
 
 /**
- * The exact shape stashed as Paystack `metadata` at initialize time and read
- * back at verify time — this is how order data survives the redirect to
- * Paystack's hosted page and back, since the order row itself is only created
- * once payment succeeds (see app/api/payment/verify/route.ts).
+ * The server-priced checkout saved in payment_sessions before the buyer goes
+ * to Paystack. The order is created from this (never from Paystack's
+ * metadata) once payment is confirmed — see lib/storefront/confirm-paystack-payment.ts.
  */
 export interface PendingOrderMetadata {
   customer_name: string
@@ -42,82 +41,80 @@ export interface PendingOrderItem {
   appointment_time?: string
 }
 
-export function buildOrderMetadata(items: CartItem[], state: CheckoutState, totals: CheckoutTotals): PendingOrderMetadata {
-  return {
-    customer_name: state.name,
-    customer_phone: state.phone,
-    delivery_method: totals.needsDelivery ? state.method : null,
-    delivery_area: totals.needsDelivery && state.method === "delivery" ? state.areaName : null,
-    delivery_address: totals.needsDelivery && state.method === "delivery" ? state.address : null,
-    delivery_state: totals.needsDelivery && state.method === "delivery" ? state.addressState : null,
-    delivery_city: totals.needsDelivery && state.method === "delivery" ? state.addressCity : null,
-    delivery_postal_code: totals.needsDelivery && state.method === "delivery" ? state.addressPostalCode || null : null,
-    customer_note: state.note || null,
-    shipping_provider: null,
-    shipping_rate_id: null,
-    shipping_request_token: null,
-    items: items.map((item) => ({
-      product_id: item.product_id,
-      product_title: item.title,
-      product_type: item.product_type,
-      quantity: item.quantity,
-      price: item.price,
-      subtotal: item.price * item.quantity,
-      ...(item.product_variant_id && { product_variant_id: item.product_variant_id }),
-      ...(item.variant_label && { variant_label: item.variant_label }),
-      ...(item.ticket_tier_id && { ticket_tier_id: item.ticket_tier_id }),
-      ...(item.ticket_tier_name && { ticket_tier_name: item.ticket_tier_name }),
-      ...(item.appointment_date && { appointment_date: item.appointment_date }),
-      ...(item.appointment_time && { appointment_time: item.appointment_time }),
-    })),
-  }
-}
+export type CreateCheckoutSessionResult =
+  | { ok: true; authorization_url: string; reference: string }
+  | { ok: false; status: number; error: string }
 
-export interface CreateCheckoutSessionResult {
-  authorization_url: string
-  access_code: string
-  reference: string
-}
+const HOLD_MINUTES = 30
 
 /**
- * "Hand off to Paystack" — the order itself is created later, once payment is
- * verified (see app/api/payment/verify/route.ts). Takes already server-resolved
- * metadata (real prices/stock re-checked by the caller) and opens a hosted
- * Paystack transaction for the customer to pay on.
+ * Hands a server-priced checkout to Paystack:
+ *  1. holds the stock, tickets and booking slots (reserve_checkout), so two
+ *     buyers can't both pay for the last one;
+ *  2. saves the order data and expected amount in payment_sessions — the
+ *     only thing /api/payment/verify trusts, since Paystack metadata can be
+ *     forged;
+ *  3. opens the Paystack transaction under our own reference.
+ * Holds are released if any step fails, and expire after 30 minutes.
  */
 export async function createCheckoutSession(params: {
+  vendorId: string
   metadata: PendingOrderMetadata
   email: string
   amount: number
   callbackUrl: string
+  lines: CheckoutLine[]
 }): Promise<CreateCheckoutSessionResult> {
-  const data = await initializeTransaction({
-    email: params.email,
-    amount: params.amount,
-    metadata: params.metadata,
-    callbackUrl: params.callbackUrl,
+  const supabase = createAdminClient()
+  const reference = `BQ-${randomUUID()}`
+
+  const { data: reserved, error: reserveError } = await supabase.rpc("reserve_checkout", {
+    p_reference: reference,
+    p_lines: params.lines,
+    p_ttl_minutes: HOLD_MINUTES,
   })
-
-  if (!data.status) {
-    throw new Error(data.message || "Payment initialization failed")
+  if (reserveError) {
+    console.error("[checkout] reserve failed:", reserveError.message)
+    return { ok: false, status: 500, error: "We couldn't start checkout. Please try again." }
+  }
+  if (!reserved?.ok) {
+    return { ok: false, status: 409, error: reserved?.message ?? "Something in your bag is no longer available." }
   }
 
-  // Paystack metadata can be forged (any transaction can carry any metadata),
-  // so verify reads the server-priced order and expected amount from here.
-  const { error: sessionError } = await createAdminClient()
-    .from("payment_sessions")
-    .insert({
-      reference: data.data.reference,
-      gateway: "paystack",
-      order_data: { ...params.metadata, expected_amount: params.amount },
-    })
+  const release = () => supabase.from("inventory_holds").update({ status: "released" }).eq("reference", reference).eq("status", "held")
+
+  const { error: sessionError } = await supabase.from("payment_sessions").insert({
+    reference,
+    gateway: "paystack",
+    order_data: { ...params.metadata, vendor_id: params.vendorId, expected_amount: params.amount },
+  })
   if (sessionError) {
-    throw new Error(`Failed to save checkout session: ${sessionError.message}`)
+    console.error("[checkout] session save failed:", sessionError.message)
+    await release()
+    return { ok: false, status: 500, error: "We couldn't start checkout. Please try again." }
   }
 
-  return {
-    authorization_url: data.data.authorization_url,
-    access_code: data.data.access_code,
-    reference: data.data.reference,
+  let data: any
+  try {
+    data = await initializeTransaction({
+      email: params.email,
+      amount: params.amount,
+      // Paystack shows this on its page; the order itself is never read from it.
+      metadata: { store: params.metadata.items[0]?.product_title ?? "Blaqora order" },
+      callbackUrl: params.callbackUrl,
+      reference,
+    })
+  } catch (error) {
+    console.error("[checkout] Paystack unreachable:", error instanceof Error ? error.message : error)
+    data = null
   }
+
+  if (!data?.status || !data.data?.authorization_url) {
+    await release()
+    await supabase.from("payment_sessions").delete().eq("reference", reference)
+    console.error("[checkout] Paystack refused:", data?.message)
+    return { ok: false, status: 502, error: "Payment couldn't be started. Please try again in a moment." }
+  }
+
+  return { ok: true, authorization_url: data.data.authorization_url, reference }
 }

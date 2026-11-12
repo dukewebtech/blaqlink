@@ -1,6 +1,7 @@
 // Email notification system using Resend
 // Environment variables required: RESEND_API_KEY, EMAIL_FROM
 
+import { formatNaira } from "@/lib/money"
 import { getAppUrl } from "@/lib/utils/app-url"
 
 const RESEND_API_KEY = process.env.RESEND_API_KEY
@@ -55,6 +56,25 @@ export async function sendEmail({ to, subject, html }: SendEmailParams): Promise
   }
 }
 
+
+// Every string a buyer or vendor typed is escaped before it goes into email
+// HTML; subjects are plain text, so they get it back unescaped.
+const ESCAPES: Record<string, string> = { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }
+function escapeHtml(value: string): string {
+  return value.replace(/[&<>"']/g, (c) => ESCAPES[c])
+}
+function escapeDeep<T>(value: T): T {
+  if (typeof value === "string") return escapeHtml(value) as T
+  if (Array.isArray(value)) return value.map(escapeDeep) as T
+  if (value && typeof value === "object") {
+    return Object.fromEntries(Object.entries(value).map(([k, v]) => [k, escapeDeep(v)])) as T
+  }
+  return value
+}
+function plainText(value: string): string {
+  return value.replace(/&(amp|lt|gt|quot|#39);/g, (m) => Object.entries(ESCAPES).find(([, e]) => e === m)?.[0] ?? m)
+}
+
 // Base email template wrapper
 function emailTemplate(content: string): string {
   return `
@@ -94,7 +114,7 @@ function emailTemplate(content: string): string {
 
 // Format currency — ₦ with grouped thousands, per the platform's money format rule.
 function formatCurrency(amount: number): string {
-  return `₦${amount.toLocaleString("en-NG", { maximumFractionDigits: 0 })}`
+  return formatNaira(amount)
 }
 
 const APP_URL = getAppUrl()
@@ -190,6 +210,7 @@ interface VendorOrderEmailParams {
 // Email for vendors when they receive a new order — skinned with the vendor's
 // own logo/brand color so it reads as "your store", not a generic system email.
 export function getNewOrderEmailForVendor(params: VendorOrderEmailParams): { subject: string; html: string } {
+  params = escapeDeep(params)
   const { orderId, createdAt, customerName, customerEmail, customerPhone, items, subtotal, deliveryFee, totalAmount, deliveryAreaName, deliveryAddress, vendor } = params
   const accent = resolveBrandColor(vendor.brandColor)
   const logo = vendor.logoUrl || `${APP_URL}/blaqora-icon.png`
@@ -246,7 +267,7 @@ export function getNewOrderEmailForVendor(params: VendorOrderEmailParams): { sub
   </body></html>`
 
   return {
-    subject: `New order — ${formatCurrency(totalAmount)}`,
+    subject: plainText(`New order — ${formatCurrency(totalAmount)}`),
     html,
   }
 }
@@ -271,6 +292,7 @@ export function getOrderConfirmationEmailForCustomer(params: CustomerOrderEmailP
   subject: string
   html: string
 } {
+  params = escapeDeep(params)
   const { customerName, orderId, createdAt, items, deliveryFee, totalAmount, deliveryAreaName, deliveryAddress, paymentReference, vendor } = params
   const accent = resolveBrandColor(vendor.brandColor)
   const logo = vendor.logoUrl || `${APP_URL}/blaqora-icon.png`
@@ -343,7 +365,7 @@ export function getOrderConfirmationEmailForCustomer(params: CustomerOrderEmailP
   </body></html>`
 
   return {
-    subject: `Order confirmed — ${formatCurrency(totalAmount)}`,
+    subject: plainText(`Order confirmed — ${formatCurrency(totalAmount)}`),
     html,
   }
 }
@@ -397,6 +419,7 @@ export function getOrderStatusUpdateEmailForCustomer(params: OrderStatusUpdateEm
   subject: string
   html: string
 } {
+  params = escapeDeep(params)
   const { customerName, orderId, status, trackingNumber, trackingUrl, vendor } = params
   const accent = resolveBrandColor(vendor.brandColor)
   const logo = vendor.logoUrl || `${APP_URL}/blaqora-icon.png`
@@ -455,7 +478,7 @@ export function getOrderStatusUpdateEmailForCustomer(params: OrderStatusUpdateEm
   </body></html>`
 
   return {
-    subject: `${copy.headline} — #${ref}`,
+    subject: plainText(`${copy.headline} — #${ref}`),
     html,
   }
 }
@@ -472,6 +495,7 @@ interface WithdrawalEmailParams {
 
 // Email for vendors when withdrawal is updated
 export function getWithdrawalUpdateEmailForVendor(params: WithdrawalEmailParams): { subject: string; html: string } {
+  params = escapeDeep(params)
   const { vendorName, amount, status, withdrawalId, bankName, accountNumber, adminNote } = params
 
   const isApproved = status === "approved"
@@ -503,7 +527,7 @@ export function getWithdrawalUpdateEmailForVendor(params: WithdrawalEmailParams)
   `
 
   return {
-    subject: `Withdrawal ${statusText} - ${formatCurrency(amount)}`,
+    subject: plainText(`Withdrawal ${statusText} - ${formatCurrency(amount)}`),
     html: emailTemplate(content),
   }
 }
@@ -519,6 +543,7 @@ export function getDigitalDownloadEmailForCustomer(params: DigitalDownloadEmailP
   subject: string
   html: string
 } {
+  params = escapeDeep(params)
   const { customerName, vendorName, files } = params
 
   const linksHtml = files
@@ -538,7 +563,7 @@ export function getDigitalDownloadEmailForCustomer(params: DigitalDownloadEmailP
   `
 
   return {
-    subject: `Your download from ${vendorName}`,
+    subject: plainText(`Your download from ${vendorName}`),
     html: emailTemplate(content),
   }
 }
@@ -550,38 +575,48 @@ interface TicketEmailParams {
   eventDate?: string | null
   eventLocation?: string | null
   tierName?: string | null
-  quantity: number
-  qrDataUrl: string
-  ticketReference: string
+  // One per admission. qrImageUrl is a hosted PNG (data: images are blocked by Gmail).
+  tickets: { code: string; url: string; qrImageUrl: string }[]
 }
 
-// Email for customers with their QR ticket after payment
+// Email for customers with their QR tickets after payment
 export function getTicketEmailForCustomer(params: TicketEmailParams): { subject: string; html: string } {
-  const { customerName, vendorName, eventName, eventDate, eventLocation, tierName, quantity, qrDataUrl, ticketReference } =
-    params
+  params = escapeDeep(params)
+  const { customerName, vendorName, eventName, eventDate, eventLocation, tierName, tickets } = params
+  const many = tickets.length > 1
+
+  const ticketsHtml = tickets
+    .map(
+      (t, i) => `
+      <div style="text-align:center;margin:24px 0;padding:16px;border:1px solid #eee;border-radius:12px;">
+        ${many ? `<p style="margin:0 0 8px;font-weight:600;">Ticket ${i + 1} of ${tickets.length}</p>` : ""}
+        <img src="${t.qrImageUrl}" alt="QR code for ticket ${i + 1}" width="220" height="220" style="display:block;margin:0 auto;" />
+        <p style="margin:8px 0 0;font-family:monospace;font-size:12px;color:#666;">${t.code.slice(0, 8).toUpperCase()}</p>
+        <a href="${t.url}" class="btn">View ticket</a>
+      </div>`,
+    )
+    .join("")
 
   const content = `
     <div class="header">
-      <h1>Your ticket is ready</h1>
+      <h1>Your ticket${many ? "s are" : " is"} ready</h1>
     </div>
     <div class="content">
       <p>Hi ${customerName},</p>
-      <p>Here's your ticket for <strong>${eventName}</strong> from ${vendorName}. Show the QR code at the gate.</p>
+      <p>Here ${many ? "are your tickets" : "is your ticket"} for <strong>${eventName}</strong> from ${vendorName}. Show ${many ? "each QR code" : "the QR code"} at the entrance. Each code works once.</p>
       <div class="highlight">
-        ${tierName ? `<strong>Tier:</strong> ${tierName}<br>` : ""}
-        <strong>Quantity:</strong> ${quantity}<br>
+        ${tierName ? `<strong>Ticket type:</strong> ${tierName}<br>` : ""}
         ${eventDate ? `<strong>Date:</strong> ${eventDate}<br>` : ""}
         ${eventLocation ? `<strong>Venue:</strong> ${eventLocation}<br>` : ""}
-        <strong>Reference:</strong> ${ticketReference}
+        <strong>Admits:</strong> ${tickets.length}
       </div>
-      <div style="text-align:center;margin:24px 0;">
-        <img src="${qrDataUrl}" alt="QR ticket" width="220" height="220" style="border:1px solid #eee;border-radius:8px;" />
-      </div>
+      ${ticketsHtml}
+      <p>Keep this email. If the images don't load, tap "View ticket" to show the code on your phone.</p>
     </div>
   `
 
   return {
-    subject: `Your ticket for ${eventName}`,
+    subject: plainText(`Your ticket${many ? "s" : ""} for ${eventName}`),
     html: emailTemplate(content),
   }
 }
@@ -596,6 +631,7 @@ interface SystemUpdateEmailParams {
 
 // Email for system announcements
 export function getSystemUpdateEmail(params: SystemUpdateEmailParams): { subject: string; html: string } {
+  params = escapeDeep(params)
   const { recipientName, title, message, ctaText, ctaUrl } = params
 
   const content = `
@@ -611,7 +647,7 @@ export function getSystemUpdateEmail(params: SystemUpdateEmailParams): { subject
   `
 
   return {
-    subject: title,
+    subject: plainText(title),
     html: emailTemplate(content),
   }
 }

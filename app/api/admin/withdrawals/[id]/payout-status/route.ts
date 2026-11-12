@@ -45,8 +45,8 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
 
     // Map KoraPay status → withdrawal_requests status
     const newStatus =
-      koraStatus === "success" ? "approved" :
-      koraStatus === "failed"  ? "rejected" :
+      koraStatus === "success" ? "completed" :
+      koraStatus === "failed"  ? "failed" :
       withdrawal.status  // leave unchanged if still processing
 
     // Sync DB if the KoraPay status changed

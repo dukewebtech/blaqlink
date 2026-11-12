@@ -94,10 +94,7 @@ export interface LiveDeliveryRate {
   etaLabel: string | null
 }
 
-const nf = new Intl.NumberFormat("en-NG", { maximumFractionDigits: 2 })
-export function formatNaira(n: number): string {
-  return `₦${nf.format(n)}`
-}
+export { formatNaira } from "@/lib/money"
 
 export const DAYLIGHT_TYPE_META: Record<DaylightItemType, { label: string; cls: string; icon: string }> = {
   physical: { label: "Shop", cls: "prod", icon: "dl-i-box" },

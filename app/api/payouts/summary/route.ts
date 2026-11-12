@@ -1,55 +1,44 @@
 import { NextResponse } from "next/server"
-import { createServerClient } from "@/lib/supabase/server"
+import { createAdminClient } from "@/lib/supabase/server"
+import { getAuthenticatedUser } from "@/lib/utils/api-helpers"
+import { getAvailableBalance } from "@/lib/payouts"
 
-// Was previously computed client-side by the Payouts page from the full
-// output of GET /api/orders (every order, with nested order_items, for the
-// vendor's entire history) — just to sum three numbers. Fetches only the
-// three columns this needs and does the same net-of-fees math here instead.
+// Everything the Payouts page shows, worked out on the server. "available"
+// comes from the same database function the withdrawal lock uses.
 export async function GET() {
+  const auth = await getAuthenticatedUser()
+  if (!auth.success) return auth.error
+
   try {
-    const supabase = await createServerClient()
+    const supabase = createAdminClient()
+    const vendorId = auth.user.userId
 
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser()
+    const [available, { data: orders }, { data: withdrawals }, { data: vendor }, { data: settings }] = await Promise.all([
+      getAvailableBalance(vendorId),
+      supabase.from("orders").select("payment_status, total_amount, platform_fee_amount").eq("user_id", vendorId),
+      supabase.from("withdrawal_requests").select("amount, status").eq("user_id", vendorId),
+      supabase.from("users").select("payout_verified, bank_name, account_number, account_name").eq("id", vendorId).single(),
+      supabase.from("platform_settings").select("minimum_withdrawal_amount").maybeSingle(),
+    ])
 
-    if (authError || !user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-    }
+    const paid = (orders ?? []).filter((o) => o.payment_status === "success")
+    const earned = paid.reduce((sum, o) => sum + Number(o.total_amount) - Number(o.platform_fee_amount ?? 0), 0)
+    const sumWhere = (statuses: string[]) =>
+      (withdrawals ?? []).filter((w) => statuses.includes(w.status)).reduce((sum, w) => sum + Number(w.amount), 0)
 
-    const { data: userProfile } = await supabase.from("users").select("id").eq("auth_id", user.id).single()
-
-    if (!userProfile) {
-      return NextResponse.json({ error: "User profile not found" }, { status: 404 })
-    }
-
-    const { data: orders, error } = await supabase
-      .from("orders")
-      .select("payment_status, total_amount, platform_fee_amount")
-      .eq("user_id", userProfile.id)
-
-    if (error) {
-      console.error("[v0] Payouts summary fetch error:", error)
-      return NextResponse.json({ error: error.message }, { status: 500 })
-    }
-
-    const { data: settings } = await supabase.from("platform_settings").select("commission_percentage").single()
-    // Orders created before per-plan fees existed have no platform_fee_amount —
-    // fall back to the flat commission for those so historical totals don't shift.
-    const fallbackCommissionRate = settings?.commission_percentage || 10
-
-    const paidOrders = (orders ?? []).filter((o) => o.payment_status === "paid" || o.payment_status === "success")
-
-    const totalRevenue = paidOrders.reduce((sum, o) => sum + Number(o.total_amount || 0), 0)
-    const totalFees = paidOrders.reduce((sum, o) => {
-      const fee = o.platform_fee_amount ?? (Number(o.total_amount || 0) * fallbackCommissionRate) / 100
-      return sum + Number(fee)
-    }, 0)
-
-    return NextResponse.json({ totalRevenue, totalFees, netRevenue: totalRevenue - totalFees })
+    return NextResponse.json({
+      earned: Math.round(earned * 100) / 100,
+      available,
+      withdrawn: sumWhere(["approved", "completed"]),
+      pending: sumWhere(["pending"]),
+      minimum: Number(settings?.minimum_withdrawal_amount ?? 5000),
+      verified: !!vendor?.payout_verified,
+      bank: vendor?.bank_name && vendor.account_number && vendor.account_name
+        ? { bank_name: vendor.bank_name, account_number_last4: vendor.account_number.slice(-4), account_name: vendor.account_name }
+        : null,
+    })
   } catch (error) {
-    console.error("[v0] Payouts summary API error:", error)
-    return NextResponse.json({ error: "Failed to fetch payouts summary" }, { status: 500 })
+    console.error("[payouts/summary] failed:", error)
+    return NextResponse.json({ error: "We couldn't load your balance. Please refresh." }, { status: 500 })
   }
 }

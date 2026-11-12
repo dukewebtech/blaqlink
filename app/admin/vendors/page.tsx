@@ -20,6 +20,7 @@ interface Vendor {
   total_orders: number
   total_revenue: number
   plan_id: string | null
+  store_slug: string | null
   pricing_plans: { id: string; name: string; plan_key: string } | null
 }
 
@@ -125,7 +126,7 @@ export default function AdminVendorsPage() {
                     </CardTitle>
                     <CardDescription>{vendor.email}</CardDescription>
                   </div>
-                  <Link href={`/store/${vendor.id}`} target="_blank">
+                  <Link href={`/${vendor.store_slug || vendor.id}`} target="_blank">
                     <Button variant="outline" size="sm" className="gap-2 bg-transparent">
                       <ExternalLink className="h-4 w-4" />
                       View Store

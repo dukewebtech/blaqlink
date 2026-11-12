@@ -77,10 +77,12 @@ export async function POST(request: NextRequest) {
   const reference = event.data.reference
   try {
     const result = await confirmPaystackPayment(reference)
-    if (!result.ok) {
+    if (result.state === "failed") {
       // 4xx outcomes (no checkout session, amount mismatch) won't change on retry
       console.error("[paystack/webhook] Not confirmed:", reference, result.error)
       if (result.status >= 500) return NextResponse.json({ error: result.error }, { status: 500 })
+    } else if (result.state === "pending") {
+      return NextResponse.json({ error: "Charge not settled yet" }, { status: 500 })
     } else {
       console.log("[paystack/webhook]", result.created ? "Order created:" : "Order already existed:", reference)
     }

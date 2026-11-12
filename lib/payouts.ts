@@ -13,30 +13,14 @@ export function namesMatch(a: string, b: string): boolean {
   return matchCount / words.length >= 0.5
 }
 
-// Mirrors the Payouts page: net of fees from paid orders, minus every
-// withdrawal that isn't rejected/failed. Server-side so the limit can't be
-// skipped by calling the API directly.
+/**
+ * What a vendor can withdraw right now: paid orders net of fees, minus fees
+ * kept on refunded orders, minus every withdrawal that isn't rejected or
+ * failed. Calculated in the database (vendor_available_balance) — the same
+ * function the withdrawal lock uses — so screens and payouts can't disagree.
+ */
 export async function getAvailableBalance(vendorUserId: string): Promise<number> {
-  const supabase = createAdminClient()
-
-  const [{ data: orders }, { data: withdrawals }, { data: settings }] = await Promise.all([
-    supabase.from("orders").select("payment_status, total_amount, platform_fee_amount").eq("user_id", vendorUserId),
-    supabase.from("withdrawal_requests").select("amount, status").eq("user_id", vendorUserId),
-    supabase.from("platform_settings").select("commission_percentage").maybeSingle(),
-  ])
-
-  const fallbackCommissionRate = settings?.commission_percentage || 10
-  const net = (orders ?? [])
-    .filter((o) => o.payment_status === "paid" || o.payment_status === "success")
-    .reduce((sum, o) => {
-      const total = Number(o.total_amount || 0)
-      const fee = o.platform_fee_amount ?? (total * fallbackCommissionRate) / 100
-      return sum + total - Number(fee)
-    }, 0)
-
-  const committed = (withdrawals ?? [])
-    .filter((w) => w.status !== "rejected" && w.status !== "failed")
-    .reduce((sum, w) => sum + Number(w.amount || 0), 0)
-
-  return Math.round((net - committed) * 100) / 100
+  const { data, error } = await createAdminClient().rpc("vendor_available_balance", { p_user: vendorUserId })
+  if (error) throw new Error(`Balance unavailable: ${error.message}`)
+  return Number(data ?? 0)
 }

@@ -59,50 +59,6 @@ async function koraFetch(method: string, path: string, body?: object) {
   return res.json()
 }
 
-export interface KoraChargeParams {
-  reference: string
-  amount: number
-  currency?: string
-  customerEmail: string
-  customerName: string
-  redirectUrl: string
-  notificationUrl?: string
-  metadata?: Record<string, unknown>
-}
-
-function isLocalhost(url: string) {
-  return url.startsWith("http://localhost") || url.startsWith("http://127.")
-}
-
-export async function initializeCharge(params: KoraChargeParams) {
-  // KoraPay metadata values must all be primitives (string | number | boolean).
-  // Flatten nested objects/arrays by JSON-stringifying them under a single key.
-  const flatMeta: Record<string, string | number | boolean> = { ref: params.reference }
-  if (params.metadata && Object.keys(params.metadata).length > 0) {
-    flatMeta.order_data = JSON.stringify(params.metadata)
-  }
-
-  const body: Record<string, unknown> = {
-    reference: params.reference,
-    amount: params.amount,
-    currency: params.currency ?? "NGN",
-    customer: { email: params.customerEmail, name: params.customerName },
-    redirect_url: params.redirectUrl,
-    metadata: flatMeta,
-  }
-
-  // KoraPay rejects localhost notification_url
-  if (params.notificationUrl && !isLocalhost(params.notificationUrl)) {
-    body.notification_url = params.notificationUrl
-  }
-
-  return koraFetch("POST", "/charges/initialize", body)
-}
-
-export async function verifyCharge(reference: string) {
-  return koraFetch("GET", `/charges/${reference}`)
-}
-
 export interface KoraDisbursementParams {
   reference: string
   amount: number

@@ -5,19 +5,12 @@ import { needsDelivery as computeNeedsDelivery } from "@/lib/storefront/delivery
 import { getDeliveryAreas } from "@/lib/storefront/delivery-server"
 import { createCheckoutSession, type PendingOrderItem, type PendingOrderMetadata } from "@/lib/storefront/order-service"
 import { getAppUrl } from "@/lib/utils/app-url"
-
-interface CheckoutLineInput {
-  product_id: string
-  quantity: number
-  product_variant_id?: string
-  ticket_tier_id?: string
-  appointment_date?: string
-  appointment_time?: string
-}
+import { allowRequest, clientIp } from "@/lib/rate-limit"
+import { bookingSlotError, parseCheckoutLines } from "@/lib/storefront/checkout-lines"
 
 interface CheckoutRequestBody {
   storeId: string
-  items: CheckoutLineInput[]
+  items: unknown
   details: {
     name: string
     phone: string
@@ -40,18 +33,29 @@ interface CheckoutRequestBody {
 
 export async function POST(request: NextRequest) {
   try {
-    const body: CheckoutRequestBody = await request.json()
-    const { storeId, items, details } = body
-
-    if (!storeId || !items?.length) {
-      return NextResponse.json({ error: "storeId and items are required" }, { status: 400 })
+    if (!(await allowRequest(`checkout:${clientIp(request)}`, 600, 30, true))) {
+      return NextResponse.json({ error: "Too many checkout attempts. Wait a few minutes and try again." }, { status: 429 })
     }
+
+    const body: CheckoutRequestBody | null = await request.json().catch(() => null)
+    if (!body || typeof body !== "object") {
+      return NextResponse.json({ error: "Invalid request" }, { status: 400 })
+    }
+    const { storeId, details } = body
+    if (typeof storeId !== "string" || !details || typeof details !== "object") {
+      return NextResponse.json({ error: "Invalid request" }, { status: 400 })
+    }
+    const parsed = parseCheckoutLines(body.items)
+    if (!parsed.ok) {
+      return NextResponse.json({ error: parsed.error }, { status: 400 })
+    }
+    const lines = parsed.lines
 
     const supabase = createAdminClient()
 
     const { data: vendor } = await supabase
       .from("users")
-      .select("id, business_name, full_name, email, shipping_mode")
+      .select("id, business_name, full_name, email, shipping_mode, store_slug")
       .eq("id", storeId)
       .maybeSingle()
 
@@ -60,59 +64,69 @@ export async function POST(request: NextRequest) {
     }
     const storeName = vendor.business_name || vendor.full_name || "the seller"
 
-    // Never trust client-submitted prices — re-fetch every product/variant/tier server-side.
-    const productIds = [...new Set(items.map((i) => i.product_id))]
-    const { data: products, error: productsError } = await supabase
-      .from("products")
-      .select("id, title, price, product_type, status, user_id")
-      .in("id", productIds)
+    // Never trust the browser for prices, options or availability — every
+    // line is re-resolved here. Stock, tickets and slots are then held
+    // atomically by createCheckoutSession (reserve_checkout).
+    const productIds = [...new Set(lines.map((i) => i.product_id))]
+    const [{ data: products, error: productsError }, { data: variants }, { data: tiers }] = await Promise.all([
+      supabase
+        .from("products")
+        .select("id, title, price, product_type, status, user_id, available_days, time_slots")
+        .in("id", productIds),
+      supabase.from("product_variants").select("id, product_id, size, color_name").in("product_id", productIds),
+      supabase.from("ticket_tiers").select("id, product_id, name, price").in("product_id", productIds),
+    ])
 
     if (productsError || !products) {
       return NextResponse.json({ error: "Failed to load items" }, { status: 500 })
     }
 
+    const unavailable = (title?: string) =>
+      NextResponse.json({ error: title ? `${title} is no longer available. Remove it from your bag.` : "One of the items in your bag is no longer available" }, { status: 409 })
+
     const resolvedItems: PendingOrderItem[] = []
-    for (const line of items) {
+    for (const line of lines) {
       const product = products.find((p) => p.id === line.product_id)
-      if (!product || product.user_id !== storeId || product.status !== "published") {
-        return NextResponse.json({ error: "One of the items in your cart is no longer available" }, { status: 409 })
-      }
+      if (!product || product.user_id !== storeId || product.status !== "published") return unavailable()
 
       let unitPrice = Number(product.price ?? 0)
       let variantLabel: string | undefined
       let tierName: string | undefined
 
-      if (line.product_variant_id) {
-        const { data: variant } = await supabase
-          .from("product_variants")
-          .select("id, size, color_name, stock_quantity, product_id")
-          .eq("id", line.product_variant_id)
-          .maybeSingle()
-        if (!variant || variant.product_id !== product.id) {
-          return NextResponse.json({ error: `Invalid option selected for ${product.title}` }, { status: 409 })
-        }
-        if (variant.stock_quantity < line.quantity) {
-          return NextResponse.json({ error: `Not enough stock left for ${product.title}` }, { status: 409 })
-        }
+      const productVariants = (variants ?? []).filter((v) => v.product_id === product.id)
+      if (product.product_type === "physical" && productVariants.length > 0) {
+        const variant = productVariants.find((v) => v.id === line.product_variant_id)
+        if (!variant) return NextResponse.json({ error: `Choose a size or colour for ${product.title}.` }, { status: 409 })
         variantLabel = [variant.size, variant.color_name].filter(Boolean).join(" / ")
+      } else if (line.product_variant_id) {
+        return NextResponse.json({ error: `Invalid option selected for ${product.title}` }, { status: 409 })
       }
 
-      if (line.ticket_tier_id) {
-        const { data: tier } = await supabase
-          .from("ticket_tiers")
-          .select("id, name, price, quantity_total, quantity_sold, product_id")
-          .eq("id", line.ticket_tier_id)
-          .maybeSingle()
-        if (!tier || tier.product_id !== product.id) {
-          return NextResponse.json({ error: `Invalid ticket tier selected for ${product.title}` }, { status: 409 })
-        }
-        const left = tier.quantity_total == null ? Infinity : tier.quantity_total - tier.quantity_sold
-        if (left < line.quantity) {
-          return NextResponse.json({ error: `Not enough "${tier.name}" tickets left` }, { status: 409 })
-        }
+      if (product.product_type === "event") {
+        const productTiers = (tiers ?? []).filter((t) => t.product_id === product.id)
+        if (productTiers.length === 0) return unavailable(product.title)
+        const tier = productTiers.find((t) => t.id === line.ticket_tier_id)
+        if (!tier) return NextResponse.json({ error: `Choose a ticket type for ${product.title}.` }, { status: 409 })
         unitPrice = Number(tier.price)
         tierName = tier.name
+      } else if (line.ticket_tier_id) {
+        return NextResponse.json({ error: `Invalid ticket type selected for ${product.title}` }, { status: 409 })
       }
+
+      if (product.product_type === "appointment") {
+        if (!line.appointment_date || !line.appointment_time) {
+          return NextResponse.json({ error: `Pick a date and time for ${product.title}.` }, { status: 409 })
+        }
+        if (line.quantity !== 1) {
+          return NextResponse.json({ error: `Each booking is for one session. Book ${product.title} once per time.` }, { status: 400 })
+        }
+        const slotError = bookingSlotError(product, line.appointment_date, line.appointment_time)
+        if (slotError) return NextResponse.json({ error: slotError }, { status: 409 })
+      } else if (line.appointment_date || line.appointment_time) {
+        return NextResponse.json({ error: `Invalid booking time for ${product.title}` }, { status: 409 })
+      }
+
+      if (!(unitPrice > 0)) return unavailable(product.title)
 
       resolvedItems.push({
         product_id: product.id,
@@ -120,7 +134,7 @@ export async function POST(request: NextRequest) {
         product_type: product.product_type,
         quantity: line.quantity,
         price: unitPrice,
-        subtotal: unitPrice * line.quantity,
+        subtotal: Math.round(unitPrice * line.quantity * 100) / 100,
         ...(line.product_variant_id && { product_variant_id: line.product_variant_id, variant_label: variantLabel }),
         ...(line.ticket_tier_id && { ticket_tier_id: line.ticket_tier_id, ticket_tier_name: tierName }),
         ...(line.appointment_date && { appointment_date: line.appointment_date }),
@@ -201,7 +215,18 @@ export async function POST(request: NextRequest) {
     const subtotal = resolvedItems.reduce((sum, i) => sum + i.subtotal, 0)
     const total = subtotal + deliveryFee
 
-    const callbackUrl = body.callbackUrl || `${getAppUrl()}/store/${storeId}/payment`
+    // Built here, not taken from the browser, so a checkout can't send the
+    // buyer anywhere else after paying. Only the template name is kept.
+    const templateParam = (() => {
+      try {
+        return new URL(String(body.callbackUrl ?? ""), getAppUrl()).searchParams.get("template")
+      } catch {
+        return null
+      }
+    })()
+    const callbackUrl = new URL(`${getAppUrl()}/${vendor.store_slug || vendor.id}/order/confirmed`)
+    callbackUrl.searchParams.set("store", vendor.id)
+    if (templateParam && /^[a-z]{3,20}$/.test(templateParam)) callbackUrl.searchParams.set("template", templateParam)
 
     const metadata: PendingOrderMetadata = {
       customer_name: details.name.trim(),
@@ -220,13 +245,18 @@ export async function POST(request: NextRequest) {
     }
 
     const session = await createCheckoutSession({
+      vendorId: vendor.id,
       metadata,
       email: details.email.trim(),
-      amount: total,
-      callbackUrl,
+      amount: Math.round(total * 100) / 100,
+      callbackUrl: callbackUrl.toString(),
+      lines,
     })
+    if (!session.ok) {
+      return NextResponse.json({ error: session.error }, { status: session.status })
+    }
 
-    return NextResponse.json(session)
+    return NextResponse.json({ authorization_url: session.authorization_url, reference: session.reference })
   } catch (error) {
     console.error("[checkout/initialize] Error:", error)
     return NextResponse.json({ error: "Failed to start checkout" }, { status: 500 })

@@ -1,4 +1,5 @@
-const BASE_URL = "https://api.paystack.co"
+// Overridable only so tests can point at a local fake Paystack.
+const BASE_URL = process.env.PAYSTACK_BASE_URL || "https://api.paystack.co"
 
 async function paystackFetch(method: string, path: string, body?: object) {
   const key = process.env.PAYSTACK_SECRET_KEY
@@ -37,4 +38,9 @@ export async function initializeTransaction(params: InitializeTransactionParams)
 
 export async function verifyTransaction(reference: string) {
   return paystackFetch("GET", `/transaction/verify/${encodeURIComponent(reference)}`)
+}
+
+/** Full refund of a transaction back to the buyer's card or account. */
+export async function refundTransaction(reference: string) {
+  return paystackFetch("POST", "/refund", { transaction: reference })
 }

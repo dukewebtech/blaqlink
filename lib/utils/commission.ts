@@ -1,3 +1,4 @@
+import { formatNaira } from "@/lib/money"
 /**
  * Commission calculation utilities
  * Centralizes platform commission logic
@@ -45,9 +46,6 @@ export function calculateGrossFromNet(netRevenue: number, commissionRate: number
 /**
  * Format currency for display
  */
-export function formatCurrency(amount: number, currency = "NGN"): string {
-  return new Intl.NumberFormat("en-NG", {
-    style: "currency",
-    currency,
-  }).format(amount)
+export function formatCurrency(amount: number): string {
+  return formatNaira(amount)
 }

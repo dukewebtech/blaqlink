@@ -2,7 +2,7 @@ import { NextResponse } from "next/server"
 import { createServerClient } from "@/lib/supabase/server"
 
 const SELF_EDITABLE_FIELDS = new Set([
-  "full_name", "email", "phone", "location", "business_name", "profile_image",
+  "full_name", "phone", "location", "business_name", "profile_image",
   "store_template", "store_brand_color", "store_font", "store_cover_image_url", "store_logo_url",
   "shipping_mode", "pickup_street", "pickup_city", "pickup_state", "pickup_lga", "pickup_phone",
   "pickup_line2", "pickup_postal_code", "default_parcel_weight_kg", "terminal_africa_api_key", "shipbubble_api_key",

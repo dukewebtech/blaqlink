@@ -237,6 +237,23 @@ select t.ok((select claim_download(download_token) ->> 'result' from dl) = 'ok',
 select t.ok((select claim_download(download_token) ->> 'result' from dl) = 'limit_reached', 'download: limit enforced');
 select t.ok((claim_download(gen_random_uuid()) ->> 'result') = 'not_found', 'download: unknown token refused');
 
+-- ── Refunds & rescheduling (C11, H7) ─────────────────────────────────────
+insert into tickets (order_id, order_item_id, seq, product_id, vendor_id, holder_name, code)
+select order_id, order_item_id, 2, product_id, vendor_id, holder_name, 'code-two' from tickets where code = 'code-one';
+select t.ok((mark_order_refunded((select id from orders where payment_reference = 'T1'), 'RF1') ->> 'ok')::boolean, 'refund: order marked refunded');
+select t.ok((mark_order_refunded((select id from orders where payment_reference = 'T1'), 'RF1') ->> 'ok')::boolean = false, 'refund: cannot refund twice');
+select t.ok((select status = 'cancelled' from tickets where code = 'code-two') and (select status = 'used' from tickets where code = 'code-one'), 'refund: unused tickets cancelled, already-used ones left as history');
+select t.ok((select quantity_sold = 0 from ticket_tiers where name = 'Regular'), 'refund: ticket capacity returned');
+
+select t.ok((reschedule_booking((select oi.id from order_items oi join orders o on o.id = oi.order_id where o.payment_reference = 'BK1'),
+  '00000000-0000-0000-0000-00000000000a', '2030-12-04', '11:00') ->> 'ok')::boolean, 'reschedule: booking moved to a free slot');
+select t.ok((select (reserve_checkout('B9', jsonb_build_array(jsonb_build_object('product_id', booking, 'quantity', 1, 'appointment_date', '2030-12-03', 'appointment_time', '09:00'))) ->> 'ok')::boolean from ids),
+  'reschedule: the old slot is free again');
+select t.ok((reschedule_booking((select oi.id from order_items oi join orders o on o.id = oi.order_id where o.payment_reference = 'BK1'),
+  '00000000-0000-0000-0000-00000000000a', '2030-12-03', '09:00') ->> 'ok')::boolean = false, 'reschedule: cannot move into a taken slot');
+select t.ok((reschedule_booking((select oi.id from order_items oi join orders o on o.id = oi.order_id where o.payment_reference = 'BK1'),
+  '00000000-0000-0000-0000-00000000000b', '2030-12-05', '10:00') ->> 'message') = 'Booking not found.', 'reschedule: another vendor cannot move it');
+
 -- ── Rate limit ───────────────────────────────────────────────────────────
 select t.ok(hit_rate_limit('k', 60, 2) and hit_rate_limit('k', 60, 2) and not hit_rate_limit('k', 60, 2), 'rate limit: third request in window refused');
 

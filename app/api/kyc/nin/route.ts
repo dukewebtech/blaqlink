@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server"
 import { createAdminClient, createServerClient } from "@/lib/supabase/server"
 import { lookupNIN } from "@/lib/korapay"
+import { allowRequest } from "@/lib/rate-limit"
 
 function normalize(name: string) {
   return name.toUpperCase().replace(/\s+/g, " ").trim()
@@ -51,8 +52,15 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Your identity is already verified." }, { status: 409 })
     }
 
-    // Same check app/api/payment/korapay/initialize/route.ts already does —
-    // without it, a missing key made koraFetch() throw and this whole route
+    // Each lookup is billed; cap retries per vendor (fails closed).
+    if (!(await allowRequest(`nin:${user.id}`, 24 * 60 * 60, 5, false))) {
+      return NextResponse.json(
+        { error: "You've tried several times today. Check the details on your NIN slip and try again tomorrow, or contact support." },
+        { status: 429 },
+      )
+    }
+
+    // Without this check, a missing key made koraFetch() throw and this whole route
     // fall into the generic catch-all below with no indication of why.
     if (!process.env.KORA_SECRET_KEY) {
       console.error("[kyc/nin] KORA_SECRET_KEY is not set")

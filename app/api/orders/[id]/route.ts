@@ -51,8 +51,8 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
       .maybeSingle()
 
     if (error) {
-      console.error("[v0] Order fetch error:", error)
-      return NextResponse.json({ error: error.message }, { status: 500 })
+      console.error("[orders] fetch failed:", error.message)
+      return NextResponse.json({ error: "Failed to load order" }, { status: 500 })
     }
 
     if (!order) {
@@ -63,11 +63,14 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
     // the order detail page can show a thumbnail per line item.
     const productIds = [...new Set((order.order_items ?? []).map((item: any) => item.product_id).filter(Boolean))]
     if (productIds.length > 0) {
-      const { data: products } = await supabase.from("products").select("id, images").in("id", productIds)
-      const imageById = new Map((products ?? []).map((p: any) => [p.id, (p.images && p.images[0]) || null]))
+      const { data: products } = await supabase.from("products").select("id, images, time_slots, available_days").in("id", productIds)
+      const byId = new Map((products ?? []).map((p: any) => [p.id, p]))
       order.order_items = (order.order_items ?? []).map((item: any) => ({
         ...item,
-        product_image: imageById.get(item.product_id) ?? null,
+        product_image: byId.get(item.product_id)?.images?.[0] ?? null,
+        // for rescheduling a booking to another of the service's times
+        time_slots: item.product_type === "appointment" ? byId.get(item.product_id)?.time_slots ?? [] : undefined,
+        available_days: item.product_type === "appointment" ? byId.get(item.product_id)?.available_days ?? [] : undefined,
       }))
     }
 

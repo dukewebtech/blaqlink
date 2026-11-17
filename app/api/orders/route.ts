@@ -1,5 +1,5 @@
 import { type NextRequest, NextResponse } from "next/server"
-import { createServerClient } from "@/lib/supabase/server"
+import { createAdminClient, createServerClient } from "@/lib/supabase/server"
 import { sendEmail, getOrderStatusUpdateEmailForCustomer } from "@/lib/email"
 import { buildVendorBranding } from "@/lib/storefront/order-emails"
 
@@ -72,6 +72,11 @@ export async function PATCH(request: NextRequest) {
     if (!order_id || !status) {
       return NextResponse.json({ error: "Order ID and status are required" }, { status: 400 })
     }
+    // Cancelling goes through refunds (POST /api/orders/[id]/refund), so the
+    // buyer always gets their money back when an order is cancelled.
+    if (!["confirmed", "processing", "shipped", "delivered", "completed"].includes(status)) {
+      return NextResponse.json({ error: "Choose a valid status. To cancel, refund the order." }, { status: 400 })
+    }
 
     const supabase = await createServerClient()
 
@@ -90,17 +95,20 @@ export async function PATCH(request: NextRequest) {
       return NextResponse.json({ error: "User profile not found" }, { status: 404 })
     }
 
-    const { data, error } = await supabase
+    // Orders are read-only to vendors at the database level (so totals can't
+    // be edited); status changes go through the server after this check.
+    const { data, error } = await createAdminClient()
       .from("orders")
-      .update({ status, updated_at: new Date().toISOString() })
+      .update({ status })
       .eq("id", order_id)
       .eq("user_id", userProfile.id)
+      .eq("payment_status", "success")
       .select()
-      .single()
+      .maybeSingle()
 
     if (error) {
-      console.error("[v0] Order update error:", error)
-      return NextResponse.json({ error: error.message }, { status: 500 })
+      console.error("[orders] status update failed:", error.message)
+      return NextResponse.json({ error: "Failed to update order" }, { status: 500 })
     }
 
     if (!data) {

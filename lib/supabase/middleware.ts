@@ -6,20 +6,25 @@ export async function updateSession(request: NextRequest) {
     request,
   })
 
-  const publicPaths = [
+  // "/" must be an exact match: matched as a prefix it made every path public.
+  // API routes check the session themselves, so they stay out of here.
+  const publicPrefixes = [
     "/signup",
     "/login",
     "/auth",
     "/templates",
-    "/store",
+    "/store/",
     "/_next",
-    "/api",
-    "/",
+    "/api/",
+    "/terms",
+    "/privacy",
+    "/refunds",
+    "/tickets/",
     "/admin/login",
     "/admin/setup",
   ]
-
-  const isPublicPath = publicPaths.some((path) => request.nextUrl.pathname.startsWith(path))
+  const pathname = request.nextUrl.pathname
+  const isPublicPath = pathname === "/" || publicPrefixes.some((path) => pathname.startsWith(path))
 
   // Vendor storefronts render at a bare top-level slug (e.g. /samplestore, see
   // app/[slug]/page.tsx) — there's no fixed prefix to list, so anything that
@@ -29,6 +34,7 @@ export async function updateSession(request: NextRequest) {
     "admin",
     "api-diagnostics",
     "categories",
+    "check-in",
     "customers",
     "dashboard",
     "help",
@@ -96,7 +102,7 @@ export async function updateSession(request: NextRequest) {
     if (isAdminRoute) {
       // Allow admin users to access admin routes without onboarding check
       try {
-        const { data: userData } = await supabase.from("users").select("is_admin, role").eq("id", user.id).single()
+        const { data: userData } = await supabase.from("users").select("is_admin, role").eq("auth_id", user.id).single()
 
         if (userData?.is_admin || userData?.role === "admin") {
           return supabaseResponse
@@ -137,7 +143,7 @@ export async function updateSession(request: NextRequest) {
       const url = request.nextUrl.clone()
 
       try {
-        const { data: userData } = await supabase.from("users").select("is_admin, role").eq("id", user.id).single()
+        const { data: userData } = await supabase.from("users").select("is_admin, role").eq("auth_id", user.id).single()
 
         // Admins go to admin dashboard
         if (userData?.is_admin || userData?.role === "admin") {

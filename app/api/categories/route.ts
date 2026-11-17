@@ -18,39 +18,23 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: "User profile not found" }, { status: 404 })
     }
 
-    const { searchParams } = new URL(request.url)
-    const productType = searchParams.get("type")
-
-    let query = supabase
-      .from("categories")
-      .select("*")
-      .eq("user_id", userProfile.id)
-      .order("created_at", { ascending: false })
-
-    if (productType) {
-      query = query.eq("product_type", productType)
-    }
-
-    const { data: categories, error } = await query
+    // Categories are shared by every product type, so no type filter.
+    const [{ data: categories, error }, { data: productCategories }] = await Promise.all([
+      supabase.from("categories").select("*").eq("user_id", userProfile.id).order("name"),
+      supabase.from("products").select("category").eq("user_id", userProfile.id).not("category", "is", null),
+    ])
 
     if (error) {
-      console.error("[v0] Error fetching categories:", error)
-      return NextResponse.json({ error: error.message }, { status: 500 })
+      console.error("[categories] list failed:", error.message)
+      return NextResponse.json({ error: "Failed to load categories" }, { status: 500 })
     }
 
-    const categoriesWithCounts = await Promise.all(
-      (categories || []).map(async (category) => {
-        const { count } = await supabase
-          .from("products")
-          .select("*", { count: "exact", head: true })
-          .eq("category", category.id)
-
-        return {
-          ...category,
-          products: [{ count: count || 0 }],
-        }
-      }),
-    )
+    const counts = new Map<string, number>()
+    for (const p of productCategories ?? []) counts.set(p.category as string, (counts.get(p.category as string) ?? 0) + 1)
+    const categoriesWithCounts = (categories ?? []).map((category) => ({
+      ...category,
+      products: [{ count: counts.get(category.id) ?? 0 }],
+    }))
 
     return NextResponse.json({ categories: categoriesWithCounts })
   } catch (error) {
@@ -76,17 +60,25 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "User profile not found" }, { status: 404 })
     }
 
-    const body = await request.json()
+    const body = await request.json().catch(() => ({}))
+    const name = typeof body.name === "string" ? body.name.trim() : ""
+    if (!name || name.length > 60) {
+      return NextResponse.json({ error: "Give the category a name of up to 60 characters." }, { status: 400 })
+    }
+
+    const { data: existing } = await supabase.from("categories").select("id").eq("user_id", userProfile.id).ilike("name", name).maybeSingle()
+    if (existing) {
+      return NextResponse.json({ error: "You already have a category with that name." }, { status: 409 })
+    }
 
     const { data: category, error } = await supabase
       .from("categories")
       .insert({
         user_id: userProfile.id,
-        name: body.name,
-        product_type: body.product_type,
-        description: body.description,
-        image_url: body.image_url,
-        status: body.status || "active",
+        name,
+        description: typeof body.description === "string" ? body.description.trim() || null : null,
+        image_url: typeof body.image_url === "string" ? body.image_url : null,
+        status: body.status === "inactive" ? "inactive" : "active",
       })
       .select()
       .single()

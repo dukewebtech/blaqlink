@@ -64,7 +64,8 @@ export async function POST(request: Request) {
         progressUpdates.store_city              = stepData.city
         progressUpdates.store_state             = stepData.state
 
-        const { error: userUpdateError } = await supabase.from("users").update({
+        // Server connection: store_slug is a protected column.
+        const { error: userUpdateError } = await createAdminClient().from("users").update({
           business_name:   stepData.businessName,
           store_name:      stepData.businessName,
           store_slug:      resolvedSlug,

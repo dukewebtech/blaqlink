@@ -934,6 +934,78 @@ exception
 end;
 $$;
 
+-- Record a completed refund: the order stops counting as a sale (the fee is
+-- kept, see vendor_available_balance), tickets stop working, and tickets
+-- and booking slots go back on sale. Once per order.
+create or replace function public.mark_order_refunded(p_order uuid, p_refund_reference text)
+returns jsonb language plpgsql as $$
+declare
+  v_order public.orders;
+begin
+  select * into v_order from public.orders where id = p_order for update;
+  if not found then
+    return jsonb_build_object('ok', false, 'message', 'Order not found.');
+  end if;
+  if v_order.payment_status <> 'success' then
+    return jsonb_build_object('ok', false, 'message', 'This order has already been refunded.');
+  end if;
+
+  update public.orders set payment_status = 'refunded', status = 'cancelled', refunded_at = now(),
+    refund_reference = p_refund_reference, needs_attention = false, attention_reason = null
+  where id = p_order;
+
+  update public.tickets set status = 'cancelled' where order_id = p_order and status = 'valid';
+
+  update public.ticket_tiers t set quantity_sold = greatest(t.quantity_sold - oi.quantity, 0)
+  from public.order_items oi
+  where oi.order_id = p_order and oi.ticket_tier_id = t.id;
+
+  update public.inventory_holds set status = 'released'
+  where reference = v_order.payment_reference and appointment_date is not null;
+
+  return jsonb_build_object('ok', true);
+end;
+$$;
+
+-- Move a paid booking to another free slot offered by the product.
+create or replace function public.reschedule_booking(p_item uuid, p_vendor uuid, p_date date, p_time text)
+returns jsonb language plpgsql as $$
+declare
+  v_item public.order_items;
+  v_order public.orders;
+  v_product public.products;
+begin
+  select * into v_item from public.order_items where id = p_item for update;
+  if not found or v_item.product_type <> 'appointment' then
+    return jsonb_build_object('ok', false, 'message', 'Booking not found.');
+  end if;
+  select * into v_order from public.orders where id = v_item.order_id;
+  if v_order.user_id <> p_vendor then
+    return jsonb_build_object('ok', false, 'message', 'Booking not found.');
+  end if;
+  if v_order.payment_status <> 'success' then
+    return jsonb_build_object('ok', false, 'message', 'This booking was refunded.');
+  end if;
+  select * into v_product from public.products where id = v_item.product_id;
+  if v_product.id is null or not (p_time = any(v_product.time_slots)) then
+    return jsonb_build_object('ok', false, 'message', 'That time isn''t one of your session times.');
+  end if;
+
+  -- free the old slot, take the new one (unique index refuses a taken slot)
+  update public.inventory_holds set status = 'released'
+  where reference = v_order.payment_reference and product_id = v_item.product_id
+    and appointment_date = v_item.appointment_date and appointment_time = v_item.appointment_time;
+  insert into public.inventory_holds (reference, product_id, appointment_date, appointment_time, quantity, status, expires_at)
+  values (v_order.payment_reference, v_item.product_id, p_date, p_time, 1, 'committed', now());
+
+  update public.order_items set appointment_date = p_date, appointment_time = p_time where id = p_item;
+  return jsonb_build_object('ok', true);
+exception
+  when unique_violation then
+    return jsonb_build_object('ok', false, 'message', 'That time is already booked. Pick another.');
+end;
+$$;
+
 -- Lock every function down to the server.
 do $$
 declare f record;

@@ -34,6 +34,7 @@ import {
   Truck,
   Store,
   CreditCard,
+  ScanLine,
 } from "lucide-react"
 import { Logo } from "@/components/logo"
 import { useVendorUser } from "@/components/dashboard/vendor-user-context"
@@ -54,6 +55,7 @@ const navigationGroups = [
     label: "Orders & Sales",
     items: [
       { name: "Transactions", href: "/transactions", icon: Receipt },
+      { name: "Check-in", href: "/check-in", icon: ScanLine },
       { name: "Customers", href: "/customers", icon: Users },
       { name: "Sales Reports", href: "/sales", icon: BarChart3 },
     ],
@@ -74,7 +76,7 @@ const navigationGroups = [
     items: [
       { name: "Store Settings", href: "/settings/store", icon: Store },
       { name: "Payment Settings", href: "/settings/payout", icon: CreditCard },
-      { name: "Shipping Settings", href: "/shipping", icon: Truck },
+      { name: "Delivery zones", href: "/shipping", icon: Truck },
       { name: "Account Settings", href: "/settings/account", icon: Settings },
     ],
   },

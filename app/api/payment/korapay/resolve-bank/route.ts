@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server"
 import { getBankCode, resolveBankAccount } from "@/lib/korapay"
 import { createServerClient } from "@/lib/supabase/server"
+import { allowRequest } from "@/lib/rate-limit"
 
 export async function POST(request: Request) {
   try {
@@ -10,6 +11,9 @@ export async function POST(request: Request) {
       data: { user },
     } = await supabase.auth.getUser()
     if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+    if (!(await allowRequest(`resolve-bank:${user.id}`, 60 * 60, 30, false))) {
+      return NextResponse.json({ error: "Too many account checks. Try again in an hour." }, { status: 429 })
+    }
 
     const { bank_name, account_number } = await request.json()
 

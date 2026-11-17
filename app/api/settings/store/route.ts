@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server"
-import { createServerClient } from "@/lib/supabase/server"
+import { createAdminClient, createServerClient } from "@/lib/supabase/server"
 import { generateUniqueSlug, slugify } from "@/lib/utils/slug"
 
 // Update the vendor's store profile (name, URL, bio, category, address).
@@ -29,7 +29,9 @@ export async function PUT(request: Request) {
     const resolvedSlug = await generateUniqueSlug(storeSlug || storeName, user.id)
     const slugWasTaken = requestedSlug !== "" && requestedSlug !== resolvedSlug
 
-    const { data: updatedProfile, error: updateError } = await supabase
+    // Server connection: store_slug is a protected column (vendors can't set
+    // it directly, so nobody can grab a slug without the uniqueness check).
+    const { data: updatedProfile, error: updateError } = await createAdminClient()
       .from("users")
       .update({
         business_name: storeName,
@@ -42,14 +44,14 @@ export async function PUT(request: Request) {
         store_state: storeState || null,
         updated_at: new Date().toISOString(),
       })
-      .eq("id", user.id)
+      .eq("auth_id", user.id)
       .select()
       .single()
 
     if (updateError) {
       console.error("[settings/store PUT] update error:", updateError)
       return NextResponse.json(
-        { error: "Failed to save store settings", details: updateError.message },
+        { error: "Failed to save store settings. Please try again." },
         { status: 500 },
       )
     }

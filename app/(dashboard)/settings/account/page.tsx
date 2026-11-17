@@ -292,11 +292,14 @@ export default function AccountSettingsPage() {
                 <Input
                   id="email"
                   type="email"
-                  placeholder="your@email.com"
-                  className="transition-all duration-200 focus:ring-2 focus:ring-primary/20"
+                  className="bg-muted"
                   value={formData.email || ""}
-                  onChange={(e) => handleInputChange("email", e.target.value)}
+                  readOnly
+                  aria-describedby="email-hint"
                 />
+                <p id="email-hint" className="text-sm text-muted-foreground">
+                  This is the email you log in with and where orders are sent. To change it, contact support.
+                </p>
               </div>
 
               {/* Phone */}

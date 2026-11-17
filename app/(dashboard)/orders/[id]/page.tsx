@@ -6,7 +6,13 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { ArrowLeft, Package, User, MapPin, CreditCard, Calendar, Truck, RotateCw, Store } from "lucide-react"
+import { AlertTriangle, ArrowLeft, Package, User, MapPin, CreditCard, Calendar, Truck, RotateCw, Store, Loader2 } from "lucide-react"
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import { toast } from "sonner"
+import { formatNaira } from "@/lib/money"
+import { addDays, lagosDate, lagosWeekday } from "@/lib/dates"
 
 interface OrderItem {
   id: string
@@ -20,6 +26,8 @@ interface OrderItem {
   ticket_tier_name: string | null
   appointment_date: string | null
   appointment_time: string | null
+  time_slots?: string[]
+  available_days?: string[]
 }
 
 interface Order {
@@ -43,7 +51,10 @@ interface Order {
   updated_at: string
   order_items: OrderItem[]
   shipping_provider: "terminal_africa" | "shipbubble" | null
-  shipping_status: "pending_booking" | "booked" | "failed" | null
+  shipping_status: "pending_booking" | "booking" | "booked" | "failed" | null
+  needs_attention: boolean
+  attention_reason: string | null
+  refunded_at: string | null
   shipping_tracking_number: string | null
   shipping_tracking_url: string | null
 }
@@ -57,6 +68,64 @@ export default function OrderDetailPage() {
   const [retrying, setRetrying] = useState(false)
   const [notifyCustomer, setNotifyCustomer] = useState(true)
   const [notified, setNotified] = useState(false)
+  const [refundOpen, setRefundOpen] = useState(false)
+  const [refunding, setRefunding] = useState(false)
+  const [refundError, setRefundError] = useState<string | null>(null)
+  const [moveItem, setMoveItem] = useState<OrderItem | null>(null)
+  const [moveDate, setMoveDate] = useState("")
+  const [moveTime, setMoveTime] = useState("")
+  const [moving, setMoving] = useState(false)
+  const [moveError, setMoveError] = useState<string | null>(null)
+
+  async function refund() {
+    if (!order) return
+    setRefunding(true)
+    setRefundError(null)
+    try {
+      const res = await fetch(`/api/orders/${order.id}/refund`, { method: "POST" })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) {
+        setRefundError(data.error ?? "The refund didn't go through. Please try again.")
+        return
+      }
+      setRefundOpen(false)
+      toast.success("Refund sent", { description: "The buyer has been emailed. It usually arrives in 5 to 10 working days." })
+      fetchOrder()
+    } catch {
+      setRefundError("We couldn't reach the server. Check your connection and try again.")
+    } finally {
+      setRefunding(false)
+    }
+  }
+
+  async function reschedule() {
+    if (!order || !moveItem) return
+    if (!moveDate || !moveTime) {
+      setMoveError("Pick a new date and time.")
+      return
+    }
+    setMoving(true)
+    setMoveError(null)
+    try {
+      const res = await fetch(`/api/orders/${order.id}/reschedule`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ itemId: moveItem.id, date: moveDate, time: moveTime }),
+      })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) {
+        setMoveError(data.error ?? "We couldn't move this booking.")
+        return
+      }
+      setMoveItem(null)
+      toast.success("Booking moved", { description: "The buyer has been emailed the new time." })
+      fetchOrder()
+    } catch {
+      setMoveError("We couldn't reach the server. Check your connection and try again.")
+    } finally {
+      setMoving(false)
+    }
+  }
 
   useEffect(() => {
     fetchOrder()
@@ -158,7 +227,7 @@ export default function OrderDetailPage() {
     <>
       <div className="space-y-6">
         {/* Header */}
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-center gap-4">
             <Button variant="ghost" size="icon" onClick={() => router.push("/orders")}>
               <ArrowLeft className="h-5 w-5" />
@@ -168,19 +237,19 @@ export default function OrderDetailPage() {
               <p className="text-muted-foreground font-mono text-sm">#{order.id.slice(0, 8)}</p>
             </div>
           </div>
-          <div className="flex flex-col items-end gap-2">
+          <div className="flex flex-col items-start gap-2 sm:items-end">
             <div className="flex items-center gap-3">
-              <Select value={order.status} onValueChange={updateOrderStatus} disabled={updating}>
+              <Select value={order.status} onValueChange={updateOrderStatus} disabled={updating || order.payment_status !== "success"}>
                 <SelectTrigger className="w-48">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="pending">Pending</SelectItem>
+                  {order.status === "cancelled" && <SelectItem value="cancelled" disabled>Cancelled (refunded)</SelectItem>}
                   <SelectItem value="confirmed">Confirmed</SelectItem>
                   <SelectItem value="processing">Processing</SelectItem>
                   <SelectItem value="shipped">Shipped</SelectItem>
                   <SelectItem value="delivered">Delivered</SelectItem>
-                  <SelectItem value="cancelled">Cancelled</SelectItem>
+                  <SelectItem value="completed">Completed</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -189,8 +258,31 @@ export default function OrderDetailPage() {
               Notify customer by email
             </label>
             {notified && <p className="text-xs text-green-600">Customer notified ✓</p>}
+            {order.payment_status === "success" && (
+              <Button variant="outline" size="sm" className="text-destructive" onClick={() => setRefundOpen(true)}>
+                Refund order
+              </Button>
+            )}
           </div>
         </div>
+
+        {order.needs_attention && order.attention_reason && (
+          <div role="alert" className="flex gap-3 rounded-lg border border-amber-300 bg-amber-50 p-4">
+            <AlertTriangle className="h-5 w-5 shrink-0 text-amber-700" aria-hidden="true" />
+            <div>
+              <p className="font-medium">This order needs your attention</p>
+              <p className="text-sm text-muted-foreground">{order.attention_reason}</p>
+            </div>
+          </div>
+        )}
+        {order.payment_status === "refunded" && (
+          <div className="rounded-lg border bg-muted/50 p-4 text-sm">
+            <p className="font-medium">Refunded</p>
+            <p className="text-muted-foreground">
+              The buyer was refunded{order.refunded_at ? ` on ${new Date(order.refunded_at).toLocaleDateString("en-NG", { day: "numeric", month: "short", year: "numeric" })}` : ""}. Any tickets from this order no longer work.
+            </p>
+          </div>
+        )}
 
         <div className="grid lg:grid-cols-3 gap-6">
           {/* Order Information */}
@@ -220,21 +312,36 @@ export default function OrderDetailPage() {
                           <p className="text-sm text-muted-foreground">Tier: {item.ticket_tier_name}</p>
                         )}
                         {item.appointment_date && (
-                          <p className="text-sm text-muted-foreground">
-                            Appointment: {item.appointment_date}
+                          <div className="text-sm text-muted-foreground">
+                            Booked for {new Date(`${item.appointment_date}T12:00:00+01:00`).toLocaleDateString("en-NG", { weekday: "short", day: "numeric", month: "short" })}
                             {item.appointment_time ? ` at ${item.appointment_time}` : ""}
-                          </p>
+                            {order.payment_status === "success" && (
+                              <Button
+                                variant="link"
+                                size="sm"
+                                className="h-auto px-2"
+                                onClick={() => {
+                                  setMoveItem(item)
+                                  setMoveDate("")
+                                  setMoveTime("")
+                                  setMoveError(null)
+                                }}
+                              >
+                                Reschedule
+                              </Button>
+                            )}
+                          </div>
                         )}
                         <p className="text-sm text-muted-foreground">Quantity: {item.quantity}</p>
-                        <p className="text-sm font-medium mt-1">NGN {item.price.toLocaleString()} each</p>
+                        <p className="text-sm font-medium mt-1">{formatNaira(item.price)} each</p>
                       </div>
                     </div>
-                    <p className="text-lg font-bold shrink-0">NGN {item.subtotal.toLocaleString()}</p>
+                    <p className="text-lg font-bold shrink-0">{formatNaira(item.subtotal)}</p>
                   </div>
                 ))}
                 <div className="flex justify-between items-center pt-4 border-t">
                   <span className="text-xl font-bold">Total</span>
-                  <span className="text-2xl font-bold">NGN {order.total_amount.toLocaleString()}</span>
+                  <span className="text-2xl font-bold">{formatNaira(order.total_amount)}</span>
                 </div>
               </div>
             </div>
@@ -316,7 +423,7 @@ export default function OrderDetailPage() {
                 </div>
                 <div>
                   <p className="text-muted-foreground">Amount</p>
-                  <p className="font-bold text-lg mt-1">NGN {order.total_amount.toLocaleString()}</p>
+                  <p className="font-bold text-lg mt-1">{formatNaira(order.total_amount)}</p>
                 </div>
               </div>
             </div>
@@ -413,6 +520,68 @@ export default function OrderDetailPage() {
           </div>
         </div>
       </div>
+          <Dialog open={refundOpen} onOpenChange={(v) => { setRefundOpen(v); if (!v) setRefundError(null) }}>
+        <DialogContent className="w-[calc(100vw-2rem)] max-w-md">
+          <DialogHeader>
+            <DialogTitle>Refund this order?</DialogTitle>
+            <DialogDescription>
+              {formatNaira(order.total_amount)} goes back to {order.customer_name} through Paystack. This can't be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <ul className="list-disc space-y-1 pl-5 text-sm text-muted-foreground">
+            <li>The sale comes off your balance. The per-sale fee isn't returned.</li>
+            <li>Tickets from this order stop working, and bookings free up their time.</li>
+            <li>The buyer is emailed straight away.</li>
+          </ul>
+          {refundError && <p role="alert" className="text-sm text-destructive">{refundError}</p>}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setRefundOpen(false)}>Keep order</Button>
+            <Button variant="destructive" onClick={refund} disabled={refunding}>
+              {refunding && <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />}
+              Refund {formatNaira(order.total_amount)}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={!!moveItem} onOpenChange={(v) => !v && setMoveItem(null)}>
+        <DialogContent className="w-[calc(100vw-2rem)] max-w-md">
+          <DialogHeader>
+            <DialogTitle>Reschedule booking</DialogTitle>
+            <DialogDescription>Pick a new time for {moveItem?.product_title}. The buyer is emailed the change.</DialogDescription>
+          </DialogHeader>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-2">
+              <Label htmlFor="move-date">Date</Label>
+              <Input id="move-date" type="date" min={addDays(lagosDate(), 0)} max={addDays(lagosDate(), 60)} value={moveDate} onChange={(e) => setMoveDate(e.target.value)} />
+              {moveDate && moveItem?.available_days && !moveItem.available_days.includes(lagosWeekday(moveDate)) && (
+                <p className="text-xs text-amber-700">You're not normally available on {lagosWeekday(moveDate)}s.</p>
+              )}
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="move-time">Time</Label>
+              <Select value={moveTime} onValueChange={setMoveTime}>
+                <SelectTrigger id="move-time">
+                  <SelectValue placeholder="Choose" />
+                </SelectTrigger>
+                <SelectContent>
+                  {(moveItem?.time_slots ?? []).map((t) => (
+                    <SelectItem key={t} value={t}>{t}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          {moveError && <p role="alert" className="text-sm text-destructive">{moveError}</p>}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setMoveItem(null)}>Cancel</Button>
+            <Button onClick={reschedule} disabled={moving}>
+              {moving && <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />}
+              Move booking
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </>
   )
 }

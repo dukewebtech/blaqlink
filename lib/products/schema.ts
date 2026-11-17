@@ -145,6 +145,7 @@ export function validateProduct(input: ProductInput): ProductErrors {
   switch (input.product_type) {
     case "digital":
       if (publishing && input.file_urls.length === 0) e.file_urls = "Upload the file buyers will download."
+      if (input.file_urls.some((u) => !u.startsWith("digital-files:"))) e.file_urls = "One of the files didn't upload properly. Remove it and upload it again."
       if (input.license_type && !["standard", "extended"].includes(input.license_type)) e.license_type = "Choose a licence."
       if (input.download_limit !== null && (!isWholeNumber(input.download_limit) || input.download_limit < 1 || input.download_limit > 100)) {
         e.download_limit = "Use a whole number from 1 to 100, or leave it empty for unlimited."

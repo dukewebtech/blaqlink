@@ -1,5 +1,6 @@
 "use client"
 
+import { useVendorUser } from "@/components/dashboard/vendor-user-context"
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import { Card, CardContent, CardHeader } from "@/components/ui/card"
@@ -68,6 +69,7 @@ const ITEMS = [
 ] as const
 
 export function OnboardingChecklist({ storeId }: { storeId: string }) {
+  const { user: vendorUser } = useVendorUser()
   const router = useRouter()
   const [checklist, setChecklist] = useState<ChecklistState>({
     store_created: true,
@@ -120,7 +122,7 @@ export function OnboardingChecklist({ storeId }: { storeId: string }) {
 
   async function markShared() {
     try {
-      const storeUrl = `${window.location.origin}/store/${storeId}`
+      const storeUrl = `${window.location.origin}/${vendorUser?.store_slug || storeId}`
       await navigator.clipboard.writeText(storeUrl)
       setCopied(true)
       setTimeout(() => setCopied(false), 2000)

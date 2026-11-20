@@ -39,16 +39,15 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: authError.message }, { status: 400 })
     }
 
-    // Create user record in users table with admin privileges
-    const { error: userError } = await supabase.from("users").insert({
-      auth_id: authData.user.id,
-      email: email,
-      full_name: fullName,
-      role: "admin",
-      is_admin: true,
-    })
+    // The database creates the profile automatically on sign-up (as a
+    // vendor); promote it. Only the server connection may set these fields.
+    const { data: promoted, error: userError } = await supabase
+      .from("users")
+      .update({ full_name: fullName, role: "admin", is_admin: true })
+      .eq("auth_id", authData.user.id)
+      .select("id")
 
-    if (userError) {
+    if (userError || !promoted?.length) {
       console.error("[v0] User record creation error:", userError)
       // Try to delete the auth user if user record creation fails
       await supabase.auth.admin.deleteUser(authData.user.id)

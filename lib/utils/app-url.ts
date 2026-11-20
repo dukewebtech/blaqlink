@@ -15,5 +15,12 @@
  * URL" goes through here, and here always resolves to the one true domain.
  */
 export function getAppUrl(): string {
+  // Vercel preview deployments (testing a branch) use their own stable branch
+  // address, so a test payment returns to the code being tested instead of
+  // the live site. Both values are set by Vercel itself, never by hand, and
+  // production always gets the real domain.
+  if (process.env.VERCEL_ENV === "preview" && process.env.VERCEL_BRANCH_URL) {
+    return `https://${process.env.VERCEL_BRANCH_URL}`
+  }
   return "https://blaqora.store"
 }

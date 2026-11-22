@@ -355,3 +355,13 @@ s3_region = "env(S3_REGION)"
 s3_access_key = "env(S3_ACCESS_KEY)"
 # Configures AWS_SECRET_ACCESS_KEY for S3 bucket
 s3_secret_key = "env(S3_SECRET_KEY)"
+
+# Email templates with a 6-digit code (and a one-tap /auth/confirm link).
+# On the hosted project, paste the same files into Authentication → Emails.
+[auth.email.template.confirmation]
+subject = "Your Blaqora code: {{ .Token }}"
+content_path = "./supabase/templates/confirmation.html"
+
+[auth.email.template.recovery]
+subject = "Your Blaqora password reset code: {{ .Token }}"
+content_path = "./supabase/templates/recovery.html"

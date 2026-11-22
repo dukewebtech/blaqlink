@@ -11,6 +11,8 @@ export async function updateSession(request: NextRequest) {
   const publicPrefixes = [
     "/signup",
     "/login",
+    "/forgot-password",
+    "/reset-password",
     "/auth",
     "/templates",
     "/store/",

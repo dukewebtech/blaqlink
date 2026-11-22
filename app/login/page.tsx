@@ -1,256 +1,146 @@
 "use client"
 
 import type React from "react"
-
-import { createClient } from "@/lib/supabase/client"
+import { Suspense, useState } from "react"
+import Link from "next/link"
+import { useSearchParams } from "next/navigation"
+import { Loader2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import Link from "next/link"
-import { useState, useEffect } from "react"
-import { Eye, EyeOff, CheckCircle2 } from "lucide-react"
-import { useSearchParams } from "next/navigation"
+import { AuthShell } from "@/components/auth/auth-shell"
+import { PasswordField } from "@/components/auth/password-field"
+import { EmailCodeStep } from "@/components/auth/email-code-step"
+import { createClient } from "@/lib/supabase/client"
 
 export default function LoginPage() {
-  const [email, setEmail] = useState("")
-  const [password, setPassword] = useState("")
-  const [showPassword, setShowPassword] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-  const [isLoading, setIsLoading] = useState(false)
-  const [showSignupSuccess, setShowSignupSuccess] = useState(false)
+  return (
+    <Suspense fallback={null}>
+      <LoginForm />
+    </Suspense>
+  )
+}
+
+/** Where a signed-in user belongs: admin area, store setup, or dashboard. */
+async function destination(): Promise<string> {
+  try {
+    const me = await fetch("/api/users/me").then((r) => (r.ok ? r.json() : null))
+    const user = me?.data?.user
+    if (user?.is_admin || user?.role === "admin") return "/admin/dashboard"
+    const progress = await fetch("/api/onboarding").then((r) => (r.ok ? r.json() : null))
+    return progress?.progress?.onboarding_completed ? "/dashboard" : "/onboarding"
+  } catch {
+    return "/dashboard" // the middleware still routes unfinished accounts to setup
+  }
+}
+
+function LoginForm() {
   const searchParams = useSearchParams()
+  const [email, setEmail] = useState(() => searchParams.get("email") || "")
+  const [password, setPassword] = useState("")
+  const [error, setError] = useState<string | null>(null)
+  const [submitting, setSubmitting] = useState(false)
+  const [confirming, setConfirming] = useState(false)
+  const linkExpired = searchParams.get("link") === "expired"
 
-  useEffect(() => {
-    if (searchParams.get("signup") === "success") {
-      setShowSignupSuccess(true)
-      const timer = setTimeout(() => {
-        setShowSignupSuccess(false)
-      }, 5000)
-      return () => clearTimeout(timer)
-    }
-  }, [searchParams])
-
-  const handleLogin = async (e: React.FormEvent) => {
+  async function handleLogin(e: React.FormEvent) {
     e.preventDefault()
-    setIsLoading(true)
     setError(null)
-
+    if (!email.trim() || !password) {
+      setError("Enter your email and password.")
+      return
+    }
+    setSubmitting(true)
     try {
       const supabase = createClient()
-
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email,
-        password,
-      })
-
-      if (error) {
-        setError(error.message)
-        setIsLoading(false)
-        return
-      }
-
-      console.log("[v0] Login successful, checking onboarding status...")
-
-      let profileResponse
-      let retryCount = 0
-      const maxRetries = 3
-
-      while (retryCount < maxRetries) {
-        profileResponse = await fetch("/api/users/me", {
-          method: "GET",
-          headers: { "Content-Type": "application/json" },
-        })
-
-        if (profileResponse.ok) {
-          break
-        }
-
-        // If session not ready, wait and retry
-        if (profileResponse.status === 401) {
-          const errorData = await profileResponse.json()
-          if (errorData.error?.includes("Session not ready") && retryCount < maxRetries - 1) {
-            console.log(`[v0] Session not ready, retrying (${retryCount + 1}/${maxRetries})...`)
-            await new Promise((resolve) => setTimeout(resolve, 1000))
-            retryCount++
-            continue
-          }
-        }
-
-        break
-      }
-
-      if (!profileResponse || !profileResponse.ok) {
-        console.error("[v0] Failed to fetch user profile")
-        setError("Session is initializing. Please wait a moment and try logging in again.")
-        setIsLoading(false)
-        return
-      }
-
-      const profileData = await profileResponse.json()
-      const userData = profileData.data?.user || profileData.user || profileData
-
-      // Check if user is admin
-      if (userData?.is_admin || userData?.role === "admin") {
-        console.log("[v0] Admin user, redirecting to admin dashboard...")
-        window.location.href = "/admin/dashboard"
-        return
-      }
-
-      // Check onboarding status
-      let shouldOnboard = false
-
-      try {
-        const onboardingResponse = await fetch("/api/onboarding")
-
-        if (onboardingResponse.ok) {
-          const onboardingData = await onboardingResponse.json()
-          console.log("[v0] Onboarding status:", onboardingData)
-
-          // Check if user needs to complete onboarding
-          if (!onboardingData.progress?.onboarding_completed) {
-            shouldOnboard = true
-          } else if (onboardingData.kycStatus === "pending_review" && !onboardingData.adminKycApproved) {
-            // Onboarding complete but KYC not approved - show pending screen
-            console.log("[v0] KYC pending approval, redirecting to onboarding...")
-            shouldOnboard = true
-          }
+      const { error: signInError } = await supabase.auth.signInWithPassword({ email: email.trim(), password })
+      if (signInError) {
+        const m = signInError.message.toLowerCase()
+        if (m.includes("not confirmed")) {
+          // Never confirmed their email: send a fresh code and confirm right here.
+          await supabase.auth.resend({ type: "signup", email: email.trim() })
+          setConfirming(true)
+        } else if (m.includes("invalid login") || m.includes("invalid credentials")) {
+          setError("That email and password don't match. Check them, or reset your password.")
+        } else if (m.includes("rate") || m.includes("too many")) {
+          setError("Too many attempts. Wait a few minutes and try again.")
         } else {
-          // If onboarding API fails, check user profile directly
-          if (!userData.onboarding_completed) {
-            shouldOnboard = true
-          }
+          setError("We couldn't log you in. Please try again.")
         }
-      } catch (onboardingError) {
-        console.error("[v0] Onboarding check failed:", onboardingError)
-        // Check profile fallback
-        if (!userData.onboarding_completed) {
-          shouldOnboard = true
-        }
-      }
-
-      if (shouldOnboard) {
-        console.log("[v0] Redirecting to onboarding...")
-        window.location.href = "/onboarding"
         return
       }
-
-      console.log("[v0] Redirecting to dashboard...")
-      window.location.href = "/dashboard"
-    } catch (error: unknown) {
-      console.error("[v0] Login failed:", error)
-      if (error instanceof Error && error.message === "Failed to fetch") {
-        setError("Unable to connect to authentication service. Please check your internet connection and try again.")
-      } else {
-        setError(error instanceof Error ? error.message : "An error occurred during login")
-      }
+      window.location.href = await destination()
+    } catch {
+      setError("We couldn't reach the server. Check your connection and try again.")
     } finally {
-      setIsLoading(false)
+      setSubmitting(false)
     }
   }
 
+  if (confirming) {
+    return (
+      <AuthShell title="Confirm your email" subtitle="Your account isn't confirmed yet.">
+        <EmailCodeStep
+          email={email.trim()}
+          onVerified={async () => {
+            window.location.href = await destination()
+          }}
+          onChangeEmail={() => setConfirming(false)}
+        />
+      </AuthShell>
+    )
+  }
+
   return (
-    <div className="flex min-h-screen">
-      {/* Left side - Login Form */}
-      <div className="flex w-full flex-col justify-center px-8 lg:w-1/2 lg:px-16">
-        <div className="mx-auto w-full max-w-md space-y-8">
-          <div className="space-y-2">
-            <h1 className="text-3xl font-bold tracking-tight">Welcome Back</h1>
-            <p className="text-muted-foreground">Sign in to your account to continue</p>
-          </div>
-
-          {showSignupSuccess && (
-            <div className="rounded-lg bg-success/10 border border-success/20 p-4 animate-in fade-in slide-in-from-top-2 duration-300">
-              <div className="flex items-start gap-3">
-                <CheckCircle2 className="h-5 w-5 text-success mt-0.5 flex-shrink-0" />
-                <div className="space-y-1">
-                  <p className="text-sm font-medium text-success">Account created successfully!</p>
-                  <p className="text-sm text-muted-foreground">
-                    Your account is ready to use. Please sign in with your credentials.
-                  </p>
-                </div>
-              </div>
-            </div>
-          )}
-
-          <form onSubmit={handleLogin} className="space-y-6">
-            <div className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="email">Email</Label>
-                <Input
-                  id="email"
-                  type="email"
-                  placeholder="you@example.com"
-                  required
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  className="h-12"
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="password">Password</Label>
-                <div className="relative">
-                  <Input
-                    id="password"
-                    type={showPassword ? "text" : "password"}
-                    placeholder="Enter your password"
-                    required
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    className="h-12 pr-10"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                  >
-                    {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
-                  </button>
-                </div>
-              </div>
-
-              <div className="flex items-center justify-between">
-                <label className="flex items-center gap-2">
-                  <input type="checkbox" className="h-4 w-4 rounded border-gray-300" />
-                  <span className="text-sm text-muted-foreground">Remember me</span>
-                </label>
-                <Link href="/forgot-password" className="text-sm text-primary hover:underline">
-                  Forgot Password?
-                </Link>
-              </div>
-            </div>
-
-            {error && <div className="rounded-lg bg-destructive/10 p-3 text-sm text-destructive">{error}</div>}
-
-            <Button type="submit" className="h-12 w-full text-base" disabled={isLoading}>
-              {isLoading ? "Signing in..." : "Sign In"}
-            </Button>
-          </form>
-
-          <div className="text-center text-sm text-muted-foreground">
-            Don't have an account?{" "}
-            <Link href="/signup" className="text-primary hover:underline">
-              Sign Up
-            </Link>
-          </div>
-        </div>
-      </div>
-
-      {/* Right side - Marketing Content */}
-      <div className="hidden lg:flex lg:w-1/2 lg:flex-col lg:justify-center lg:bg-gradient-to-br lg:from-blue-600 lg:to-blue-800 lg:p-16 lg:text-white">
-        <div className="space-y-6">
-          <h2 className="text-4xl font-bold">Easy-to-Use Dashboard for Managing Your Business.</h2>
-          <p className="text-lg text-blue-100">
-            Streamline Your Business Management with Our User-Friendly Dashboard. Simplify complex tasks, track key
-            metrics, and make informed decisions effortlessly
+    <AuthShell title="Welcome back" subtitle="Log in to manage your store.">
+      <form onSubmit={handleLogin} className="space-y-5" noValidate>
+        {linkExpired && (
+          <p role="status" className="rounded-lg border bg-muted/40 p-3 text-sm">
+            That email link has expired or was already used. Log in below. If your email isn&apos;t confirmed yet, we&apos;ll send you a new code.
           </p>
-          <div className="flex gap-2">
-            <div className="h-2 w-12 rounded-full bg-white"></div>
-            <div className="h-2 w-12 rounded-full bg-white/30"></div>
-            <div className="h-2 w-12 rounded-full bg-white/30"></div>
-          </div>
+        )}
+
+        <div className="space-y-2">
+          <Label htmlFor="email">Email</Label>
+          <Input
+            id="email"
+            type="email"
+            inputMode="email"
+            autoComplete="email"
+            autoCapitalize="none"
+            placeholder="you@example.com"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            className="h-12"
+          />
         </div>
-      </div>
-    </div>
+
+        <PasswordField value={password} onChange={setPassword} autoComplete="current-password" />
+
+        <div className="flex justify-end">
+          <Link href={`/forgot-password${email.trim() ? `?email=${encodeURIComponent(email.trim())}` : ""}`} className="text-sm font-medium text-primary hover:underline">
+            Forgot password?
+          </Link>
+        </div>
+
+        {error && (
+          <p role="alert" className="rounded-lg bg-destructive/10 p-3 text-sm text-destructive">
+            {error}
+          </p>
+        )}
+
+        <Button type="submit" className="h-12 w-full text-base font-semibold" disabled={submitting}>
+          {submitting && <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />}
+          {submitting ? "Logging in…" : "Log in"}
+        </Button>
+
+        <p className="text-center text-sm text-muted-foreground">
+          New to Blaqora?{" "}
+          <Link href="/signup" className="font-medium text-primary hover:underline">
+            Create a store
+          </Link>
+        </p>
+      </form>
+    </AuthShell>
   )
 }

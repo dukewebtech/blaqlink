@@ -19,6 +19,7 @@ const RESERVED_SLUGS = new Set([
   "categories", "customers", "help", "payouts", "plan", "sales", "settings", "shipping",
   "store-design", "transactions", "terms", "privacy", "refunds", "about", "pricing",
   "check-in", "tickets", "products-list", "download", "checkout",
+  "forgot-password", "reset-password",
 ])
 
 /**

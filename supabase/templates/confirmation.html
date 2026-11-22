@@ -1,0 +1,12 @@
+<!-- Supabase → Authentication → Emails → "Confirm signup". Subject: Your Blaqora code: {{ .Token }} -->
+<div style="margin:0;padding:24px 12px;background:#F5F7FC;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Arial,sans-serif;color:#0A0E27;">
+  <div style="max-width:480px;margin:0 auto;background:#ffffff;border-radius:16px;padding:32px 24px;text-align:center;">
+    <p style="margin:0 0 8px;font-size:20px;font-weight:700;">Confirm your email</p>
+    <p style="margin:0 0 24px;font-size:15px;line-height:1.5;color:#4B5275;">Enter this code on Blaqora to finish creating your store.</p>
+    <p style="margin:0 0 24px;font-size:36px;font-weight:800;letter-spacing:8px;font-family:'SFMono-Regular',Menlo,Consolas,monospace;">{{ .Token }}</p>
+    <p style="margin:0 0 16px;font-size:14px;color:#4B5275;">Or confirm with one tap:</p>
+    <a href="{{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&type=email&next=/onboarding"
+       style="display:inline-block;background:#155DFD;color:#ffffff;text-decoration:none;font-weight:600;font-size:15px;padding:12px 24px;border-radius:10px;">Confirm my email</a>
+    <p style="margin:24px 0 0;font-size:13px;line-height:1.5;color:#7A809E;">The code expires in 1 hour. If you didn't sign up for Blaqora, you can ignore this email.</p>
+  </div>
+</div>

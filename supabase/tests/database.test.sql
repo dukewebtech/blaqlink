@@ -83,10 +83,34 @@ update users set payout_verified = true, legal_name = 'ADA VENDOR', bank_name = 
 insert into products (id, user_id, product_type, title, price, status, file_urls)
 values ('10000000-0000-0000-0000-000000000001', '00000000-0000-0000-0000-00000000000a', 'digital', 'Planner', 2000, 'published', '{digital-files:a/planner.pdf}');
 select t.as_anon();
-select t.ok((select count(*) from users) = 0 and (select count(*) from products) = 0 and (select count(*) from orders) = 0,
-  'rls: anonymous visitors read no users, products or orders (so no file paths or bank details)');
+do $$ begin
+  begin
+    perform count(*) from users;
+    raise exception 'FAIL anon: could read users';
+  exception when insufficient_privilege then null; end;
+  begin
+    perform count(*) from products;
+    raise exception 'FAIL anon: could read products';
+  exception when insufficient_privilege then null; end;
+  begin
+    perform count(*) from orders;
+    raise exception 'FAIL anon: could read orders';
+  exception when insufficient_privilege then null; end;
+end $$;
+select t.ok(true, 'anon: visitors are refused users, products and orders (so no file paths or bank details)');
 select t.ok((select count(*) from pricing_plans) = 3, 'rls: anonymous visitors can read active plans');
 select t.as_server();
+
+-- ── Table access rights (as on a real Supabase project) ──────────────────
+select t.ok(has_table_privilege('service_role', 'public.orders', 'select,insert,update,delete')
+  and has_table_privilege('service_role', 'public.payment_sessions', 'select,insert,update,delete'),
+  'grants: the server can read and write every table');
+select t.ok(has_table_privilege('authenticated', 'public.products', 'select,insert,update,delete')
+  and not has_table_privilege('authenticated', 'public.payment_sessions', 'select'),
+  'grants: vendors get the tables they use, not internal ones');
+select t.ok(has_table_privilege('anon', 'public.pricing_plans', 'select')
+  and not has_table_privilege('anon', 'public.products', 'select'),
+  'grants: visitors can only read the price list');
 
 -- ── Functions are server-only (C9) ───────────────────────────────────────
 select t.ok(

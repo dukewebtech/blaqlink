@@ -31,7 +31,7 @@ create function storage.foldername(name text) returns text[] language sql immuta
 $$;
 
 grant usage on schema public, auth, storage to anon, authenticated, service_role;
-alter default privileges in schema public grant all on tables to anon, authenticated, service_role;
-alter default privileges in schema public grant all on sequences to anon, authenticated, service_role;
+-- No default table grants: like newer Supabase projects, access comes only
+-- from the migrations' own grants.
 grant all on storage.objects to anon, authenticated, service_role;
 grant select on storage.buckets to anon, authenticated, service_role;

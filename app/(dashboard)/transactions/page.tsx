@@ -1,5 +1,6 @@
 "use client"
 
+import { formatNaira } from "@/lib/money"
 import { useEffect, useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -206,7 +207,7 @@ export default function TransactionsPage() {
                           <p className="text-xs text-primary font-mono mt-0.5">#{order.id.slice(0, 8)}</p>
                         </div>
                         <div className="text-right shrink-0">
-                          <p className="font-semibold text-sm">NGN {order.total_amount.toLocaleString()}</p>
+                          <p className="font-semibold text-sm">{formatNaira(order.total_amount)}</p>
                           <p className="text-xs text-muted-foreground">
                             {new Date(order.created_at).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "2-digit" })}
                           </p>
@@ -272,7 +273,7 @@ export default function TransactionsPage() {
                               <span className="text-xs text-muted-foreground">{order.customer_email}</span>
                             </div>
                           </TableCell>
-                          <TableCell className="font-semibold">NGN {order.total_amount.toLocaleString()}</TableCell>
+                          <TableCell className="font-semibold">{formatNaira(order.total_amount)}</TableCell>
                           <TableCell>
                             {new Date(order.created_at).toLocaleDateString("en-US", { month: "2-digit", day: "2-digit", year: "2-digit" })}
                           </TableCell>

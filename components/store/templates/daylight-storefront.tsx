@@ -1123,28 +1123,9 @@ export function ItemSheet({
 
         <p className="pd__desc">{item.description}</p>
 
-        {colors.length > 0 && (
-          <div className="opt">
-            <div className="opt__label"><span>Colour</span><em>{sel.colorName}</em></div>
-            <div className="opt__row">
-              {colors.map((c) => (
-                <button
-                  key={c.colorName}
-                  className="opt__btn sw"
-                  type="button"
-                  aria-pressed={c.colorName === sel.colorName}
-                  style={{ background: c.colorHex ?? "#ccc" }}
-                  aria-label={c.colorName ?? ""}
-                  onClick={() => setSel((s) => ({ ...s, colorName: c.colorName }))}
-                />
-              ))}
-            </div>
-          </div>
-        )}
-
         {sizes.length > 0 && (
           <div className="opt">
-            <div className="opt__label"><span>Size</span></div>
+            <div className="opt__label"><span>{item.option1Name}</span></div>
             <div className="opt__row">
               {sizes.map((s) => {
                 const stock = item.variants.filter((v) => v.size === s).reduce((sum, v) => sum + v.stock, 0)
@@ -1154,6 +1135,31 @@ export function ItemSheet({
                   </button>
                 )
               })}
+            </div>
+          </div>
+        )}
+
+        {colors.length > 0 && (
+          <div className="opt">
+            <div className="opt__label"><span>{item.option2Name}</span><em>{sel.colorName}</em></div>
+            <div className="opt__row">
+              {colors.map((c) =>
+                c.colorHex ? (
+                  <button
+                    key={c.colorName}
+                    className="opt__btn sw"
+                    type="button"
+                    aria-pressed={c.colorName === sel.colorName}
+                    style={{ background: c.colorHex }}
+                    aria-label={c.colorName ?? ""}
+                    onClick={() => setSel((s) => ({ ...s, colorName: c.colorName }))}
+                  />
+                ) : (
+                  <button key={c.colorName} className="opt__btn" type="button" aria-pressed={c.colorName === sel.colorName} onClick={() => setSel((s) => ({ ...s, colorName: c.colorName }))}>
+                    {c.colorName}
+                  </button>
+                ),
+              )}
             </div>
           </div>
         )}

@@ -1210,20 +1210,9 @@ function ItemPage({
 
         <p className="pdp__desc">{item.description}</p>
 
-        {colors.length > 0 && (
-          <div className="set">
-            <div className="set__top"><b>Colour</b><em>{sel.colorName}</em></div>
-            <div className="set__row">
-              {colors.map((c) => (
-                <button key={c.colorName} className="dotc" type="button" aria-pressed={c.colorName === sel.colorName} style={{ background: c.colorHex ?? "#ccc" }} aria-label={c.colorName ?? ""} onClick={() => setSel((s) => ({ ...s, colorName: c.colorName }))} />
-              ))}
-            </div>
-          </div>
-        )}
-
         {sizes.length > 0 && (
           <div className="set">
-            <div className="set__top"><b>Size</b></div>
+            <div className="set__top"><b>{item.option1Name}</b></div>
             <div className="set__row">
               {sizes.map((s) => {
                 const stock = item.variants.filter((v) => v.size === s).reduce((sum, v) => sum + v.stock, 0)
@@ -1233,6 +1222,23 @@ function ItemPage({
                   </button>
                 )
               })}
+            </div>
+          </div>
+        )}
+
+        {colors.length > 0 && (
+          <div className="set">
+            <div className="set__top"><b>{item.option2Name}</b><em>{sel.colorName}</em></div>
+            <div className="set__row">
+              {colors.map((c) =>
+                c.colorHex ? (
+                  <button key={c.colorName} className="dotc" type="button" aria-pressed={c.colorName === sel.colorName} style={{ background: c.colorHex }} aria-label={c.colorName ?? ""} onClick={() => setSel((s) => ({ ...s, colorName: c.colorName }))} />
+                ) : (
+                  <button key={c.colorName} className="chip" type="button" aria-pressed={c.colorName === sel.colorName} onClick={() => setSel((s) => ({ ...s, colorName: c.colorName }))}>
+                    {c.colorName}
+                  </button>
+                ),
+              )}
             </div>
           </div>
         )}

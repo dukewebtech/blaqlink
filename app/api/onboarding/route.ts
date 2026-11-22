@@ -55,7 +55,12 @@ export async function POST(request: Request) {
         // The client sends its own slugified guess, but it never checked whether
         // that slug was already taken — resolve it to a guaranteed-unique one
         // here (appending -2, -3, ... on collision) rather than trusting it.
-        const resolvedSlug = await generateUniqueSlug(stepData.storeSlug || stepData.businessName, user.id)
+        const businessName = typeof stepData?.businessName === "string" ? stepData.businessName.trim().slice(0, 80) : ""
+        const businessCategory = typeof stepData?.businessCategory === "string" ? stepData.businessCategory.trim().slice(0, 60) : ""
+        if (!businessName || !businessCategory || !stepData?.city || !stepData?.state) {
+          return NextResponse.json({ error: "Add your store name, what you sell, city and state." }, { status: 400 })
+        }
+        const resolvedSlug = await generateUniqueSlug(stepData.storeSlug || businessName, user.id)
 
         progressUpdates.business_info_completed = true
         progressUpdates.store_setup_completed   = true
@@ -66,10 +71,10 @@ export async function POST(request: Request) {
 
         // Server connection: store_slug is a protected column.
         const { error: userUpdateError } = await createAdminClient().from("users").update({
-          business_name:   stepData.businessName,
-          store_name:      stepData.businessName,
+          business_name:   businessName,
+          store_name:      businessName,
           store_slug:      resolvedSlug,
-          business_category: stepData.businessCategory,
+          business_category: businessCategory,
           store_city:      stepData.city,
           store_state:     stepData.state,
           store_logo_url:  stepData.storeLogo || null,

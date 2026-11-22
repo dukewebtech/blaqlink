@@ -1,7 +1,9 @@
 "use client"
 
 import { createClient } from "@/lib/supabase/client"
+import { shrinkImage } from "@/lib/images"
 import { DIGITAL_FILE_ACCEPT, MAX_DIGITAL_FILE_BYTES } from "@/lib/products/digital-files"
+import { VARIANT_OPTION_PRESETS, isColourOption } from "@/lib/products/schema"
 import { useEffect, useMemo, useRef, useState } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
@@ -75,6 +77,8 @@ export interface ProductFormInitial {
   sku: string | null
   stock_quantity: number | null
   variants: { id: string; size: string | null; color_name: string | null; color_hex: string | null; stock_quantity: number }[]
+  option1_name?: string | null
+  option2_name?: string | null
   weight_kg: number | null
   length_cm: number | null
   width_cm: number | null
@@ -100,30 +104,67 @@ function fileNameFromPath(path: string) {
   return last.replace(/^\d+-/, "")
 }
 
-/** Resizes a photo to at most 1600px on its longest side, as JPEG. */
-async function shrinkImage(file: File): Promise<File> {
-  if (file.size < 1.5 * 1024 * 1024 && ["image/jpeg", "image/png", "image/webp"].includes(file.type)) return file
-  try {
-    const bitmap = await createImageBitmap(file)
-    const scale = Math.min(1, 1600 / Math.max(bitmap.width, bitmap.height))
-    const canvas = document.createElement("canvas")
-    canvas.width = Math.round(bitmap.width * scale)
-    canvas.height = Math.round(bitmap.height * scale)
-    canvas.getContext("2d")!.drawImage(bitmap, 0, 0, canvas.width, canvas.height)
-    const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, "image/jpeg", 0.85))
-    if (!blob) return file
-    return new File([blob], file.name.replace(/\.[^.]+$/, "") + ".jpg", { type: "image/jpeg" })
-  } catch {
-    return file // browser can't decode it; let the size check decide
-  }
-}
-
 function FieldError({ id, message }: { id: string; message?: string }) {
   if (!message) return null
   return (
     <p id={`${id}-error`} role="alert" className="text-sm text-destructive">
       {message}
     </p>
+  )
+}
+
+const OTHER = "__other"
+
+function optionPlaceholder(name: string, fallback: string) {
+  const examples: Record<string, string> = { size: "M", colour: "Indigo", color: "Indigo", material: "Cotton", style: "Classic", length: "Long", flavour: "Vanilla", scent: "Oud", weight: "500g", pack: "Pack of 3" }
+  return `e.g. ${examples[name.trim().toLowerCase()] ?? fallback}`
+}
+
+/** Pick a common option name, or type your own. */
+function OptionNamePicker({ id, label, value, onChange, error }: { id: string; label: string; value: string; onChange: (v: string) => void; error?: string }) {
+  const isPreset = (VARIANT_OPTION_PRESETS as readonly string[]).includes(value)
+  const [custom, setCustom] = useState(!isPreset)
+  return (
+    <div className="space-y-1.5">
+      <Label htmlFor={id}>{label}</Label>
+      <Select
+        value={custom ? OTHER : value}
+        onValueChange={(v) => {
+          if (v === OTHER) {
+            setCustom(true)
+            onChange("")
+          } else {
+            setCustom(false)
+            onChange(v)
+          }
+        }}
+      >
+        <SelectTrigger id={id} aria-invalid={!!error && !custom}>
+          <SelectValue />
+        </SelectTrigger>
+        <SelectContent>
+          {VARIANT_OPTION_PRESETS.map((p) => (
+            <SelectItem key={p} value={p}>
+              {p}
+            </SelectItem>
+          ))}
+          <SelectItem value={OTHER}>Something else…</SelectItem>
+        </SelectContent>
+      </Select>
+      {custom && (
+        <Input
+          aria-label={`${label} name`}
+          placeholder="e.g. Finish"
+          maxLength={30}
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          aria-invalid={!!error}
+          aria-describedby={error ? `${id}-error` : undefined}
+          autoFocus
+        />
+      )}
+      <FieldError id={id} message={error} />
+    </div>
   )
 }
 
@@ -152,6 +193,9 @@ export function ProductForm({ productType, initial }: { productType: ProductType
   const [trackStock, setTrackStock] = useState(initial ? initial.stock_quantity !== null || (initial.variants?.length ?? 0) > 0 : true)
   const [stock, setStock] = useState(initial?.stock_quantity != null ? String(initial.stock_quantity) : "")
   const [sku, setSku] = useState(initial?.sku ?? "")
+  const [option1Name, setOption1Name] = useState(initial?.option1_name || "Size")
+  const [option2Name, setOption2Name] = useState(initial?.option2_name || "Colour")
+  const colourSwatch = isColourOption(option2Name)
   const [variants, setVariants] = useState<VariantRow[]>(
     (initial?.variants ?? []).map((v) => ({ id: v.id, size: v.size ?? "", color_name: v.color_name ?? "", color_hex: v.color_hex ?? "", stock_quantity: String(v.stock_quantity) })),
   )
@@ -186,7 +230,7 @@ export function ProductForm({ productType, initial }: { productType: ProductType
 
   useEffect(() => {
     let cancelled = false
-    fetch("/api/categories")
+    fetch(`/api/categories?type=${productType}`)
       .then((r) => (r.ok ? r.json() : Promise.reject()))
       .then((d) => {
         if (cancelled) return
@@ -233,8 +277,10 @@ export function ProductForm({ productType, initial }: { productType: ProductType
       sku,
       stock_quantity: trackStock && variants.length === 0 ? num(stock) ?? 0 : null,
       variants: trackStock
-        ? variants.map((v) => ({ id: v.id, size: v.size, color_name: v.color_name, color_hex: v.color_hex || null, stock_quantity: num(v.stock_quantity) ?? NaN }))
+        ? variants.map((v) => ({ id: v.id, size: v.size, color_name: v.color_name, color_hex: colourSwatch ? v.color_hex || null : null, stock_quantity: num(v.stock_quantity) ?? NaN }))
         : [],
+      option1_name: option1Name.trim(),
+      option2_name: option2Name.trim(),
       weight_kg: num(dims.weight_kg),
       length_cm: num(dims.length_cm),
       width_cm: num(dims.width_cm),
@@ -346,7 +392,7 @@ export function ProductForm({ productType, initial }: { productType: ProductType
       const res = await fetch("/api/categories", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name }),
+        body: JSON.stringify({ name, product_type: productType }),
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error)
@@ -439,7 +485,13 @@ export function ProductForm({ productType, initial }: { productType: ProductType
                   <Plus className="h-4 w-4" aria-hidden="true" /> New category
                 </Button>
               </div>
-              <Select value={category || "none"} onValueChange={(v) => setCategory(v === "none" ? "" : v)} disabled={categoriesState === "loading"}>
+              <Select
+                value={category || "none"}
+                // The picker can report "" while a just-created category is being
+                // added to the list; "No category" is "none", so "" is never a choice.
+                onValueChange={(v) => v && setCategory(v === "none" ? "" : v)}
+                disabled={categoriesState === "loading"}
+              >
                 <SelectTrigger id="category" {...invalid("category")}>
                   <SelectValue placeholder={categoriesState === "loading" ? "Loading categories…" : "No category"} />
                 </SelectTrigger>
@@ -604,23 +656,32 @@ export function ProductForm({ productType, initial }: { productType: ProductType
               )}
               {trackStock && (
                 <fieldset className="space-y-3">
-                  <legend className="text-sm font-medium">Sizes and colours (optional)</legend>
-                  <p className="text-sm text-muted-foreground">Add options if buyers need to choose. Each option has its own stock.</p>
+                  <legend className="text-sm font-medium">Options buyers choose (optional)</legend>
+                  <p className="text-sm text-muted-foreground">Name the two choices, like Size and Colour, then add each option with its own stock.</p>
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <OptionNamePicker id="option1_name" label="First choice" value={option1Name} onChange={setOption1Name} error={err("option1_name")} />
+                    <OptionNamePicker id="option2_name" label="Second choice" value={option2Name} onChange={setOption2Name} error={err("option2_name")} />
+                  </div>
                   {variants.map((v, i) => (
-                    <div key={v.id ?? `new-${i}`} className="grid gap-3 rounded-lg border p-3 sm:grid-cols-[1fr_1fr_3rem_7rem_auto] sm:items-start">
+                    <div
+                      key={v.id ?? `new-${i}`}
+                      className={`grid gap-3 rounded-lg border p-3 sm:items-start ${colourSwatch ? "sm:grid-cols-[1fr_1fr_3rem_7rem_auto]" : "sm:grid-cols-[1fr_1fr_7rem_auto]"}`}
+                    >
                       <div className="space-y-1">
-                        <Label htmlFor={`var-${i}-size`} className="text-xs">Size</Label>
-                        <Input id={`var-${i}-size`} placeholder="e.g. M" value={v.size} onChange={(e) => setVariants((p) => p.map((x, j) => (j === i ? { ...x, size: e.target.value } : x)))} {...invalid(`variants.${i}.size`)} />
+                        <Label htmlFor={`var-${i}-size`} className="text-xs">{option1Name || "First choice"}</Label>
+                        <Input id={`var-${i}-size`} placeholder={optionPlaceholder(option1Name, "M")} value={v.size} onChange={(e) => setVariants((p) => p.map((x, j) => (j === i ? { ...x, size: e.target.value } : x)))} {...invalid(`variants.${i}.size`)} />
                         <FieldError id={`variants.${i}.size`} message={err(`variants.${i}.size`)} />
                       </div>
                       <div className="space-y-1">
-                        <Label htmlFor={`var-${i}-colour`} className="text-xs">Colour</Label>
-                        <Input id={`var-${i}-colour`} placeholder="e.g. Indigo" value={v.color_name} onChange={(e) => setVariants((p) => p.map((x, j) => (j === i ? { ...x, color_name: e.target.value } : x)))} />
+                        <Label htmlFor={`var-${i}-colour`} className="text-xs">{option2Name || "Second choice"}</Label>
+                        <Input id={`var-${i}-colour`} placeholder={optionPlaceholder(option2Name, "Indigo")} value={v.color_name} onChange={(e) => setVariants((p) => p.map((x, j) => (j === i ? { ...x, color_name: e.target.value } : x)))} />
                       </div>
-                      <div className="space-y-1">
-                        <Label htmlFor={`var-${i}-hex`} className="text-xs">Swatch</Label>
-                        <input id={`var-${i}-hex`} type="color" className="h-10 w-12 cursor-pointer rounded-md border" value={v.color_hex || "#000000"} onChange={(e) => setVariants((p) => p.map((x, j) => (j === i ? { ...x, color_hex: e.target.value } : x)))} />
-                      </div>
+                      {colourSwatch && (
+                        <div className="space-y-1">
+                          <Label htmlFor={`var-${i}-hex`} className="text-xs">Swatch</Label>
+                          <input id={`var-${i}-hex`} type="color" className="h-10 w-12 cursor-pointer rounded-md border" value={v.color_hex || "#000000"} onChange={(e) => setVariants((p) => p.map((x, j) => (j === i ? { ...x, color_hex: e.target.value } : x)))} />
+                        </div>
+                      )}
                       <div className="space-y-1">
                         <Label htmlFor={`var-${i}-stock`} className="text-xs">In stock</Label>
                         <Input id={`var-${i}-stock`} type="number" inputMode="numeric" min={0} className="tabular-nums" value={v.stock_quantity} onChange={(e) => setVariants((p) => p.map((x, j) => (j === i ? { ...x, stock_quantity: e.target.value } : x)))} {...invalid(`variants.${i}.stock_quantity`)} />
@@ -801,7 +862,7 @@ export function ProductForm({ productType, initial }: { productType: ProductType
         <DialogContent>
           <DialogHeader>
             <DialogTitle>New category</DialogTitle>
-            <DialogDescription>Categories group items in your store. Any item type can use any category.</DialogDescription>
+            <DialogDescription>Categories group items in your store. This one will be for {copy.title.toLowerCase()} items.</DialogDescription>
           </DialogHeader>
           <div className="space-y-2">
             <Label htmlFor="new-category">Name</Label>

@@ -13,6 +13,9 @@ export const MAX_PRICE = 50_000_000
 export const MAX_IMAGES = 8
 export const MAX_TIERS = 10
 export const MAX_VARIANTS = 50
+/** Suggested names for a product's two choices; vendors can type their own. */
+export const VARIANT_OPTION_PRESETS = ["Size", "Colour", "Material", "Style", "Length", "Flavour", "Scent", "Weight", "Pack"] as const
+export const isColourOption = (name: string) => /^colou?rs?$/i.test(name.trim())
 
 export interface TierInput {
   id?: string
@@ -50,6 +53,9 @@ export interface ProductInput {
   sku: string | null
   stock_quantity: number | null
   variants: VariantInput[]
+  /** Names of the two choices buyers make, e.g. Size and Colour. */
+  option1_name: string
+  option2_name: string
   weight_kg: number | null
   length_cm: number | null
   width_cm: number | null
@@ -180,10 +186,18 @@ export function validateProduct(input: ProductInput): ProductErrors {
         e.stock_quantity = "Use a whole number of 0 or more."
       }
       if (input.variants.length > MAX_VARIANTS) e.variants = `Add up to ${MAX_VARIANTS} options.`
+      for (const field of ["option1_name", "option2_name"] as const) {
+        if (!input[field] || input[field].length > 30) e[field] = "Use a name of up to 30 characters, like Size or Material."
+      }
+      if (!e.option1_name && !e.option2_name && input.option1_name.toLowerCase() === input.option2_name.toLowerCase()) {
+        e.option2_name = "Use two different option names."
+      }
       {
         const seen = new Set<string>()
         input.variants.forEach((v, i) => {
-          if (!v.size?.trim() && !v.color_name?.trim()) e[`variants.${i}.size`] = "Give this option a size or a colour."
+          if (!v.size?.trim() && !v.color_name?.trim()) {
+            e[`variants.${i}.size`] = `Fill in ${input.option1_name} or ${input.option2_name} for this option.`
+          }
           const key = `${v.size?.trim().toLowerCase() ?? ""}|${v.color_name?.trim().toLowerCase() ?? ""}`
           if (seen.has(key)) e[`variants.${i}.size`] = "This option is listed twice."
           seen.add(key)
@@ -271,6 +285,8 @@ export function normaliseProductInput(raw: Record<string, unknown>): ProductInpu
             stock_quantity: num(v?.stock_quantity) ?? NaN,
           }))
         : [],
+    option1_name: type === "physical" ? str(raw.option1_name)?.slice(0, 60) ?? "Size" : "Size",
+    option2_name: type === "physical" ? str(raw.option2_name)?.slice(0, 60) ?? "Colour" : "Colour",
     weight_kg: type === "physical" ? num(raw.weight_kg) : null,
     length_cm: type === "physical" ? num(raw.length_cm) : null,
     width_cm: type === "physical" ? num(raw.width_cm) : null,

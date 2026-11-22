@@ -718,3 +718,7 @@ html { -webkit-text-size-adjust: 100%; }
     scroll-behavior: auto !important;
   }
 }
+
+/* Buttons stay on one line at every width (labels are kept short instead). */
+.ora-store .btn,
+.ora-store .add-button { white-space: nowrap; }

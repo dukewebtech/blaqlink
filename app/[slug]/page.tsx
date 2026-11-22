@@ -7,6 +7,7 @@ import { EditorialStorefront } from "@/components/store/templates/editorial-stor
 import { StudioStorefront } from "@/components/store/templates/studio-storefront"
 import { BoutiqueStorefront } from "@/components/store/templates/boutique-storefront"
 import { OraStorefront } from "@/components/store/templates/ora-storefront"
+import { UnverifiedNotice } from "@/components/store/unverified-notice"
 import type { DaylightBookingDay, DaylightItem, DaylightStore } from "@/components/store/templates/daylight-types"
 import { isStoreFontPairing } from "@/lib/storefront/fonts"
 import { getAppUrl } from "@/lib/utils/app-url"
@@ -22,7 +23,7 @@ export const dynamic = "force-dynamic"
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 const SELECT_FIELDS =
-  "id, business_name, full_name, store_bio, store_cover_image_url, profile_image, store_logo_url, store_brand_color, store_template, store_font, location, business_address, store_city, store_state, phone, email, admin_kyc_approved, created_at, shipping_mode"
+  "id, business_name, full_name, store_bio, store_cover_image_url, profile_image, store_logo_url, store_brand_color, store_template, store_font, location, business_address, store_city, store_state, phone, email, payout_verified, created_at, shipping_mode"
 
 // Not every vendor has picked a store_slug yet (it's an onboarding-time field).
 // Until they do, their storefront is still reachable at /{their user id}.
@@ -149,6 +150,8 @@ async function loadStorefrontData(slug: string): Promise<{ store: DaylightStore;
       categoryName: p.category ? categoryNameById.get(p.category) ?? null : null,
       categoryImageUrl: p.category ? categoryImageById.get(p.category) ?? null : null,
       stock: type === "physical" ? (stockFromVariants ?? p.stock_quantity ?? null) : null,
+      option1Name: p.option1_name || "Size",
+      option2Name: p.option2_name || "Colour",
       variants: productVariants.map((v) => ({
         id: v.id,
         size: v.size,
@@ -187,7 +190,8 @@ async function loadStorefrontData(slug: string): Promise<{ store: DaylightStore;
     email: vendor.email || null,
     ordersDelivered: ordersDelivered ?? 0,
     memberSinceYear: vendor.created_at ? new Date(vendor.created_at).getFullYear() : new Date().getFullYear(),
-    verified: !!vendor.admin_kyc_approved,
+    // NIN-verified (payouts go only to an account in that name)
+    verified: !!vendor.payout_verified,
     deliveryAreas: (deliveryAreas ?? []).map((a) => ({
       id: a.id,
       name: a.name,
@@ -246,17 +250,23 @@ export default async function StorefrontPage({ params }: { params: Promise<{ slu
   const data = await loadStorefrontData(slug)
   if (!data) notFound()
 
-  if (template === "editorial") {
-    return <EditorialStorefront store={data.store} items={data.items} />
-  }
-  if (template === "studio") {
-    return <StudioStorefront store={data.store} items={data.items} />
-  }
-  if (template === "boutique") {
-    return <BoutiqueStorefront store={data.store} items={data.items} />
-  }
-  if (template === "ora") {
-    return <OraStorefront store={data.store} items={data.items} />
-  }
-  return <DaylightStorefront store={data.store} items={data.items} />
+  const storefront =
+    template === "editorial" ? (
+      <EditorialStorefront store={data.store} items={data.items} />
+    ) : template === "studio" ? (
+      <StudioStorefront store={data.store} items={data.items} />
+    ) : template === "boutique" ? (
+      <BoutiqueStorefront store={data.store} items={data.items} />
+    ) : template === "ora" ? (
+      <OraStorefront store={data.store} items={data.items} />
+    ) : (
+      <DaylightStorefront store={data.store} items={data.items} />
+    )
+
+  return (
+    <>
+      {!data.store.verified && <UnverifiedNotice />}
+      {storefront}
+    </>
+  )
 }

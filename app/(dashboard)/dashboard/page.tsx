@@ -132,27 +132,18 @@ export default function DashboardPage() {
           <StatsCard
             title="Total Customer"
             value={loading ? "Loading..." : (stats?.totalCustomers ?? 0).toLocaleString()}
-            change="+1.5%"
-            changeLabel="From last week"
-            trend="up"
             icon={Users}
             delay={100}
           />
           <StatsCard
             title="Total Transactions"
             value={loading ? "Loading..." : (stats?.totalTransactions ?? 0).toLocaleString()}
-            change="+3.6%"
-            changeLabel="From last week"
-            trend="up"
             icon={ShoppingCart}
             delay={200}
           />
           <StatsCard
             title="Total Product"
             value={loading ? "Loading..." : (stats?.totalProducts ?? 0).toLocaleString()}
-            change="-1.5%"
-            changeLabel="From last week"
-            trend="down"
             icon={Package}
             delay={300}
           />

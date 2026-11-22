@@ -135,7 +135,6 @@ export default function CategoryDetailPage() {
                 {category.status === "active" ? "Active" : "Inactive"}
               </Badge>
             </div>
-            <p className="text-sm text-muted-foreground mt-2">Category ID: {category.id}</p>
           </div>
           <div className="flex gap-2">
             <Button

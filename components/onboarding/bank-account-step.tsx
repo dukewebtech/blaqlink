@@ -12,9 +12,11 @@ import { BANK_NAMES } from "@/components/onboarding/identity-upload-step"
 
 interface Props {
   onNext: () => void
+  onSkip?: () => void
+  stepLabel?: string
 }
 
-export function BankAccountStep({ onNext }: Props) {
+export function BankAccountStep({ onNext, onSkip, stepLabel }: Props) {
   const [loading, setLoading] = useState(false)
   const [resolving, setResolving] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -75,7 +77,10 @@ export function BankAccountStep({ onNext }: Props) {
           data: { bankName, accountNumber, accountName: resolvedAccountName },
         }),
       })
-      if (!res.ok) throw new Error("Failed to save bank information")
+      if (!res.ok) {
+        const d = await res.json().catch(() => ({}))
+        throw new Error(d.error || "We couldn't save your bank account. Please try again.")
+      }
       onNext()
     } catch (err: any) {
       setError(err.message)
@@ -85,14 +90,15 @@ export function BankAccountStep({ onNext }: Props) {
   }
 
   return (
-    <Card className="p-8 animate-in fade-in slide-in-from-right-4 duration-500">
+    <Card className="p-6 sm:p-8 motion-safe:animate-in motion-safe:fade-in motion-safe:slide-in-from-right-4 motion-safe:duration-500">
+      {stepLabel && <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-primary">{stepLabel}</p>}
       <div className="flex items-center gap-3 mb-6">
-        <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-primary/10">
+        <div className="inline-flex items-center justify-center w-12 h-12 shrink-0 rounded-full bg-primary/10">
           <Banknote className="h-6 w-6 text-primary" />
         </div>
         <div>
           <h2 className="text-xl font-bold">Where should we send your earnings?</h2>
-          <p className="text-sm text-muted-foreground">Add your payout account. You can update this anytime in settings.</p>
+          <p className="text-sm text-muted-foreground">Use an account in your own name. You can change it later in Payout settings.</p>
         </div>
       </div>
 
@@ -157,9 +163,14 @@ export function BankAccountStep({ onNext }: Props) {
           {loading ? (
             <><Loader2 className="h-5 w-5 animate-spin" /> Saving…</>
           ) : (
-            <>Save Payout Account <ArrowRight className="h-5 w-5" /></>
+            <>Save account <ArrowRight className="h-5 w-5" /></>
           )}
         </Button>
+        {onSkip && (
+          <Button type="button" variant="ghost" className="w-full text-muted-foreground" onClick={onSkip}>
+            Do this later
+          </Button>
+        )}
       </form>
     </Card>
   )

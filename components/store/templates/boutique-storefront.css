@@ -390,3 +390,6 @@ html { -webkit-text-size-adjust: 100%; }
   .by4 img { width: 22px; height: 22px; border-radius: 7px; }
   .by4 b { color: var(--ink); }
 }
+
+/* Buttons stay on one line at every width. */
+.boutique-store .icon-btn { white-space: nowrap; }

@@ -26,9 +26,10 @@ interface Props {
   onComplete?: () => void
   onSkip?: () => void
   showSkip?: boolean
+  stepLabel?: string
 }
 
-export function IdentityUploadStep({ onComplete, onSkip, showSkip = true }: Props) {
+export function IdentityUploadStep({ onComplete, onSkip, showSkip = true, stepLabel }: Props) {
   const [stage, setStage] = useState<"trust" | "form" | "success">("trust")
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -62,25 +63,26 @@ export function IdentityUploadStep({ onComplete, onSkip, showSkip = true }: Prop
   if (stage === "trust") {
     return (
       <div key={stage}>
-      <StepProgress steps={[...STAGES]} current={STAGE_INDEX[stage]} />
-      <Card className={`p-8 space-y-6 ${STAGE_TRANSITION}`}>
+      {!stepLabel && <StepProgress steps={[...STAGES]} current={STAGE_INDEX[stage]} />}
+      <Card className={`p-6 sm:p-8 space-y-6 ${STAGE_TRANSITION}`}>
+        {stepLabel && <p className="text-xs font-semibold uppercase tracking-widest text-primary">{stepLabel}</p>}
         <div className="text-center space-y-3">
           <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-primary/10 mx-auto">
             <ShieldCheck className="h-8 w-8 text-primary" />
           </div>
-          <h2 className="text-xl font-bold">Verify your identity to receive payouts</h2>
+          <h2 className="text-xl font-bold">Verify your identity</h2>
           <p className="text-sm text-muted-foreground max-w-sm mx-auto">
-            Blaqora verifies your identity using your NIN to comply with CBN regulations and ensure secure settlements.
+            We check your NIN once. Verified stores get a badge buyers trust, and you can withdraw your earnings.
           </p>
         </div>
 
-        <div className="grid grid-cols-3 gap-3 text-center text-xs text-muted-foreground">
+        <div className="grid grid-cols-1 gap-2 text-center text-xs text-muted-foreground sm:grid-cols-3 sm:gap-3">
           {[
             { icon: Lock, label: "256-bit encryption" },
             { icon: ShieldCheck, label: "Secure NIN validation" },
             { icon: CheckCircle2, label: "Used only for identity protection" },
           ].map(({ icon: Icon, label }) => (
-            <div key={label} className="flex flex-col items-center gap-1.5 p-3 rounded-lg bg-muted/40">
+            <div key={label} className="flex items-center justify-center gap-2 p-3 rounded-lg bg-muted/40 sm:flex-col sm:gap-1.5">
               <Icon className="h-4 w-4 text-primary" />
               <span>{label}</span>
             </div>
@@ -89,7 +91,7 @@ export function IdentityUploadStep({ onComplete, onSkip, showSkip = true }: Prop
 
         <div className="flex flex-col gap-2">
           <Button size="lg" className="w-full gap-2" onClick={() => setStage("form")}>
-            Start Verification <ArrowRight className="h-4 w-4" />
+            Verify my NIN <ArrowRight className="h-4 w-4" />
           </Button>
           {showSkip && onSkip && (
             <Button variant="ghost" className="w-full text-muted-foreground" onClick={onSkip}>
@@ -106,8 +108,8 @@ export function IdentityUploadStep({ onComplete, onSkip, showSkip = true }: Prop
   if (stage === "success") {
     return (
       <div key={stage}>
-      <StepProgress steps={[...STAGES]} current={STAGE_INDEX[stage]} />
-      <Card className={`p-8 text-center space-y-4 ${STAGE_TRANSITION}`}>
+      {!stepLabel && <StepProgress steps={[...STAGES]} current={STAGE_INDEX[stage]} />}
+      <Card className={`p-6 sm:p-8 text-center space-y-4 ${STAGE_TRANSITION}`}>
         <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-green-100 mx-auto">
           <CheckCircle2 className="h-8 w-8 text-green-600" />
         </div>
@@ -128,8 +130,8 @@ export function IdentityUploadStep({ onComplete, onSkip, showSkip = true }: Prop
   // ── Verification form ──────────────────────────────────────────────────────────
   return (
     <div key={stage}>
-    <StepProgress steps={[...STAGES]} current={STAGE_INDEX[stage]} />
-    <Card className={`p-8 ${STAGE_TRANSITION}`}>
+    {!stepLabel && <StepProgress steps={[...STAGES]} current={STAGE_INDEX[stage]} />}
+    <Card className={`p-6 sm:p-8 ${STAGE_TRANSITION}`}>
       <div className="flex items-center gap-3 mb-6">
         <div className="inline-flex items-center justify-center w-10 h-10 rounded-full bg-primary/10">
           <ShieldCheck className="h-5 w-5 text-primary" />
@@ -205,7 +207,7 @@ export function IdentityUploadStep({ onComplete, onSkip, showSkip = true }: Prop
             className="flex-[2] gap-2"
             disabled={loading || nin.length < 11 || !fullName || !dob}
           >
-            {loading ? <><Loader2 className="h-4 w-4 animate-spin" /> Verifying…</> : "Verify Identity"}
+            {loading ? <><Loader2 className="h-4 w-4 animate-spin" /> Checking…</> : "Verify"}
           </Button>
         </div>
       </form>

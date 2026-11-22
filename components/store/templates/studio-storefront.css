@@ -391,3 +391,9 @@ html { -webkit-text-size-adjust: 100%; }
     *, *::before, *::after { animation-duration: .001ms!important; animation-iteration-count: 1!important; transition-duration: .001ms!important; }
   }
 }
+
+/* Buttons stay on one line at every width (labels are kept short instead). */
+.studio-store .slab__btn,
+.studio-store .listhead button,
+.studio-store .tab,
+.studio-store .icon-btn { white-space: nowrap; }

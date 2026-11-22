@@ -40,6 +40,9 @@ export interface DaylightItem {
   // physical
   stock: number | null
   variants: DaylightVariant[]
+  /** Vendor's names for the two choices (variant.size / variant.colorName). */
+  option1Name: string
+  option2Name: string
   // event
   eventDate: string | null
   eventLocation: string | null

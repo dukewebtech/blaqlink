@@ -1,5 +1,7 @@
 "use client"
 
+import { TypeBadge } from "@/components/products/type-badge"
+import { formatNaira } from "@/lib/money"
 import type React from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -347,31 +349,16 @@ export default function ProductListPage() {
     setOpen(false)
   }
 
-  const formatPrice = (price: number) => {
-    return new Intl.NumberFormat("en-US", {
-      style: "currency",
-      currency: "USD",
-    }).format(price)
-  }
+  const formatPrice = (price: number) => formatNaira(Number(price))
 
   const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString("en-US", {
+    return new Date(dateString).toLocaleDateString("en-NG", {
       month: "2-digit",
       day: "2-digit",
       year: "2-digit",
       hour: "2-digit",
       minute: "2-digit",
     })
-  }
-
-  const getProductTypeBadge = (type: string) => {
-    const badges = {
-      digital: { label: "Digital", className: "bg-blue-500/20 text-blue-700 hover:bg-blue-500/30" },
-      physical: { label: "Physical", className: "bg-green-500/20 text-green-700 hover:bg-green-500/30" },
-      event: { label: "Event", className: "bg-purple-500/20 text-purple-700 hover:bg-purple-500/30" },
-      appointment: { label: "Appointment", className: "bg-orange-500/20 text-orange-700 hover:bg-orange-500/30" },
-    }
-    return badges[type as keyof typeof badges] || { label: type, className: "" }
   }
 
   return (
@@ -398,7 +385,7 @@ export default function ProductListPage() {
           <div className="relative w-full">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
-              placeholder="Search for id, name, category"
+              placeholder="Search products"
               className="pl-9"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
@@ -700,7 +687,9 @@ export default function ProductListPage() {
                       <div className="flex items-start justify-between gap-2">
                         <div className="min-w-0">
                           <p className="font-medium text-sm truncate">{product.title}</p>
-                          <p className="text-xs text-muted-foreground">{product.sku || product.id.slice(0, 8)}</p>
+                          {(product.sku || (product.category && categoryNameById.get(product.category))) && (
+                            <p className="text-xs text-muted-foreground truncate">{product.sku || categoryNameById.get(product.category!)}</p>
+                          )}
                         </div>
                         <Badge
                           variant={product.status === "published" ? "default" : "secondary"}
@@ -714,9 +703,7 @@ export default function ProductListPage() {
                         </Badge>
                       </div>
                       <div className="flex items-center gap-2 mt-1 flex-wrap">
-                        <Badge className={cn("text-xs", getProductTypeBadge(product.product_type).className)}>
-                          {getProductTypeBadge(product.product_type).label}
-                        </Badge>
+                        <TypeBadge type={product.product_type} />
                         <span className="text-sm font-semibold">{formatPrice(product.price)}</span>
                       </div>
                       <div className="flex items-center gap-1 mt-2">
@@ -795,7 +782,9 @@ export default function ProductListPage() {
                               className="w-12 h-12 rounded-lg object-cover ring-2 ring-border group-hover:ring-primary"
                             />
                             <div>
-                              <p className="text-xs text-muted-foreground">{product.sku || product.id.slice(0, 8)}</p>
+                              {(product.sku || (product.category && categoryNameById.get(product.category))) && (
+                            <p className="text-xs text-muted-foreground truncate">{product.sku || categoryNameById.get(product.category!)}</p>
+                          )}
                               <p className="font-medium">{product.title}</p>
                               {product.category && categoryNameById.get(product.category) && (
                                 <p className="text-xs text-muted-foreground">{categoryNameById.get(product.category)}</p>
@@ -804,9 +793,7 @@ export default function ProductListPage() {
                           </div>
                         </TableCell>
                         <TableCell>
-                          <Badge className={getProductTypeBadge(product.product_type).className}>
-                            {getProductTypeBadge(product.product_type).label}
-                          </Badge>
+                          <TypeBadge type={product.product_type} />
                         </TableCell>
                         <TableCell><p className="font-medium">{formatPrice(product.price)}</p></TableCell>
                         <TableCell>

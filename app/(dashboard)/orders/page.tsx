@@ -1,5 +1,6 @@
 "use client"
 
+import { formatNaira } from "@/lib/money"
 import { useEffect, useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -165,7 +166,7 @@ export default function OrdersPage() {
                     <p className="text-xs text-muted-foreground font-mono">Ref: {order.payment_reference}</p>
                   </div>
                   <div className="sm:text-right space-y-0.5 shrink-0">
-                    <p className="text-xl sm:text-2xl font-bold">NGN {order.total_amount.toLocaleString()}</p>
+                    <p className="text-xl sm:text-2xl font-bold">{formatNaira(order.total_amount)}</p>
                     <p className="text-xs text-muted-foreground">
                       {new Date(order.created_at).toLocaleDateString("en-US", {
                         year: "numeric",
@@ -189,7 +190,7 @@ export default function OrdersPage() {
                           {item.product_type}
                         </Badge>
                       </span>
-                      <span className="font-medium">NGN {item.subtotal.toLocaleString()}</span>
+                      <span className="font-medium">{formatNaira(item.subtotal)}</span>
                     </div>
                   ))}
                 </div>

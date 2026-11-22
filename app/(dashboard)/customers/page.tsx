@@ -1,5 +1,6 @@
 "use client"
 
+import { formatNaira } from "@/lib/money"
 import { useEffect, useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -137,7 +138,7 @@ export default function CustomersPage() {
                         <p className="text-xs text-muted-foreground">{customer.phone}</p>
                       </div>
                       <div className="text-right shrink-0">
-                        <p className="text-sm font-semibold">NGN {customer.totalPurchases.toLocaleString()}</p>
+                        <p className="text-sm font-semibold">{formatNaira(customer.totalPurchases)}</p>
                         <p className="text-xs text-muted-foreground">{customer.orderCount} orders</p>
                       </div>
                     </div>
@@ -198,7 +199,7 @@ export default function CustomersPage() {
                             <span className="text-muted-foreground">{customer.phone}</span>
                           </div>
                         </TableCell>
-                        <TableCell className="font-semibold">NGN {customer.totalPurchases.toLocaleString()}</TableCell>
+                        <TableCell className="font-semibold">{formatNaira(customer.totalPurchases)}</TableCell>
                         <TableCell>{customer.orderCount} Orders</TableCell>
                         <TableCell>
                           {new Date(customer.lastOrderDate).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}

@@ -373,3 +373,9 @@ html { background: #08090F; }
     *, *::before, *::after { animation-duration: .001ms!important; animation-iteration-count: 1!important; transition-duration: .001ms!important; }
   }
 }
+
+/* Buttons stay on one line at every width (labels are kept short instead). */
+.editorial-store .ghost-btn,
+.editorial-store .mast__cta,
+.editorial-store .nav__btn,
+.editorial-store .icon-btn { white-space: nowrap; }

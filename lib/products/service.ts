@@ -50,8 +50,8 @@ export async function saveProduct(vendorId: string, productId: string | null, ra
   }
 
   if (input.category) {
-    const { data: category } = await supabase.from("categories").select("id").eq("id", input.category).eq("user_id", vendorId).maybeSingle()
-    if (!category) return { ok: false, status: 400, message: "Choose a category from the list.", errors: { category: "Choose a category from the list." } }
+    const { data: category } = await supabase.from("categories").select("id, product_type").eq("id", input.category).eq("user_id", vendorId).maybeSingle()
+    if (!category || (category.product_type && category.product_type !== input.product_type)) return { ok: false, status: 400, message: "Choose a category from the list.", errors: { category: "Choose a category from the list." } }
   }
 
   const { ticket_tiers, variants, ...product } = input

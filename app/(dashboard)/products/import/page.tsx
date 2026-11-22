@@ -1,5 +1,6 @@
 "use client"
 
+import { formatNaira } from "@/lib/money"
 import type React from "react"
 import { useState, useRef } from "react"
 import { Button } from "@/components/ui/button"
@@ -560,7 +561,7 @@ export default function ProductImportPage() {
                             )}
                           </TableCell>
                           <TableCell className="font-medium">{product.title || "-"}</TableCell>
-                          <TableCell>{product.price ? `$${product.price}` : "-"}</TableCell>
+                          <TableCell>{product.price ? formatNaira(Number(product.price)) : "-"}</TableCell>
                           <TableCell>{product.category || "-"}</TableCell>
                           {selectedType === "physical" && <TableCell>{product.sku || "-"}</TableCell>}
                           {selectedType === "physical" && <TableCell>{product.stock_quantity || "-"}</TableCell>}

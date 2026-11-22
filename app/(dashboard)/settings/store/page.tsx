@@ -1,5 +1,6 @@
 "use client"
 
+import { BusinessCategoryField } from "@/components/onboarding/business-category-field"
 import type React from "react"
 import { useState, useEffect } from "react"
 import { Card } from "@/components/ui/card"
@@ -11,22 +12,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { NigerianLocationSelect } from "@/components/checkout/nigerian-location-select"
 import { Store, Loader2, CheckCircle2, AlertCircle, Copy, Check, ExternalLink } from "lucide-react"
 import { useVendorUser } from "@/components/dashboard/vendor-user-context"
-
-const BUSINESS_CATEGORIES = [
-  "Fashion & Apparel",
-  "Beauty & Cosmetics",
-  "Electronics",
-  "Home & Living",
-  "Health & Wellness",
-  "Food & Beverages",
-  "Sports & Fitness",
-  "Books & Media",
-  "Toys & Games",
-  "Arts & Crafts",
-  "Jewelry & Accessories",
-  "Pet Supplies",
-  "Other",
-]
 
 const BIO_MAX_LENGTH = 200
 
@@ -223,21 +208,7 @@ export default function StoreSettingsPage() {
               />
             </div>
 
-            <div className="space-y-1.5">
-              <Label>Business Category</Label>
-              <Select value={businessCategory} onValueChange={setBusinessCategory}>
-                <SelectTrigger className="h-11">
-                  <SelectValue placeholder="Select your business category" />
-                </SelectTrigger>
-                <SelectContent>
-                  {BUSINESS_CATEGORIES.map((category) => (
-                    <SelectItem key={category} value={category}>
-                      {category}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+            <BusinessCategoryField value={businessCategory} onChange={setBusinessCategory} />
 
             <div className="space-y-1.5">
               <Label htmlFor="businessAddress">Business Address</Label>

@@ -45,7 +45,7 @@ export function createPreviewItems(storeName: string = "SampleStore"): DaylightI
     description: "A structured midi dress that moves from morning meetings to dinner. Lined, with hidden side pockets and a back zip.",
     price: 28500, compareAtPrice: 34000, images: [ph("#1B2A63", "Dress")],
     categoryId: "cat-dresses", categoryName: "Dresses", categoryImageUrl: null,
-    stock: 7, variants: [
+    stock: 7, option1Name: "Size", option2Name: "Colour", variants: [
       { id: "v1", size: "S", colorName: "Navy", colorHex: "#1B2A63", stock: 2 },
       { id: "v2", size: "M", colorName: "Navy", colorHex: "#1B2A63", stock: 4 },
       { id: "v3", size: "L", colorName: "Navy", colorHex: "#1B2A63", stock: 1 },
@@ -57,14 +57,14 @@ export function createPreviewItems(storeName: string = "SampleStore"): DaylightI
     description: "Wide-leg jumpsuit with a tie waist and deep pockets.",
     price: 34000, compareAtPrice: null, images: [ph("#0E5C4A", "Jumpsuit")],
     categoryId: "cat-jumpsuits", categoryName: "Jumpsuits", categoryImageUrl: null,
-    stock: 12, variants: [], eventDate: null, eventLocation: null, tiers: [], durationLabel: null, venue: null, days: [], fileLabel: null,
+    stock: 12, option1Name: "Size", option2Name: "Colour", variants: [], eventDate: null, eventLocation: null, tiers: [], durationLabel: null, venue: null, days: [], fileLabel: null,
   },
   {
     id: "t1", type: "event", name: `${storeName} Style Night`,
     description: "An evening of styling, shopping and small chops.",
     price: 8000, compareAtPrice: null, images: [ph("#F2542D", "Ticket")],
     categoryId: null, categoryName: null, categoryImageUrl: null,
-    stock: null, variants: [], eventDate: "Fri 24 Oct, 7:00 PM", eventLocation: "Victoria Island, Lagos",
+    stock: null, option1Name: "Size", option2Name: "Colour", variants: [], eventDate: "Fri 24 Oct, 7:00 PM", eventLocation: "Victoria Island, Lagos",
     tiers: [
       { id: "tier1", name: "Regular", price: 8000, left: 40 },
       { id: "tier2", name: "VIP", price: 25000, left: 6 },
@@ -76,7 +76,7 @@ export function createPreviewItems(storeName: string = "SampleStore"): DaylightI
     description: "One to one with our stylist to build a wardrobe plan you can shop from.",
     price: 25000, compareAtPrice: null, images: [ph("#7A5CFF", "Booking")],
     categoryId: null, categoryName: null, categoryImageUrl: null,
-    stock: null, variants: [], eventDate: null, eventLocation: null, tiers: [],
+    stock: null, option1Name: "Size", option2Name: "Colour", variants: [], eventDate: null, eventLocation: null, tiers: [],
     durationLabel: "90 minutes", venue: "Lekki studio or video call",
     days: [1, 2, 3].map((n) => ({
       label: `Day ${n}`, dow: ["Mon", "Tue", "Wed"][n - 1], dateNum: 19 + n, date: `2026-10-${19 + n}`,
@@ -89,7 +89,7 @@ export function createPreviewItems(storeName: string = "SampleStore"): DaylightI
     description: "Thirty-eight pages on building a work wardrobe from twelve pieces.",
     price: 4500, compareAtPrice: null, images: [ph("#0B7A55", "PDF")],
     categoryId: null, categoryName: null, categoryImageUrl: null,
-    stock: null, variants: [], eventDate: null, eventLocation: null, tiers: [], durationLabel: null, venue: null, days: [],
+    stock: null, option1Name: "Size", option2Name: "Colour", variants: [], eventDate: null, eventLocation: null, tiers: [], durationLabel: null, venue: null, days: [],
     fileLabel: "PDF, 38 pages",
   },
   ]

@@ -7,9 +7,10 @@ import { ArrowUpRight, ArrowDownRight, type LucideIcon } from "lucide-react"
 interface StatsCardProps {
   title: string
   value: string
-  change: string
-  changeLabel: string
-  trend: "up" | "down"
+  /** Omit when there's no real comparison to show. */
+  change?: string
+  changeLabel?: string
+  trend?: "up" | "down"
   icon: LucideIcon
   className?: string
   delay?: number
@@ -66,6 +67,7 @@ export function StatsCard({
             <Icon className={cn("h-5 w-5", className?.includes("text-white") ? "text-white" : "text-primary")} />
           </div>
         </div>
+        {change && (
         <div className="flex items-center gap-2">
           <div
             className={cn(
@@ -86,6 +88,7 @@ export function StatsCard({
             {changeLabel}
           </p>
         </div>
+        )}
       </CardContent>
     </Card>
   )

@@ -1,6 +1,8 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { createServerClient } from "@/lib/supabase/server"
 
+const PRODUCT_TYPES = ["physical", "digital", "event", "appointment"]
+
 export async function GET(request: NextRequest) {
   try {
     const supabase = await createServerClient()
@@ -18,9 +20,13 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: "User profile not found" }, { status: 404 })
     }
 
-    // Categories are shared by every product type, so no type filter.
+    // ?type= narrows to that product type's categories. Categories without a
+    // type (made before types were tracked) still appear for every type.
+    const type = new URL(request.url).searchParams.get("type")
+    let categoriesQuery = supabase.from("categories").select("*").eq("user_id", userProfile.id).order("name")
+    if (type && PRODUCT_TYPES.includes(type)) categoriesQuery = categoriesQuery.or(`product_type.eq.${type},product_type.is.null`)
     const [{ data: categories, error }, { data: productCategories }] = await Promise.all([
-      supabase.from("categories").select("*").eq("user_id", userProfile.id).order("name"),
+      categoriesQuery,
       supabase.from("products").select("category").eq("user_id", userProfile.id).not("category", "is", null),
     ])
 
@@ -66,9 +72,20 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Give the category a name of up to 60 characters." }, { status: 400 })
     }
 
-    const { data: existing } = await supabase.from("categories").select("id").eq("user_id", userProfile.id).ilike("name", name).maybeSingle()
+    const productType = typeof body.product_type === "string" ? body.product_type : ""
+    if (!PRODUCT_TYPES.includes(productType)) {
+      return NextResponse.json({ error: "Choose which kind of item this category is for." }, { status: 400 })
+    }
+
+    const { data: existing } = await supabase
+      .from("categories")
+      .select("id")
+      .eq("user_id", userProfile.id)
+      .eq("product_type", productType)
+      .ilike("name", name.replace(/[%_\\]/g, (c: string) => `\\${c}`))
+      .maybeSingle()
     if (existing) {
-      return NextResponse.json({ error: "You already have a category with that name." }, { status: 409 })
+      return NextResponse.json({ error: "You already have a category with that name for this kind of item." }, { status: 409 })
     }
 
     const { data: category, error } = await supabase
@@ -76,6 +93,7 @@ export async function POST(request: NextRequest) {
       .insert({
         user_id: userProfile.id,
         name,
+        product_type: productType,
         description: typeof body.description === "string" ? body.description.trim() || null : null,
         image_url: typeof body.image_url === "string" ? body.image_url : null,
         status: body.status === "inactive" ? "inactive" : "active",

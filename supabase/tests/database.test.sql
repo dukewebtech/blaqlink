@@ -158,6 +158,22 @@ select t.ok(
      '{"product_type":"physical","status":"published","title":"Stolen","price":1,"images":[],"file_urls":[],"available_days":[],"time_slots":[]}', '[]', '[]')) ->> 'status')::int = 404,
   'save_product: another vendor cannot edit the product');
 
+-- ── Variant option names (vendor-named choices) ──────────────────────────
+select t.ok((select option1_name = 'Size' and option2_name = 'Colour' from products where title = 'Tote'),
+  'options: products default to Size and Colour');
+select save_product('00000000-0000-0000-0000-00000000000a', (select id from products where title = 'Tote'),
+  '{"product_type":"physical","status":"published","title":"Tote","price":8000,"images":[],"file_urls":[],"available_days":[],"time_slots":[],"option1_name":"Material","option2_name":"Finish"}',
+  '[]', (select jsonb_agg(jsonb_build_object('id', id, 'size', size, 'color_name', color_name, 'color_hex', color_hex, 'stock_quantity', stock_quantity)) from product_variants where product_id = (select id from products where title = 'Tote')));
+select t.ok((select option1_name = 'Material' and option2_name = 'Finish' from products where title = 'Tote'),
+  'options: vendor can rename both choices');
+select t.ok((select count(*) = 2 from product_variants where product_id = (select id from products where title = 'Tote')),
+  'options: renaming keeps the existing variants');
+select save_product('00000000-0000-0000-0000-00000000000a', (select id from products where title = 'Tote'),
+  '{"product_type":"physical","status":"published","title":"Tote","price":8000,"images":[],"file_urls":[],"available_days":[],"time_slots":[],"option1_name":"  ","option2_name":null}',
+  '[]', (select jsonb_agg(jsonb_build_object('id', id, 'size', size, 'color_name', color_name, 'color_hex', color_hex, 'stock_quantity', stock_quantity)) from product_variants where product_id = (select id from products where title = 'Tote')));
+select t.ok((select option1_name = 'Size' and option2_name = 'Colour' from products where title = 'Tote'),
+  'options: blank names fall back to Size and Colour');
+
 -- ── reserve_checkout & create_paid_order (C4, C6, C12) ───────────────────
 create temp table ids as
 select

@@ -1,5 +1,7 @@
 "use client"
 
+import { TypeBadge } from "@/components/products/type-badge"
+import { toast } from "sonner"
 import type React from "react"
 
 import { useState, useEffect } from "react"
@@ -38,26 +40,12 @@ import {
 type Category = {
   id: string
   name: string
-  product_type: string
+  product_type: string | null
   description: string
   image_url: string
   status: string
   products: { count: number }[]
   created_at: string
-}
-
-const productTypeColors = {
-  digital: "bg-green-100 text-green-700 border-green-200",
-  physical: "bg-yellow-100 text-yellow-700 border-yellow-200",
-  event: "bg-yellow-100 text-yellow-700 border-yellow-200",
-  appointment: "bg-green-100 text-green-700 border-green-200",
-}
-
-const productTypeLabels = {
-  digital: "Digital Product",
-  physical: "Physical Product",
-  event: "Tickets",
-  appointment: "Appointments",
 }
 
 export default function CategoriesPage() {
@@ -109,7 +97,7 @@ export default function CategoriesPage() {
     let filtered = categories
 
     if (selectedType !== "all") {
-      filtered = filtered.filter((cat) => cat.product_type === selectedType)
+      filtered = filtered.filter((cat) => !cat.product_type || cat.product_type === selectedType)
     }
 
     if (searchQuery) {
@@ -134,14 +122,18 @@ export default function CategoriesPage() {
         }),
       })
 
-      if (response.ok) {
-        setIsCreateDialogOpen(false)
-        setNewCategory({ name: "", product_type: "digital", description: "", status: "active" })
-        setCategoryImage("")
-        fetchCategories()
+      const data = await response.json().catch(() => ({}))
+      if (!response.ok) {
+        toast.error(data.error || "We couldn't create that category. Please try again.")
+        return
       }
-    } catch (error) {
-      console.error("[v0] Error creating category:", error)
+      setIsCreateDialogOpen(false)
+      setNewCategory({ name: "", product_type: "digital", description: "", status: "active" })
+      setCategoryImage("")
+      toast.success("Category created")
+      fetchCategories()
+    } catch {
+      toast.error("We couldn't reach the server. Check your connection and try again.")
     }
   }
 
@@ -230,7 +222,7 @@ export default function CategoriesPage() {
           <div className="relative w-full sm:w-96">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
-              placeholder="Search for id, name product"
+              placeholder="Search categories"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="pl-9"
@@ -295,16 +287,16 @@ export default function CategoriesPage() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead className="w-12">
+                <TableHead className="hidden w-12 sm:table-cell">
                   <Checkbox
                     checked={selectedCategories.length === filteredCategories.length && filteredCategories.length > 0}
                     onCheckedChange={toggleAllCategories}
                   />
                 </TableHead>
                 <TableHead>Category</TableHead>
-                <TableHead>Linked Products</TableHead>
-                <TableHead>Product Type</TableHead>
-                <TableHead>Status</TableHead>
+                <TableHead className="hidden sm:table-cell">Products</TableHead>
+                <TableHead className="hidden sm:table-cell">Type</TableHead>
+                <TableHead className="hidden sm:table-cell">Status</TableHead>
                 <TableHead className="text-right">Action</TableHead>
               </TableRow>
             </TableHeader>
@@ -324,7 +316,7 @@ export default function CategoriesPage() {
               ) : (
                 filteredCategories.map((category) => (
                   <TableRow key={category.id}>
-                    <TableCell>
+                    <TableCell className="hidden sm:table-cell">
                       <Checkbox
                         checked={selectedCategories.includes(category.id)}
                         onCheckedChange={() => toggleCategorySelection(category.id)}
@@ -346,21 +338,19 @@ export default function CategoriesPage() {
                         <div>
                           <p className="text-sm font-medium">{category.name}</p>
                           <p className="text-xs text-muted-foreground">{category.description || "No description"}</p>
+                          <div className="mt-1 sm:hidden">
+                            <TypeBadge type={category.product_type} />
+                          </div>
                         </div>
                       </div>
                     </TableCell>
-                    <TableCell>
+                    <TableCell className="hidden sm:table-cell">
                       <span className="font-medium">{category.products?.[0]?.count || 0}</span>
                     </TableCell>
-                    <TableCell>
-                      <Badge
-                        variant="outline"
-                        className={productTypeColors[category.product_type as keyof typeof productTypeColors]}
-                      >
-                        {productTypeLabels[category.product_type as keyof typeof productTypeLabels]}
-                      </Badge>
+                    <TableCell className="hidden sm:table-cell">
+                      <TypeBadge type={category.product_type} />
                     </TableCell>
-                    <TableCell>
+                    <TableCell className="hidden sm:table-cell">
                       <Badge
                         variant="outline"
                         className={

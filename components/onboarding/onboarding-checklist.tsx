@@ -27,11 +27,27 @@ const ITEMS = [
     time: null,
   },
   {
+    key: "identity_verified",
+    label: "Verify your identity",
+    sublabel: "Removes the \"not verified\" notice on your store",
+    icon: ShieldCheck,
+    href: "/settings/verify",
+    time: "Shows buyers you're verified",
+  },
+  {
+    key: "bank_connected",
+    label: "Connect your bank account",
+    sublabel: "Required for withdrawals",
+    icon: Banknote,
+    href: "/settings/payout",
+    time: "Required for withdrawals",
+  },
+  {
     key: "product_added",
     label: "Add your first product",
     sublabel: "~2 mins",
     icon: Package,
-    href: "/products/create",
+    href: "/products/choose-type",
     time: "~2 mins",
   },
   {
@@ -41,22 +57,6 @@ const ITEMS = [
     icon: Palette,
     href: "/templates",
     time: "~2 mins",
-  },
-  {
-    key: "identity_verified",
-    label: "Verify your identity",
-    sublabel: "Required for payouts",
-    icon: ShieldCheck,
-    href: "/settings/verify",
-    time: "Required for payouts",
-  },
-  {
-    key: "bank_connected",
-    label: "Connect your bank account",
-    sublabel: "Required for withdrawals",
-    icon: Banknote,
-    href: "/settings/payout",
-    time: "Required for withdrawals",
   },
   {
     key: "store_shared",
@@ -102,8 +102,9 @@ export function OnboardingChecklist({ storeId }: { storeId: string }) {
           store_created:      true,
           product_added:      (productsData?.products?.length ?? 0) > 0,
           store_customized:   p.checklist_store_customized ?? false,
-          identity_verified:  p.kyc_info_completed ?? user.payout_verified ?? false,
-          bank_connected:     p.bank_info_completed ?? !!(user.bank_name && user.account_number),
+          // The account itself is the truth; progress flags can lag behind it.
+          identity_verified:  !!user.payout_verified,
+          bank_connected:     !!(user.bank_name && user.account_number),
           store_shared:       p.checklist_store_shared ?? false,
         })
       } catch (e) {
@@ -185,9 +186,10 @@ export function OnboardingChecklist({ storeId }: { storeId: string }) {
                     <p className={`text-sm font-medium leading-tight ${done ? "line-through text-muted-foreground" : ""}`}>
                       {item.key === "store_shared" && copied ? "Link copied!" : item.label}
                     </p>
+                    {!done && item.time && <span className="mt-0.5 block text-xs text-muted-foreground sm:hidden">{item.time}</span>}
                   </div>
                   {!done && item.time && (
-                    <span className="text-xs text-muted-foreground shrink-0">{item.time}</span>
+                    <span className="hidden text-xs text-muted-foreground shrink-0 sm:inline">{item.time}</span>
                   )}
                 </button>
               )

@@ -97,9 +97,12 @@ export async function GET() {
 
     console.log("[v0] User profile fetched successfully:", userProfile.email)
 
+    // Store name typed at sign-up, so setup can pre-fill it instead of asking again.
+    const signupStoreName = typeof authUser.user_metadata?.store_name === "string" ? authUser.user_metadata.store_name.trim().slice(0, 80) : null
+
     return NextResponse.json({
       ok: true,
-      data: { user: userProfile },
+      data: { user: userProfile, signupStoreName },
     })
   } catch (error) {
     console.error("[v0] User profile API error:", error)

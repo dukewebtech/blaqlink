@@ -39,7 +39,9 @@ export async function GET(request: NextRequest) {
           product_type,
           quantity,
           price,
-          subtotal
+          subtotal,
+          variant_label,
+          ticket_tier_name
         )
       `,
       )

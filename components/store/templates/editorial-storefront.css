@@ -84,7 +84,10 @@ html { background: #08090F; }
   .tagline { display: inline-flex; align-items: center; gap: 7px; padding: 7px 14px; border-radius: var(--r-pill); background: var(--raise); font-size: 13px; font-weight: 600; color: var(--body); }
   .tagline svg { width: 15px; height: 15px; color: var(--soft); }
   .mast__cta { display: flex; gap: 10px; margin-top: 22px; }
-  .mast__cta .btn { flex: 1; }
+  .mast__cta .btn { flex: 1; min-width: 0; }
+  .mast__cta .btn--line { flex: 0 0 auto; }
+  /* Long store names get "…" instead of pushing Share off a phone screen. */
+  .btn__label { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
   @media (min-width: 640px) { .mast__cta .btn { flex: 0 0 auto; } }
 
   /* ---------- Spotlight ---------- */

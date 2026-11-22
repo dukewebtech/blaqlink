@@ -1,5 +1,6 @@
 "use client"
 
+import { DeliverySetupNotice } from "@/components/dashboard/delivery-setup-notice"
 import { createClient } from "@/lib/supabase/client"
 import { shrinkImage } from "@/lib/images"
 import { DIGITAL_FILE_ACCEPT, MAX_DIGITAL_FILE_BYTES } from "@/lib/products/digital-files"
@@ -51,6 +52,8 @@ interface VariantRow {
   color_name: string
   color_hex: string
   stock_quantity: string
+  /** Blank = same as the product price */
+  price: string
 }
 
 interface DigitalFile {
@@ -76,7 +79,7 @@ export interface ProductFormInitial {
   ticket_tiers: { id: string; name: string; price: number; quantity_total: number | null; quantity_sold: number }[]
   sku: string | null
   stock_quantity: number | null
-  variants: { id: string; size: string | null; color_name: string | null; color_hex: string | null; stock_quantity: number }[]
+  variants: { id: string; size: string | null; color_name: string | null; color_hex: string | null; stock_quantity: number; price?: number | string | null }[]
   option1_name?: string | null
   option2_name?: string | null
   weight_kg: number | null
@@ -197,7 +200,7 @@ export function ProductForm({ productType, initial }: { productType: ProductType
   const [option2Name, setOption2Name] = useState(initial?.option2_name || "Colour")
   const colourSwatch = isColourOption(option2Name)
   const [variants, setVariants] = useState<VariantRow[]>(
-    (initial?.variants ?? []).map((v) => ({ id: v.id, size: v.size ?? "", color_name: v.color_name ?? "", color_hex: v.color_hex ?? "", stock_quantity: String(v.stock_quantity) })),
+    (initial?.variants ?? []).map((v) => ({ id: v.id, size: v.size ?? "", color_name: v.color_name ?? "", color_hex: v.color_hex ?? "", stock_quantity: String(v.stock_quantity), price: v.price != null ? String(Number(v.price)) : "" })),
   )
   const [dims, setDims] = useState({
     weight_kg: initial?.weight_kg ? String(initial.weight_kg) : "",
@@ -277,7 +280,7 @@ export function ProductForm({ productType, initial }: { productType: ProductType
       sku,
       stock_quantity: trackStock && variants.length === 0 ? num(stock) ?? 0 : null,
       variants: trackStock
-        ? variants.map((v) => ({ id: v.id, size: v.size, color_name: v.color_name, color_hex: colourSwatch ? v.color_hex || null : null, stock_quantity: num(v.stock_quantity) ?? NaN }))
+        ? variants.map((v) => ({ id: v.id, size: v.size, color_name: v.color_name, color_hex: colourSwatch ? v.color_hex || null : null, stock_quantity: num(v.stock_quantity) ?? NaN, price: v.price.trim() === "" ? null : num(v.price) ?? NaN }))
         : [],
       option1_name: option1Name.trim(),
       option2_name: option2Name.trim(),
@@ -450,6 +453,8 @@ export function ProductForm({ productType, initial }: { productType: ProductType
           <p className="text-muted-foreground">{copy.intro}</p>
         </div>
       </div>
+
+      {productType === "physical" && <DeliverySetupNotice when="always" />}
 
       {formError && (
         <div role="alert" className="rounded-lg border border-destructive/30 bg-destructive/5 p-4 text-sm text-destructive">
@@ -657,7 +662,7 @@ export function ProductForm({ productType, initial }: { productType: ProductType
               {trackStock && (
                 <fieldset className="space-y-3">
                   <legend className="text-sm font-medium">Options buyers choose (optional)</legend>
-                  <p className="text-sm text-muted-foreground">Name the two choices, like Size and Colour, then add each option with its own stock.</p>
+                  <p className="text-sm text-muted-foreground">Name the two choices, like Size and Colour, then add each option with its own stock. Leave an option's price empty to use the product price.</p>
                   <div className="grid gap-3 sm:grid-cols-2">
                     <OptionNamePicker id="option1_name" label="First choice" value={option1Name} onChange={setOption1Name} error={err("option1_name")} />
                     <OptionNamePicker id="option2_name" label="Second choice" value={option2Name} onChange={setOption2Name} error={err("option2_name")} />
@@ -665,7 +670,7 @@ export function ProductForm({ productType, initial }: { productType: ProductType
                   {variants.map((v, i) => (
                     <div
                       key={v.id ?? `new-${i}`}
-                      className={`grid gap-3 rounded-lg border p-3 sm:items-start ${colourSwatch ? "sm:grid-cols-[1fr_1fr_3rem_7rem_auto]" : "sm:grid-cols-[1fr_1fr_7rem_auto]"}`}
+                      className={`grid gap-3 rounded-lg border p-3 sm:items-start ${colourSwatch ? "sm:grid-cols-[1fr_1fr_3rem_7rem_6rem_auto]" : "sm:grid-cols-[1fr_1fr_7rem_6rem_auto]"}`}
                     >
                       <div className="space-y-1">
                         <Label htmlFor={`var-${i}-size`} className="text-xs">{option1Name || "First choice"}</Label>
@@ -687,13 +692,21 @@ export function ProductForm({ productType, initial }: { productType: ProductType
                         <Input id={`var-${i}-stock`} type="number" inputMode="numeric" min={0} className="tabular-nums" value={v.stock_quantity} onChange={(e) => setVariants((p) => p.map((x, j) => (j === i ? { ...x, stock_quantity: e.target.value } : x)))} {...invalid(`variants.${i}.stock_quantity`)} />
                         <FieldError id={`variants.${i}.stock_quantity`} message={err(`variants.${i}.stock_quantity`)} />
                       </div>
+                      <div className="space-y-1">
+                        <Label htmlFor={`var-${i}-price`} className="text-xs">Price</Label>
+                        <div className="relative">
+                          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">₦</span>
+                          <Input id={`var-${i}-price`} type="number" inputMode="decimal" min={MIN_PRICE} className="pl-7 tabular-nums" value={v.price} placeholder={price || "Same"} onChange={(e) => setVariants((p) => p.map((x, j) => (j === i ? { ...x, price: e.target.value } : x)))} {...invalid(`variants.${i}.price`)} />
+                        </div>
+                        <FieldError id={`variants.${i}.price`} message={err(`variants.${i}.price`)} />
+                      </div>
                       <Button type="button" variant="ghost" size="icon" className="sm:mt-5" aria-label={`Remove option ${i + 1}`} onClick={() => setVariants((p) => p.filter((_, j) => j !== i))}>
                         <Trash2 className="h-4 w-4" />
                       </Button>
                     </div>
                   ))}
                   <FieldError id="variants" message={err("variants")} />
-                  <Button type="button" variant="outline" size="sm" onClick={() => setVariants((p) => [...p, { size: "", color_name: "", color_hex: "", stock_quantity: "" }])}>
+                  <Button type="button" variant="outline" size="sm" onClick={() => setVariants((p) => [...p, { size: "", color_name: "", color_hex: "", stock_quantity: "", price: "" }])}>
                     <Plus className="h-4 w-4" aria-hidden="true" /> Add option
                   </Button>
                 </fieldset>

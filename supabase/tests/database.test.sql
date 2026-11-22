@@ -144,6 +144,21 @@ select t.ok(
      '[]', '[{"size":"M","color_name":"Indigo","color_hex":"#3344aa","stock_quantity":1},{"size":"L","color_name":null,"color_hex":null,"stock_quantity":0}]')) ->> 'ok')::boolean,
   'save_product: physical with size/colour variants');
 select t.ok((select stock_quantity is null from products where title = 'Tote'), 'save_product: variant stock replaces product stock');
+select t.ok(
+  (select (save_product('00000000-0000-0000-0000-00000000000a', null,
+     '{"product_type":"physical","status":"published","title":"Priced Tote","price":8000,"images":[],"file_urls":[],"available_days":[],"time_slots":[]}',
+     '[]', '[{"size":"S","stock_quantity":1,"price":null},{"size":"XL","stock_quantity":1,"price":9500}]')) ->> 'ok')::boolean,
+  'save_product: options with their own price');
+select t.ok((select array_agg(v.price order by v.size desc) = '{9500.00,NULL}'::numeric[] from product_variants v join products p on p.id = v.product_id where p.title = 'Priced Tote'),
+  'save_product: option price saved; empty means product price');
+do $$ begin
+  begin
+    insert into product_variants (product_id, size, stock_quantity, price)
+      select id, 'Bad', 1, 0 from products where title = 'Priced Tote';
+    raise exception 'FAIL variant price: zero price was allowed';
+  exception when check_violation then null; end;
+end $$;
+select t.ok(true, 'variant price: must be above zero when set');
 
 select t.ok(
   (select (save_product('00000000-0000-0000-0000-00000000000a', null,

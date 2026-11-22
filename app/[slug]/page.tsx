@@ -107,7 +107,7 @@ async function loadStorefrontData(slug: string): Promise<{ store: DaylightStore;
 
   const [{ data: variants }, { data: tiers }, { data: bookedItems }] = await Promise.all([
     physicalIds.length
-      ? supabase.from("product_variants").select("id, product_id, size, color_name, color_hex, stock_quantity").in("product_id", physicalIds)
+      ? supabase.from("product_variants").select("id, product_id, size, color_name, color_hex, stock_quantity, price").in("product_id", physicalIds)
       : Promise.resolve({ data: [] as any[] }),
     eventIds.length
       ? supabase.from("ticket_tiers").select("id, product_id, name, price, quantity_total, quantity_sold").in("product_id", eventIds).order("sort_order")
@@ -158,6 +158,7 @@ async function loadStorefrontData(slug: string): Promise<{ store: DaylightStore;
         colorName: v.color_name,
         colorHex: v.color_hex,
         stock: v.stock_quantity,
+        price: v.price === null || v.price === undefined ? null : Number(v.price),
       })),
       eventDate: p.event_date ? new Date(p.event_date).toLocaleString("en-NG", { weekday: "short", day: "numeric", month: "short", hour: "numeric", minute: "2-digit" }) : null,
       eventLocation: p.event_location ?? null,

@@ -30,6 +30,8 @@ export interface VariantInput {
   color_name: string | null
   color_hex: string | null
   stock_quantity: number
+  /** Full price for this option; null = same as the product price. */
+  price: number | null
 }
 
 export interface ProductInput {
@@ -203,6 +205,10 @@ export function validateProduct(input: ProductInput): ProductErrors {
           seen.add(key)
           if (!isWholeNumber(v.stock_quantity) || v.stock_quantity < 0) e[`variants.${i}.stock_quantity`] = "Use a whole number of 0 or more."
           if (v.color_hex && !/^#[0-9a-f]{6}$/i.test(v.color_hex)) e[`variants.${i}.color_hex`] = "Pick a colour from the picker."
+          if (v.price !== null) {
+            const pe = priceError(v.price)
+            if (pe) e[`variants.${i}.price`] = pe
+          }
         })
       }
       for (const field of ["weight_kg", "length_cm", "width_cm", "height_cm"] as const) {
@@ -283,6 +289,7 @@ export function normaliseProductInput(raw: Record<string, unknown>): ProductInpu
             color_name: str(v?.color_name),
             color_hex: str(v?.color_hex),
             stock_quantity: num(v?.stock_quantity) ?? NaN,
+            price: v?.price === "" || v?.price === null || v?.price === undefined ? null : (num(v.price) ?? NaN),
           }))
         : [],
     option1_name: type === "physical" ? str(raw.option1_name)?.slice(0, 60) ?? "Size" : "Size",

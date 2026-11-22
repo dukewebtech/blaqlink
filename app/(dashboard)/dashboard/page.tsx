@@ -1,5 +1,6 @@
 "use client"
 import { OnboardingChecklist } from "@/components/onboarding/onboarding-checklist"
+import { DeliverySetupNotice } from "@/components/dashboard/delivery-setup-notice"
 import { StatsCard } from "@/components/dashboard/stats-card"
 import { SalesChart } from "@/components/dashboard/sales-chart"
 import { RecentOrders } from "@/components/dashboard/recent-orders"
@@ -115,6 +116,8 @@ export default function DashboardPage() {
         </div>
 
         {/* Progressive onboarding checklist — non-blocking, hides when all complete */}
+        <DeliverySetupNotice />
+
         {userStoreId && <OnboardingChecklist storeId={userStoreId} />}
 
         {/* Stats Grid */}

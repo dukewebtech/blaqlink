@@ -27,6 +27,18 @@ interface OrderItem {
   quantity: number
   price: number
   subtotal: number
+  variant_label?: string | null
+  ticket_tier_name?: string | null
+}
+
+/** "Ankara Dress · Large, Red +2 more" — what was sold, under the order ID. */
+function itemsSummary(items: OrderItem[] | null | undefined): string {
+  if (!items || items.length === 0) return ""
+  const first = items[0]
+  const option = first.variant_label || first.ticket_tier_name
+  const qty = first.quantity > 1 ? ` ×${first.quantity}` : ""
+  const more = items.length > 1 ? ` +${items.length - 1} more` : ""
+  return `${first.product_title}${option ? ` · ${option}` : ""}${qty}${more}`
 }
 
 interface Order {
@@ -205,6 +217,9 @@ export default function TransactionsPage() {
                           <p className="text-sm font-medium truncate">{order.customer_name}</p>
                           <p className="text-xs text-muted-foreground truncate">{order.customer_email}</p>
                           <p className="text-xs text-primary font-mono mt-0.5">#{order.id.slice(0, 8)}</p>
+                          {itemsSummary(order.order_items) && (
+                            <p className="text-xs text-muted-foreground line-clamp-2">{itemsSummary(order.order_items)}</p>
+                          )}
                         </div>
                         <div className="text-right shrink-0">
                           <p className="font-semibold text-sm">{formatNaira(order.total_amount)}</p>
@@ -264,6 +279,11 @@ export default function TransactionsPage() {
                           <TableCell>
                             <div className="flex flex-col">
                               <span className="text-xs text-primary font-medium">#{order.id.slice(0, 8)}</span>
+                              {itemsSummary(order.order_items) && (
+                                <span className="max-w-[220px] truncate text-sm text-foreground" title={itemsSummary(order.order_items)}>
+                                  {itemsSummary(order.order_items)}
+                                </span>
+                              )}
                               <span className="text-xs text-muted-foreground font-mono">{order.payment_reference}</span>
                             </div>
                           </TableCell>

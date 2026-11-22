@@ -127,6 +127,38 @@ interface OrderItem {
   price: number
   subtotal: number
   image?: string | null
+  product_type?: string | null
+  variant_label?: string | null
+  ticket_tier_name?: string | null
+  appointment_date?: string | null
+  appointment_time?: string | null
+}
+
+/** "2026-11-29" → "Sat, 29 Nov 2026" (a calendar date, so no time-zone shift). */
+function formatAppointmentDate(date: string): string {
+  const d = new Date(`${date}T12:00:00Z`)
+  if (Number.isNaN(d.getTime())) return date
+  return d.toLocaleDateString("en-NG", { weekday: "short", day: "numeric", month: "short", year: "numeric", timeZone: "UTC" })
+}
+
+/** "14:00" → "2:00pm" */
+function formatAppointmentTime(time: string): string {
+  const m = time.match(/^(\d{1,2}):(\d{2})/)
+  if (!m) return time
+  const h = Number(m[1])
+  return `${h % 12 || 12}:${m[2]}${h < 12 ? "am" : "pm"}`
+}
+
+function appointmentText(item: OrderItem): string | null {
+  if (!item.appointment_date) return null
+  return [formatAppointmentDate(item.appointment_date), item.appointment_time ? formatAppointmentTime(item.appointment_time) : null]
+    .filter(Boolean)
+    .join(" at ")
+}
+
+/** Option, ticket type or booking slot shown under an item's name. */
+function itemDetail(item: OrderItem): string {
+  return [item.variant_label, item.ticket_tier_name, appointmentText(item)].filter(Boolean).join(" &middot; ")
 }
 
 /** A vendor's own branding, used to skin the header of order emails so each vendor's mail looks like their store. */
@@ -159,6 +191,7 @@ function formatOrderDate(iso: string): string {
     year: "numeric",
     hour: "numeric",
     minute: "2-digit",
+    timeZone: "Africa/Lagos",
   })
 }
 
@@ -172,6 +205,7 @@ function itemRowHtml(item: OrderItem): string {
       </td>
       <td style="padding:12px 16px;border-bottom:1px solid #F1EEE9;vertical-align:top;">
         <p style="margin:0;font-size:14px;font-weight:600;color:#1C1A17;line-height:1.4;">${item.product_title}</p>
+        ${itemDetail(item) ? `<p style="margin:4px 0 0;font-size:13px;color:#5C574F;">${itemDetail(item)}</p>` : ""}
         <p style="margin:4px 0 0;font-size:13px;color:#8A857C;">Qty ${item.quantity}</p>
       </td>
       <td style="padding:12px 0;border-bottom:1px solid #F1EEE9;vertical-align:top;text-align:right;white-space:nowrap;">
@@ -198,6 +232,7 @@ interface VendorOrderEmailParams {
   customerName: string
   customerEmail: string
   customerPhone: string
+  customerNote?: string | null
   items: OrderItem[]
   subtotal: number
   deliveryFee: number
@@ -211,10 +246,21 @@ interface VendorOrderEmailParams {
 // own logo/brand color so it reads as "your store", not a generic system email.
 export function getNewOrderEmailForVendor(params: VendorOrderEmailParams): { subject: string; html: string } {
   params = escapeDeep(params)
-  const { orderId, createdAt, customerName, customerEmail, customerPhone, items, subtotal, deliveryFee, totalAmount, deliveryAreaName, deliveryAddress, vendor } = params
+  const { orderId, createdAt, customerName, customerEmail, customerPhone, customerNote, items, subtotal, deliveryFee, totalAmount, deliveryAreaName, deliveryAddress, vendor } = params
   const accent = resolveBrandColor(vendor.brandColor)
   const logo = vendor.logoUrl || `${APP_URL}/blaqora-icon.png`
   const ref = orderRef(orderId)
+  const bookings = items.filter((i) => i.appointment_date)
+  const isBooking = bookings.length > 0
+  const firstSlot = isBooking ? appointmentText(bookings[0]) : null
+  const bookingRows = bookings
+    .map(
+      (b) => `
+        <tr><td style="padding:6px 0;font-size:13px;color:#8A857C;width:110px;vertical-align:top;">Service</td><td style="padding:6px 0;font-size:14px;color:#1C1A17;font-weight:600;">${b.product_title}${b.variant_label ? ` &middot; ${b.variant_label}` : ""}</td></tr>
+        <tr><td style="padding:6px 0;font-size:13px;color:#8A857C;vertical-align:top;">Date</td><td style="padding:6px 0;font-size:14px;color:#1C1A17;font-weight:600;">${formatAppointmentDate(b.appointment_date!)}</td></tr>
+        ${b.appointment_time ? `<tr><td style="padding:6px 0;font-size:13px;color:#8A857C;vertical-align:top;">Time</td><td style="padding:6px 0;font-size:14px;color:#1C1A17;font-weight:600;">${formatAppointmentTime(b.appointment_time)}</td></tr>` : ""}`,
+    )
+    .join(`<tr><td colspan="2" style="padding:6px 0;border-bottom:1px solid #EEE9E2;"></td></tr>`)
 
   const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><style>
     body{margin:0;padding:0;background:#F1EEE9;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;}
@@ -225,12 +271,26 @@ export function getNewOrderEmailForVendor(params: VendorOrderEmailParams): { sub
 
       <tr><td style="background:${accent};padding:30px 32px;" align="center">
         <img src="${logo}" width="48" height="48" style="width:48px;height:48px;border-radius:50%;border:2px solid rgba(255,255,255,0.6);object-fit:cover;" alt="">
-        <p style="margin:12px 0 0;font-size:16px;color:#ffffff;font-weight:700;">New order received</p>
+        <p style="margin:12px 0 0;font-size:16px;color:#ffffff;font-weight:700;">${isBooking ? "New booking" : "New order received"}</p>
       </td></tr>
 
       <tr><td style="padding:32px;">
         <p style="margin:0 0 4px;font-size:15px;color:#1C1A17;">Hi ${vendor.name},</p>
-        <p style="margin:0 0 22px;font-size:14px;color:#5C574F;line-height:1.6;">You&rsquo;ve got a new order. Here are the details.</p>
+        <p style="margin:0 0 22px;font-size:14px;color:#5C574F;line-height:1.6;">${
+          isBooking ? `${customerName} has booked and paid. Here are the details.` : "You&rsquo;ve got a new order. Here are the details."
+        }</p>
+
+        ${
+          isBooking
+            ? `<table role="presentation" width="100%" style="border:2px solid ${accent};border-radius:10px;margin-bottom:20px;"><tr><td style="padding:14px 18px;">
+          <table role="presentation" width="100%">
+            <tr><td style="padding:6px 0;font-size:13px;color:#8A857C;width:110px;vertical-align:top;">Client</td><td style="padding:6px 0;font-size:14px;color:#1C1A17;font-weight:600;">${customerName}</td></tr>
+            ${bookingRows}
+            <tr><td style="padding:6px 0;font-size:13px;color:#8A857C;vertical-align:top;">Booked on</td><td style="padding:6px 0;font-size:14px;color:#1C1A17;">${formatOrderDate(createdAt)}</td></tr>
+          </table>
+        </td></tr></table>`
+            : ""
+        }
 
         <table role="presentation" width="100%" style="background:#FAF9F6;border-radius:10px;margin-bottom:20px;"><tr><td style="padding:16px 18px;font-size:13px;color:#5C574F;">
           <strong style="color:#1C1A17;">Order</strong> #${ref} &nbsp;&middot;&nbsp; <span style="color:#1E9E5A;font-weight:600;">Paid &#10003;</span><br>
@@ -241,6 +301,13 @@ export function getNewOrderEmailForVendor(params: VendorOrderEmailParams): { sub
         <table role="presentation" width="100%" style="background:#FAF9F6;border-radius:10px;margin-bottom:20px;"><tr><td style="padding:16px 18px;font-size:13px;color:#5C574F;line-height:1.8;">
           ${customerName}<br>${customerEmail}${customerPhone ? `<br>${customerPhone}` : ""}${deliveryAddress ? `<br>${deliveryAddress}` : ""}
         </td></tr></table>
+
+        ${
+          customerNote
+            ? `<p style="margin:0 0 8px;font-size:13px;font-weight:600;color:#1C1A17;">Note from ${customerName}</p>
+        <table role="presentation" width="100%" style="background:#FAF9F6;border-radius:10px;margin-bottom:20px;"><tr><td style="padding:16px 18px;font-size:13px;color:#5C574F;line-height:1.6;">${customerNote}</td></tr></table>`
+            : ""
+        }
 
         <p style="margin:0 0 8px;font-size:13px;font-weight:600;color:#1C1A17;">Items</p>
         <table role="presentation" width="100%">
@@ -267,7 +334,9 @@ export function getNewOrderEmailForVendor(params: VendorOrderEmailParams): { sub
   </body></html>`
 
   return {
-    subject: plainText(`New order — ${formatCurrency(totalAmount)}`),
+    subject: plainText(
+      isBooking && firstSlot ? `New booking — ${firstSlot} · ${customerName}` : `New order — ${formatCurrency(totalAmount)}`,
+    ),
     html,
   }
 }

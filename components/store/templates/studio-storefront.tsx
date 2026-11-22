@@ -14,8 +14,7 @@ import {
   type DaylightItem,
   type DaylightStore,
   type DaylightItemType,
-  type LiveDeliveryRate,
-} from "./daylight-types"
+  type LiveDeliveryRate, cardPriceText, findSelectedVariant, selectedUnitPrice } from "./daylight-types"
 import "./studio-storefront.css"
 import { fontCssVars } from "@/lib/storefront/fonts"
 
@@ -45,7 +44,8 @@ export function StudioStorefront({ store, items }: { store: DaylightStore; items
     name: "",
     phone: "",
     email: "",
-    method: "delivery" as "delivery" | "pickup",
+    // No delivery areas set up (manual mode) → pickup is the only way to get it.
+    method: (store.shippingMode === "manual" && store.deliveryAreas.length === 0 ? "pickup" : "delivery") as "delivery" | "pickup",
     areaId: null as string | null,
     quoteId: null as string | null,
     address: "",
@@ -131,7 +131,7 @@ export function StudioStorefront({ store, items }: { store: DaylightStore; items
     ? [...new Map(sheetItem.variants.filter((v) => v.colorName).map((v) => [v.colorName as string, v])).values()]
     : []
   const selectedTier = sheetItem?.tiers.find((t) => t.id === sel.tierId) ?? null
-  const unitPrice = sheetItem ? (sheetItem.type === "event" && selectedTier ? selectedTier.price : sheetItem.price) : 0
+  const unitPrice = sheetItem ? selectedUnitPrice(sheetItem, sel, selectedTier) : 0
   const stepperMax = sheetItem
     ? sizes.length > 0
       ? variantStock(sheetItem, sel.size, null)
@@ -144,10 +144,7 @@ export function StudioStorefront({ store, items }: { store: DaylightStore; items
   function addCurrentToCart() {
     if (!sheetItem) return
     if (sheetItem.type === "appointment" && !bookingReady) return
-    const variant =
-      sheetItem.variants.find((v) => (sizes.length === 0 || v.size === sel.size) && (colors.length === 0 || v.colorName === sel.colorName)) ??
-      sheetItem.variants.find((v) => v.size === sel.size) ??
-      sheetItem.variants.find((v) => v.colorName === sel.colorName)
+    const variant = findSelectedVariant(sheetItem, sel.size, sel.colorName)
     const variantLabel = [sel.size, sel.colorName].filter(Boolean).join(" / ") || undefined
 
     const result = cartStore.addItem(
@@ -172,6 +169,7 @@ export function StudioStorefront({ store, items }: { store: DaylightStore; items
 
   // ---------- Cart / checkout (identical logic to Daylight) ----------
   const isLiveRateMode = store.shippingMode !== "manual"
+  const canDeliver = isLiveRateMode || store.deliveryAreas.length > 0
   const selectedLiveRate = liveRates?.find((r) => r.id === order.areaId) ?? null
   const selectedManualArea = store.deliveryAreas.find((a) => a.id === order.areaId)
   const currentAreaName = isLiveRateMode ? (selectedLiveRate?.carrierName ?? null) : (selectedManualArea?.name ?? null)
@@ -714,10 +712,12 @@ export function StudioStorefront({ store, items }: { store: DaylightStore; items
                 <>
                   <p className="opts__label">How would you like to get it?</p>
                   <div className="opts" role="group" aria-label="How to get your order">
-                    <button className="opt-card" type="button" aria-pressed={order.method === "delivery"} onClick={() => setOrder((o) => ({ ...o, method: "delivery" }))}>
-                      <span className="opt-card__tick" />
-                      <span className="opt-card__main"><b>Deliver to me</b><small>A dispatch rider brings it to your address.</small></span>
-                    </button>
+                    {canDeliver && (
+                      <button className="opt-card" type="button" aria-pressed={order.method === "delivery"} onClick={() => setOrder((o) => ({ ...o, method: "delivery" }))}>
+                        <span className="opt-card__tick" />
+                        <span className="opt-card__main"><b>Deliver to me</b><small>A dispatch rider brings it to your address.</small></span>
+                      </button>
+                    )}
                     <button className="opt-card" type="button" aria-pressed={order.method === "pickup"} onClick={() => setOrder((o) => ({ ...o, method: "pickup", areaId: null }))}>
                       <span className="opt-card__tick" />
                       <span className="opt-card__main"><b>Pick up from the store</b>{store.location && <small>{store.location}</small>}</span>
@@ -952,7 +952,7 @@ function ProductCard({ item, index, onOpen }: { item: DaylightItem; index: numbe
         )}
       </span>
       <span className="pc__n">{item.name}</span>
-      <span className="pc__p money">{formatNaira(item.price)}</span>
+      <span className="pc__p money">{cardPriceText(item)}</span>
       {sub && <span className="pc__s">{sub}</span>}
     </button>
   )

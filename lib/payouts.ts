@@ -1,17 +1,6 @@
 import { createAdminClient } from "@/lib/supabase/server"
 
-function normalize(name: string) {
-  return name.toUpperCase().replace(/[^A-Z\s]/g, " ").replace(/\s+/g, " ").trim()
-}
-
-/** Same rule the payout settings page shows the vendor: at least half the words match. */
-export function namesMatch(a: string, b: string): boolean {
-  const words = normalize(a).split(" ").filter(Boolean)
-  const target = normalize(b)
-  if (words.length === 0 || !target) return false
-  const matchCount = words.filter((w) => target.includes(w)).length
-  return matchCount / words.length >= 0.5
-}
+export { bankNameMatches as namesMatch } from "@/lib/kyc/nin-match"
 
 /**
  * What a vendor can withdraw right now: paid orders net of fees, minus fees

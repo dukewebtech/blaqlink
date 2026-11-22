@@ -35,7 +35,9 @@ export function IdentityUploadStep({ onComplete, onSkip, showSkip = true, stepLa
   const [error, setError] = useState<string | null>(null)
 
   const [nin, setNin] = useState("")
-  const [fullName, setFullName] = useState("")
+  const [firstName, setFirstName] = useState("")
+  const [middleName, setMiddleName] = useState("")
+  const [lastName, setLastName] = useState("")
   const [dob, setDob] = useState("")
 
   async function handleSubmit(e: { preventDefault(): void }) {
@@ -47,7 +49,7 @@ export function IdentityUploadStep({ onComplete, onSkip, showSkip = true, stepLa
       const res = await fetch("/api/kyc/nin", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ nin, fullName, dateOfBirth: dob }),
+        body: JSON.stringify({ nin, firstName, middleName, lastName, dateOfBirth: dob }),
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error)
@@ -160,23 +162,27 @@ export function IdentityUploadStep({ onComplete, onSkip, showSkip = true, stepLa
           </p>
         </div>
 
-        <div className="space-y-1.5">
-          <Label htmlFor="fullName">Legal Full Name <span className="text-destructive">*</span></Label>
-          <Input
-            id="fullName"
-            placeholder="Enter your full legal name"
-            value={fullName}
-            onChange={(e) => setFullName(e.target.value)}
-            required
-            className="h-11"
-          />
-          <p className="text-xs text-muted-foreground">
-            Enter exactly as it appears on your NIN.
-          </p>
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <div className="space-y-1.5">
+            <Label htmlFor="firstName">First name <span className="text-destructive">*</span></Label>
+            <Input id="firstName" value={firstName} onChange={(e) => setFirstName(e.target.value)} autoComplete="given-name" required className="h-11" />
+          </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="lastName">Surname <span className="text-destructive">*</span></Label>
+            <Input id="lastName" value={lastName} onChange={(e) => setLastName(e.target.value)} autoComplete="family-name" required className="h-11" />
+          </div>
         </div>
 
         <div className="space-y-1.5">
-          <Label htmlFor="dob">Date of Birth <span className="text-destructive">*</span></Label>
+          <Label htmlFor="middleName">
+            Middle name <span className="text-xs font-normal text-muted-foreground">(optional)</span>
+          </Label>
+          <Input id="middleName" value={middleName} onChange={(e) => setMiddleName(e.target.value)} autoComplete="additional-name" className="h-11" />
+          <p className="text-xs text-muted-foreground">Enter your names exactly as they appear on your NIN slip.</p>
+        </div>
+
+        <div className="space-y-1.5">
+          <Label htmlFor="dob">Date of birth <span className="text-destructive">*</span></Label>
           <Input
             id="dob"
             type="date"
@@ -205,7 +211,7 @@ export function IdentityUploadStep({ onComplete, onSkip, showSkip = true, stepLa
           <Button
             type="submit"
             className="flex-[2] gap-2"
-            disabled={loading || nin.length < 11 || !fullName || !dob}
+            disabled={loading || nin.length < 11 || !firstName.trim() || !lastName.trim() || !dob}
           >
             {loading ? <><Loader2 className="h-4 w-4 animate-spin" /> Checking…</> : "Verify"}
           </Button>

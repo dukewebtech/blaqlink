@@ -73,7 +73,7 @@ export async function POST(request: NextRequest) {
         .from("products")
         .select("id, title, price, product_type, status, user_id, available_days, time_slots")
         .in("id", productIds),
-      supabase.from("product_variants").select("id, product_id, size, color_name").in("product_id", productIds),
+      supabase.from("product_variants").select("id, product_id, size, color_name, price").in("product_id", productIds),
       supabase.from("ticket_tiers").select("id, product_id, name, price").in("product_id", productIds),
     ])
 
@@ -98,6 +98,8 @@ export async function POST(request: NextRequest) {
         const variant = productVariants.find((v) => v.id === line.product_variant_id)
         if (!variant) return NextResponse.json({ error: `Choose a size or colour for ${product.title}.` }, { status: 409 })
         variantLabel = [variant.size, variant.color_name].filter(Boolean).join(" / ")
+        // An option can cost more or less than the product; blank = product price.
+        if (variant.price !== null && variant.price !== undefined) unitPrice = Number(variant.price)
       } else if (line.product_variant_id) {
         return NextResponse.json({ error: `Invalid option selected for ${product.title}` }, { status: 409 })
       }

@@ -12,8 +12,7 @@ import {
   type DaylightItem as EditorialItem,
   type DaylightStore as EditorialStore,
   type DaylightItemType as EditorialItemType,
-  type LiveDeliveryRate,
-} from "./daylight-types"
+  type LiveDeliveryRate, cardPriceText, findSelectedVariant, selectedUnitPrice } from "./daylight-types"
 import "./editorial-storefront.css"
 import { fontCssVars } from "@/lib/storefront/fonts"
 
@@ -61,7 +60,8 @@ export function EditorialStorefront({ store, items }: { store: EditorialStore; i
     name: "",
     phone: "",
     email: "",
-    method: "delivery" as "delivery" | "pickup",
+    // No delivery areas set up (manual mode) → pickup is the only way to get it.
+    method: (store.shippingMode === "manual" && store.deliveryAreas.length === 0 ? "pickup" : "delivery") as "delivery" | "pickup",
     areaId: null as string | null,
     quoteId: null as string | null,
     address: "",
@@ -181,7 +181,7 @@ export function EditorialStorefront({ store, items }: { store: EditorialStore; i
     ? [...new Map(pageItem.variants.filter((v) => v.colorName).map((v) => [v.colorName as string, v])).values()]
     : []
   const selectedTier = pageItem?.tiers.find((t) => t.id === sel.tierId) ?? null
-  const unitPrice = pageItem ? (pageItem.type === "event" && selectedTier ? selectedTier.price : pageItem.price) : 0
+  const unitPrice = pageItem ? selectedUnitPrice(pageItem, sel, selectedTier) : 0
   const stepperMax = pageItem ? (sizes.length > 0 ? variantStock(pageItem, sel.size, null) : pageItem.stock ?? 99) : 99
   const selectedDay = pageItem?.days.find((d) => d.date === sel.dayDate) ?? null
   const bookingReady = pageItem?.type !== "appointment" || (!!sel.dayDate && !!sel.slotTime)
@@ -190,10 +190,7 @@ export function EditorialStorefront({ store, items }: { store: EditorialStore; i
   function addCurrentToBag() {
     if (!pageItem) return
     if (pageItem.type === "appointment" && !bookingReady) return
-    const variant =
-      pageItem.variants.find((v) => (sizes.length === 0 || v.size === sel.size) && (colors.length === 0 || v.colorName === sel.colorName)) ??
-      pageItem.variants.find((v) => v.size === sel.size) ??
-      pageItem.variants.find((v) => v.colorName === sel.colorName)
+    const variant = findSelectedVariant(pageItem, sel.size, sel.colorName)
     const variantLabel = [sel.size, sel.colorName].filter(Boolean).join(" / ") || undefined
 
     const result = cartStore.addItem(
@@ -218,6 +215,7 @@ export function EditorialStorefront({ store, items }: { store: EditorialStore; i
 
   // ---------- Bag ----------
   const isLiveRateMode = store.shippingMode !== "manual"
+  const canDeliver = isLiveRateMode || store.deliveryAreas.length > 0
   const selectedLiveRate = liveRates?.find((r) => r.id === order.areaId) ?? null
   const selectedManualArea = store.deliveryAreas.find((a) => a.id === order.areaId)
   const currentAreaName = isLiveRateMode ? (selectedLiveRate?.carrierName ?? null) : (selectedManualArea?.name ?? null)
@@ -463,7 +461,8 @@ export function EditorialStorefront({ store, items }: { store: EditorialStore; i
           <div className="mast__cta">
             {waHref && (
               <a className="btn btn--wa" href={waHref} target="_blank" rel="noreferrer">
-                <svg className="i"><use href="#ed-i-wa" /></svg>Message {store.name}
+                <svg className="i"><use href="#ed-i-wa" /></svg>
+                <span className="btn__label">Message {store.name}</span>
               </a>
             )}
             <button className="btn btn--line" type="button" onClick={shareStore}>
@@ -851,10 +850,12 @@ export function EditorialStorefront({ store, items }: { store: EditorialStore; i
                     <>
                       <p className="pick__l" style={{ marginBottom: 9 }}>How would you like to get it?</p>
                       <div className="pick">
-                        <button className="pk" type="button" aria-pressed={order.method === "delivery"} onClick={() => setOrder((o) => ({ ...o, method: "delivery" }))}>
-                          <span className="pk__t" />
-                          <span className="pk__m"><b>Deliver to me</b><small>A dispatch rider brings it to your address.</small></span>
-                        </button>
+                        {canDeliver && (
+                          <button className="pk" type="button" aria-pressed={order.method === "delivery"} onClick={() => setOrder((o) => ({ ...o, method: "delivery" }))}>
+                            <span className="pk__t" />
+                            <span className="pk__m"><b>Deliver to me</b><small>A dispatch rider brings it to your address.</small></span>
+                          </button>
+                        )}
                         <button className="pk" type="button" aria-pressed={order.method === "pickup"} onClick={() => setOrder((o) => ({ ...o, method: "pickup", areaId: null }))}>
                           <span className="pk__t" />
                           <span className="pk__m"><b>Pick up from the store</b>{store.location && <small>{store.location}</small>}</span>
@@ -1081,7 +1082,7 @@ function Tile({ item, index, onOpen }: { item: EditorialItem; index: number; onO
       <span className="tile__body">
         <span className="tile__name">{item.name}</span>
         <span className="tile__foot">
-          <span className="tile__price money">{formatNaira(item.price)}</span>
+          <span className="tile__price money">{cardPriceText(item)}</span>
           {item.compareAtPrice != null && <span className="tile__was money">{formatNaira(item.compareAtPrice)}</span>}
         </span>
         {metaLine && (

@@ -134,7 +134,6 @@
   width: 84px; height: 18px; background: var(--bq-ink); border-radius: 20px; z-index: 2;
 }
 .sd-phone__screen { width: 100%; height: 100%; border-radius: 30px; overflow: hidden; background: #fff; pointer-events: none; }
-@media (max-width: 390px) { .sd-phone { transform: scale(.9); transform-origin: top center; margin-bottom: -12%; } }
 
 /* ---------- Save bar ---------- */
 .sd-savebar {
@@ -146,3 +145,24 @@
   .sd-savebar { position: fixed; left: 12px; right: 12px; bottom: 10px; margin: 0; }
   .sd-savebar .bq-btn { width: 100%; }
 }
+
+/* ---------- Device preview (fixed 390px / 1440px frames, scaled to fit) ---------- */
+.sd-previewhead { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 12px; flex-wrap: wrap; }
+.sd-devices { display: inline-flex; padding: 3px; gap: 2px; background: var(--bq-bg-soft); border: 1px solid var(--bq-line); border-radius: var(--bq-radius-pill, 999px); }
+.sd-devices button {
+  display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; cursor: pointer;
+  font: 700 12px/1 var(--bq-font-body); color: var(--bq-soft); background: transparent; border: 0;
+  padding: 8px 12px; border-radius: var(--bq-radius-pill, 999px);
+}
+.sd-devices button svg { width: 14px; height: 14px; }
+.sd-devices button.is-sel { background: var(--bq-bg); color: var(--bq-ink); box-shadow: var(--bq-shadow-1); }
+.sd-previewstage { display: flex; justify-content: center; min-width: 0; width: 100%; }
+.sd-previewstage .sd-phone { margin-top: 0; }
+.sd-previewstage .sd-phone__screen { pointer-events: auto; }
+.sd-browser {
+  background: var(--bq-bg); border: 1px solid var(--bq-line-2); border-radius: var(--bq-radius-sm);
+  box-shadow: var(--bq-shadow-3); overflow: hidden;
+}
+.sd-browser__bar { height: 28px; display: flex; align-items: center; gap: 6px; padding: 0 12px; background: var(--bq-bg-soft); border-bottom: 1px solid var(--bq-line); }
+.sd-browser__bar span { width: 9px; height: 9px; border-radius: 50%; background: var(--bq-line-2); }
+.sd-browser__screen { overflow: hidden; background: #fff; }

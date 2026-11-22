@@ -6,6 +6,11 @@ interface OrderItemLike {
   product_title: string
   quantity: number
   subtotal: number
+  product_type?: string | null
+  variant_label?: string | null
+  ticket_tier_name?: string | null
+  appointment_date?: string | null
+  appointment_time?: string | null
 }
 
 interface EmailReadyItem {
@@ -14,6 +19,11 @@ interface EmailReadyItem {
   price: number
   subtotal: number
   image: string | null
+  product_type: string | null
+  variant_label: string | null
+  ticket_tier_name: string | null
+  appointment_date: string | null
+  appointment_time: string | null
 }
 
 /** Looks up each item's product image so order emails can show a thumbnail. */
@@ -31,6 +41,11 @@ export async function attachItemImages(
     price: i.subtotal / (i.quantity || 1),
     subtotal: i.subtotal,
     image: imageById.get(i.product_id) ?? null,
+    product_type: i.product_type ?? null,
+    variant_label: i.variant_label ?? null,
+    ticket_tier_name: i.ticket_tier_name ?? null,
+    appointment_date: i.appointment_date ?? null,
+    appointment_time: i.appointment_time ?? null,
   }))
 }
 

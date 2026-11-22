@@ -38,7 +38,7 @@ interface Product {
   ticket_tiers: { id: string; name: string; price: number; quantity_total: number | null; quantity_sold: number }[]
   sku: string | null
   stock_quantity: number | null
-  variants: { id: string; size: string | null; color_name: string | null; color_hex: string | null; stock_quantity: number }[]
+  variants: { id: string; size: string | null; color_name: string | null; color_hex: string | null; stock_quantity: number; price?: number | string | null }[]
   option1_name?: string | null
   option2_name?: string | null
   duration_minutes: number | null
@@ -238,8 +238,11 @@ export default function ProductViewPage() {
                         {[v.size && `${option1}: ${v.size}`, v.color_name && `${option2}: ${v.color_name}`].filter(Boolean).join(" · ")}
                       </span>
                     </span>
-                    <span className={`shrink-0 tabular-nums ${v.stock_quantity === 0 ? "text-destructive" : ""}`}>
-                      {v.stock_quantity === 0 ? "Sold out" : `${v.stock_quantity} left`}
+                    <span className="flex shrink-0 items-center gap-3 tabular-nums">
+                      {v.price != null && <span className="font-medium">{formatNaira(Number(v.price))}</span>}
+                      <span className={v.stock_quantity === 0 ? "text-destructive" : ""}>
+                        {v.stock_quantity === 0 ? "Sold out" : `${v.stock_quantity} left`}
+                      </span>
                     </span>
                   </li>
                 ))}

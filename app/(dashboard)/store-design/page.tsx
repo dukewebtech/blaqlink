@@ -2,12 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react"
 import { toast } from "sonner"
-import { Check, ExternalLink, ImageIcon, Loader2, Upload } from "lucide-react"
-import { DaylightStorefront } from "@/components/store/templates/daylight-storefront"
-import { EditorialStorefront } from "@/components/store/templates/editorial-storefront"
-import { StudioStorefront } from "@/components/store/templates/studio-storefront"
-import { BoutiqueStorefront } from "@/components/store/templates/boutique-storefront"
-import { OraStorefront } from "@/components/store/templates/ora-storefront"
+import { Check, ExternalLink, ImageIcon, Loader2, Monitor, Smartphone, Upload } from "lucide-react"
 import { createPreviewItems, createPreviewStore } from "@/components/store/templates/preview-mock-data"
 import type { DaylightItem } from "@/components/store/templates/daylight-types"
 import { STORE_FONT_PAIRINGS, STORE_FONT_PAIRING_IDS, isStoreFontPairing, type StoreFontPairing } from "@/lib/storefront/fonts"
@@ -187,6 +182,12 @@ export default function StoreDesignPage() {
       setSavedFont(draftFont)
       setSavedBanner(draftBanner)
       setSavedLogo(draftLogo)
+      // Ticks "Customize your store" on the dashboard checklist (best effort).
+      fetch("/api/onboarding", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ step: "checklist_store_customized" }),
+      }).catch(() => {})
       await refetchVendorUser()
       toast.success("Store design saved", { description: "Your live storefront now reflects these changes." })
     } catch {
@@ -405,7 +406,6 @@ export default function StoreDesignPage() {
             </div>
 
             <div>
-              <p className="bq-label" style={{ marginBottom: 12 }}>Live preview</p>
               <LivePreviewFrame templateId={draftTemplate} store={previewStore} items={previewItems} />
             </div>
           </div>
@@ -451,6 +451,16 @@ function TemplatePreviewSwatch({ templateId, available }: { templateId: string; 
   )
 }
 
+// Fixed device sizes: the store is laid out at exactly these widths, then the
+// whole frame is shrunk to fit, so the preview looks the same on any screen.
+const PREVIEW_DEVICES = {
+  mobile: { width: 390, height: 844, label: "Mobile", icon: Smartphone },
+  desktop: { width: 1440, height: 900, label: "Desktop", icon: Monitor },
+} as const
+type PreviewDevice = keyof typeof PREVIEW_DEVICES
+const PREVIEW_MESSAGE = "bq-store-preview"
+const MOBILE_MAX_SHOWN_WIDTH = 320
+
 function LivePreviewFrame({
   templateId,
   store,
@@ -460,32 +470,90 @@ function LivePreviewFrame({
   store: ReturnType<typeof createPreviewStore>
   items: DaylightItem[]
 }) {
-  const contentWidth = 390
-  const contentHeight = 844
-  const bezelWidth = 300
-  const bezelPadding = 9
-  const screenWidth = bezelWidth - bezelPadding * 2
-  const scale = screenWidth / contentWidth
-  const screenHeight = Math.round(contentHeight * scale)
+  const [device, setDevice] = useState<PreviewDevice>("mobile")
+  const [boxWidth, setBoxWidth] = useState(0)
+  // Bumped each time a frame (re)loads and says it is listening.
+  const [readyTick, setReadyTick] = useState(0)
+  const boxRef = useRef<HTMLDivElement>(null)
+  const frameRef = useRef<HTMLIFrameElement>(null)
+  const { width, height } = PREVIEW_DEVICES[device]
+
+  useEffect(() => {
+    const el = boxRef.current
+    if (!el) return
+    const ro = new ResizeObserver(([entry]) => setBoxWidth(entry.contentRect.width))
+    ro.observe(el)
+    return () => ro.disconnect()
+  }, [])
+
+  // The frame says when it's listening; send the draft then and on every change.
+  useEffect(() => {
+    function onMessage(e: MessageEvent) {
+      if (e.origin === window.location.origin && e.data?.type === `${PREVIEW_MESSAGE}:ready` && e.source === frameRef.current?.contentWindow) {
+        setReadyTick((t) => t + 1)
+      }
+    }
+    window.addEventListener("message", onMessage)
+    return () => window.removeEventListener("message", onMessage)
+  }, [])
+
+  useEffect(() => {
+    if (readyTick === 0) return
+    frameRef.current?.contentWindow?.postMessage({ type: PREVIEW_MESSAGE, payload: { templateId, store, items } }, window.location.origin)
+  }, [readyTick, templateId, store, items])
+
+  const bezel = device === "mobile" ? 9 : 0
+  const chrome = device === "desktop" ? 28 : 0
+  const shownWidth = Math.max(0, device === "mobile" ? Math.min(boxWidth, MOBILE_MAX_SHOWN_WIDTH) - bezel * 2 : boxWidth)
+  const scale = shownWidth > 0 ? shownWidth / width : 0
+  const shownHeight = Math.round(height * scale)
 
   return (
-    <div className="sd-phone" style={{ width: bezelWidth, height: screenHeight + bezelPadding * 2 }}>
-      <div className="sd-phone__notch" />
-      <div className="sd-phone__screen" style={{ width: screenWidth, height: screenHeight }}>
-        <div style={{ width: contentWidth, height: contentHeight, transform: `scale(${scale})`, transformOrigin: "top left" }}>
-          {templateId === "editorial" ? (
-            <EditorialStorefront store={store} items={items} />
-          ) : templateId === "studio" ? (
-            <StudioStorefront store={store} items={items} />
-          ) : templateId === "boutique" ? (
-            <BoutiqueStorefront store={store} items={items} />
-          ) : templateId === "ora" ? (
-            <OraStorefront store={store} items={items} />
-          ) : (
-            <DaylightStorefront store={store} items={items} />
-          )}
+    <div>
+      <div className="sd-previewhead">
+        <p className="bq-label">Live preview</p>
+        <div className="sd-devices" role="group" aria-label="Preview size">
+          {(Object.keys(PREVIEW_DEVICES) as PreviewDevice[]).map((d) => {
+            const { label, icon: Icon } = PREVIEW_DEVICES[d]
+            return (
+              <button key={d} type="button" className={device === d ? "is-sel" : ""} aria-pressed={device === d} onClick={() => setDevice(d)}>
+                <Icon aria-hidden="true" /> {label}
+              </button>
+            )
+          })}
         </div>
       </div>
+
+      <div ref={boxRef} className="sd-previewstage">
+        {scale > 0 && (
+          <div
+            className={device === "mobile" ? "sd-phone" : "sd-browser"}
+            style={{ width: shownWidth + bezel * 2, height: shownHeight + bezel * 2 + chrome }}
+          >
+            {device === "mobile" ? (
+              <div className="sd-phone__notch" />
+            ) : (
+              <div className="sd-browser__bar" aria-hidden="true">
+                <span />
+                <span />
+                <span />
+              </div>
+            )}
+            <div className={device === "mobile" ? "sd-phone__screen" : "sd-browser__screen"} style={{ width: shownWidth, height: shownHeight }}>
+              <iframe
+                key={device}
+                ref={frameRef}
+                src="/templates/live-preview"
+                title={`${PREVIEW_DEVICES[device].label} preview of your store`}
+                style={{ width, height, border: 0, transform: `scale(${scale})`, transformOrigin: "top left", display: "block" }}
+              />
+            </div>
+          </div>
+        )}
+      </div>
+      <p className="bq-hint" style={{ marginTop: 10 }}>
+        {device === "mobile" ? "Exactly how your store looks on a phone (390px wide)." : "Exactly how your store looks on a computer (1440px wide)."}
+      </p>
     </div>
   )
 }

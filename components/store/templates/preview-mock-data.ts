@@ -46,9 +46,9 @@ export function createPreviewItems(storeName: string = "SampleStore"): DaylightI
     price: 28500, compareAtPrice: 34000, images: [ph("#1B2A63", "Dress")],
     categoryId: "cat-dresses", categoryName: "Dresses", categoryImageUrl: null,
     stock: 7, option1Name: "Size", option2Name: "Colour", variants: [
-      { id: "v1", size: "S", colorName: "Navy", colorHex: "#1B2A63", stock: 2 },
-      { id: "v2", size: "M", colorName: "Navy", colorHex: "#1B2A63", stock: 4 },
-      { id: "v3", size: "L", colorName: "Navy", colorHex: "#1B2A63", stock: 1 },
+      { id: "v1", size: "S", colorName: "Navy", colorHex: "#1B2A63", stock: 2, price: null },
+      { id: "v2", size: "M", colorName: "Navy", colorHex: "#1B2A63", stock: 4, price: null },
+      { id: "v3", size: "L", colorName: "Navy", colorHex: "#1B2A63", stock: 1, price: 30500 },
     ],
     eventDate: null, eventLocation: null, tiers: [], durationLabel: null, venue: null, days: [], fileLabel: null,
   },

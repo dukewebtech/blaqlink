@@ -7,20 +7,12 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import Link from "next/link"
+import { toast } from "sonner"
 import { Banknote, Loader2, CheckCircle2, AlertCircle, ShieldCheck } from "lucide-react"
 import { BANK_NAMES } from "@/components/onboarding/identity-upload-step"
 import { useVendorUser } from "@/components/dashboard/vendor-user-context"
-
-function normalize(name: string) {
-  return name.toUpperCase().replace(/\s+/g, " ").trim()
-}
-
-function namesMatch(a: string, b: string): boolean {
-  const words = normalize(a).split(" ").filter(Boolean)
-  const target = normalize(b)
-  const matchCount = words.filter((w) => target.includes(w)).length
-  return matchCount / words.length >= 0.5
-}
+import { bankNameMatches as namesMatch } from "@/lib/kyc/nin-match"
 
 export default function PayoutSettingsPage() {
   const { user: vendorUser, loading: loadingVendorUser, refetch: refetchVendorUser } = useVendorUser()
@@ -30,7 +22,8 @@ export default function PayoutSettingsPage() {
   const [resolving, setResolving] = useState(false)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [saved, setSaved] = useState(false)
+  // A saved account shows as a summary; "Change" opens the form again.
+  const [editing, setEditing] = useState(false)
   const [verifiedName, setVerifiedName] = useState<string | null>(null)
   // undefined = not yet loaded, so the ?? fallback to vendorUser below can't
   // fire prematurely with a false-negative while /api/onboarding is in flight.
@@ -131,10 +124,13 @@ export default function PayoutSettingsPage() {
           data: { bankName, accountNumber, accountName: resolvedAccountName },
         }),
       })
-      if (!res.ok) throw new Error("Failed to save bank information. Please try again.")
+      if (!res.ok) {
+        const d = await res.json().catch(() => ({}))
+        throw new Error(d.error || "We couldn't save your bank account. Please try again.")
+      }
       await refetchVendorUser()
-      setSaved(true)
-      setTimeout(() => setSaved(false), 3000)
+      setEditing(false)
+      toast.success("Payout account saved")
     } catch (err: any) {
       setError(err.message)
     } finally {
@@ -173,6 +169,41 @@ export default function PayoutSettingsPage() {
           </div>
         )}
 
+        {vendorUser?.account_number && vendorUser?.account_name && !editing ? (
+          <Card className="p-6 space-y-5">
+            <div className="flex items-center gap-3">
+              <div className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-green-100">
+                <CheckCircle2 className="h-5 w-5 text-green-700" aria-hidden="true" />
+              </div>
+              <div>
+                <h2 className="text-base font-semibold">Payout account connected</h2>
+                <p className="text-xs text-muted-foreground">Withdrawals are paid into this account.</p>
+              </div>
+            </div>
+            <dl className="divide-y rounded-lg border text-sm">
+              <div className="flex justify-between gap-4 p-3">
+                <dt className="text-muted-foreground">Bank</dt>
+                <dd className="text-right font-medium">{vendorUser.bank_name}</dd>
+              </div>
+              <div className="flex justify-between gap-4 p-3">
+                <dt className="text-muted-foreground">Account number</dt>
+                <dd className="font-mono font-medium tabular-nums">{vendorUser.account_number}</dd>
+              </div>
+              <div className="flex justify-between gap-4 p-3">
+                <dt className="text-muted-foreground">Account name</dt>
+                <dd className="text-right font-medium">{vendorUser.account_name}</dd>
+              </div>
+            </dl>
+            <div className="grid gap-2 sm:grid-cols-2">
+              <Button asChild size="lg">
+                <Link href="/payouts">Go to payouts</Link>
+              </Button>
+              <Button type="button" size="lg" variant="outline" onClick={() => setEditing(true)}>
+                Change account
+              </Button>
+            </div>
+          </Card>
+        ) : (
         <Card className="p-6">
           <div className="flex items-center gap-3 mb-6">
             <div className="inline-flex items-center justify-center w-10 h-10 rounded-full bg-primary/10">
@@ -245,14 +276,18 @@ export default function PayoutSettingsPage() {
             >
               {saving ? (
                 <><Loader2 className="h-5 w-5 animate-spin" /> Saving…</>
-              ) : saved ? (
-                <><CheckCircle2 className="h-5 w-5" /> Saved!</>
               ) : (
-                "Save Payout Account"
+                "Save payout account"
               )}
             </Button>
+            {editing && (
+              <Button type="button" variant="ghost" className="w-full" onClick={() => setEditing(false)}>
+                Cancel
+              </Button>
+            )}
           </form>
         </Card>
+        )}
       </div>
     </>
   )

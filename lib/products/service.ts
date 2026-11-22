@@ -78,7 +78,7 @@ export async function getVendorProduct(vendorId: string, productId: string) {
   if (!product) return null
   const [{ data: tiers }, { data: variants }] = await Promise.all([
     supabase.from("ticket_tiers").select("id, name, price, quantity_total, quantity_sold").eq("product_id", productId).order("sort_order"),
-    supabase.from("product_variants").select("id, size, color_name, color_hex, stock_quantity").eq("product_id", productId).order("created_at"),
+    supabase.from("product_variants").select("id, size, color_name, color_hex, stock_quantity, price").eq("product_id", productId).order("created_at"),
   ])
   return { ...product, ticket_tiers: tiers ?? [], variants: variants ?? [] }
 }

@@ -173,6 +173,7 @@ async function sendOrderEmailsOnce(supabase: Admin, orderId: string) {
         customerName: order.customer_name,
         customerEmail: order.customer_email,
         customerPhone: order.customer_phone,
+        customerNote: order.customer_note,
         items: emailItems,
         subtotal,
         deliveryFee,

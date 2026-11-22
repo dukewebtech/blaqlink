@@ -55,7 +55,7 @@ const ITEMS = [
     label: "Customize your store",
     sublabel: "~2 mins",
     icon: Palette,
-    href: "/templates",
+    href: "/store-design",
     time: "~2 mins",
   },
   {
@@ -101,7 +101,13 @@ export function OnboardingChecklist({ storeId }: { storeId: string }) {
         setChecklist({
           store_created:      true,
           product_added:      (productsData?.products?.length ?? 0) > 0,
-          store_customized:   p.checklist_store_customized ?? false,
+          // Also true for anyone who changed the design before this flag was saved.
+          store_customized:
+            !!p.checklist_store_customized ||
+            (!!user.store_template && user.store_template !== "daylight") ||
+            (!!user.store_brand_color && user.store_brand_color.toUpperCase() !== "#155DFD") ||
+            !!user.store_cover_image_url ||
+            (!!user.store_font && user.store_font !== "modern"),
           // The account itself is the truth; progress flags can lag behind it.
           identity_verified:  !!user.payout_verified,
           bank_connected:     !!(user.bank_name && user.account_number),

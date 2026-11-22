@@ -2,21 +2,7 @@ import { NextResponse } from "next/server"
 import { createAdminClient, createServerClient } from "@/lib/supabase/server"
 import { lookupNIN } from "@/lib/korapay"
 import { allowRequest } from "@/lib/rate-limit"
-
-function normalize(name: string) {
-  return name.toUpperCase().replace(/\s+/g, " ").trim()
-}
-
-function wordsMatch(entered: string, returned: string): boolean {
-  const words = normalize(entered).split(" ").filter(Boolean)
-  const target = normalize(returned)
-  const matchCount = words.filter((w) => target.includes(w)).length
-  return matchCount / words.length >= 0.5
-}
-
-function dobMatch(entered: string, returned: string): boolean {
-  return entered.trim() === returned.trim()
-}
+import { compareNinDetails, mismatchMessage, nameWords, type NinRecord } from "@/lib/kyc/nin-match"
 
 // KoraPay sandbox does not expose a live NIN database.
 // Use NIN "00000000000" in test mode to simulate a successful lookup.
@@ -32,10 +18,21 @@ export async function POST(req: Request) {
     } = await supabase.auth.getUser()
     if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
 
-    const { nin, fullName, dateOfBirth } = await req.json()
+    const body = await req.json()
+    const nin = String(body.nin ?? "").trim()
+    const firstName = String(body.firstName ?? "").trim()
+    const middleName = String(body.middleName ?? "").trim()
+    const lastName = String(body.lastName ?? "").trim()
+    const dateOfBirth = String(body.dateOfBirth ?? "").trim()
 
-    if (!nin || !fullName || !dateOfBirth) {
-      return NextResponse.json({ error: "NIN, full name, and date of birth are required." }, { status: 400 })
+    if (!nin || !dateOfBirth) {
+      return NextResponse.json({ error: "Enter your NIN and date of birth." }, { status: 400 })
+    }
+    if (nameWords(firstName).length === 0) {
+      return NextResponse.json({ error: "Enter your first name." }, { status: 400 })
+    }
+    if (nameWords(lastName).length === 0) {
+      return NextResponse.json({ error: "Enter your surname." }, { status: 400 })
     }
 
     if (!/^\d{11}$/.test(String(nin))) {
@@ -70,23 +67,19 @@ export async function POST(req: Request) {
       )
     }
 
-    let ninName: string
-    let ninDob: string
+    let record: NinRecord
 
     if (isTestKey && nin === TEST_NIN) {
-      // Test-mode bypass: accept any name/DOB supplied by the user
-      ninName = fullName.trim()
-      ninDob = dateOfBirth.trim()
+      // Test-mode bypass: the record is whatever was typed
+      record = { firstName, middleName, lastName, fullName: "", dateOfBirth }
     } else {
       let result: any
       try {
         result = await lookupNIN(nin)
       } catch (lookupErr: any) {
-        // Surfaces the real reason (network failure, malformed response,
-        // etc.) instead of letting it fall through to the generic message.
         console.error("[kyc/nin] lookupNIN threw:", lookupErr)
         return NextResponse.json(
-          { error: `Could not reach the identity verification service: ${lookupErr?.message || "unknown error"}.` },
+          { error: "We couldn't reach the identity service. Please try again in a few minutes." },
           { status: 502 },
         )
       }
@@ -99,32 +92,30 @@ export async function POST(req: Request) {
           {
             error: isTestKey
               ? `KoraPay test NIN lookup: ${msg}. Use NIN "00000000000" to test in sandbox mode.`
-              : `NIN verification failed: ${msg}`,
+              : "We couldn't find that NIN. Check the 11 digits on your NIN slip and try again.",
           },
           { status: 400 },
         )
       }
 
-      const ninData = result.data
-      const first = ninData.firstname ?? ninData.first_name ?? ""
-      const middle = ninData.middlename ?? ninData.middle_name ?? ""
-      const last = ninData.lastname ?? ninData.last_name ?? ""
-      ninName = ninData.full_name ?? [first, middle, last].filter(Boolean).join(" ")
-      // KoraPay returns DOB in various formats — normalise to YYYY-MM-DD
-      ninDob = (ninData.date_of_birth ?? ninData.dob ?? "").split("T")[0]
+      const d = result.data
+      record = {
+        firstName: d.firstname ?? d.first_name ?? "",
+        middleName: d.middlename ?? d.middle_name ?? "",
+        lastName: d.lastname ?? d.last_name ?? d.surname ?? "",
+        fullName: d.full_name ?? "",
+        dateOfBirth: d.date_of_birth ?? d.dob ?? d.birthdate ?? "",
+      }
     }
 
-    // Deliberately vague: echoing the record's name or DOB would let anyone
-    // look up a stranger's details by guessing a NIN.
-    if (!wordsMatch(fullName, ninName) || !dobMatch(dateOfBirth, ninDob)) {
-      return NextResponse.json(
-        {
-          error:
-            "The name or date of birth you entered doesn't match the details on this NIN. Enter them exactly as they appear on your NIN slip.",
-        },
-        { status: 422 },
-      )
+    // Says which field is wrong, never what the record holds.
+    const wrong = compareNinDetails({ firstName, middleName, lastName }, dateOfBirth, record)
+    if (wrong.length > 0) {
+      return NextResponse.json({ error: mismatchMessage(wrong), fields: wrong }, { status: 422 })
     }
+
+    const ninName =
+      record.fullName.trim() || [record.firstName, record.middleName, record.lastName].map((x) => x.trim()).filter(Boolean).join(" ")
 
     // Save verified name + mark payout_verified
     // Filters by auth_id, not id — public.users.id is its own generated key

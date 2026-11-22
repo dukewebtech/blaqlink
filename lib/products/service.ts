@@ -25,6 +25,12 @@ export async function saveProduct(vendorId: string, productId: string | null, ra
     return { ok: false, status: 400, message: Object.values(errors)[0] ?? "Check the highlighted fields.", errors }
   }
 
+  // Paid files must be ones this vendor uploaded (their own storage folder).
+  if (input.file_urls.some((u) => !u.startsWith(`digital-files:${vendorId}/`))) {
+    const message = "One of the files didn't upload properly. Remove it and upload it again."
+    return { ok: false, status: 400, message, errors: { file_urls: message } }
+  }
+
   const plan = await getVendorPlan(vendorId)
   if (!plan.allowed_selling_types.includes(input.product_type)) {
     return {

@@ -1,5 +1,7 @@
 "use client"
 
+import { createClient } from "@/lib/supabase/client"
+import { DIGITAL_FILE_ACCEPT, MAX_DIGITAL_FILE_BYTES } from "@/lib/products/digital-files"
 import { useEffect, useMemo, useRef, useState } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
@@ -96,6 +98,24 @@ const DURATIONS = [15, 30, 45, 60, 90, 120, 180, 240]
 function fileNameFromPath(path: string) {
   const last = path.split("/").pop() ?? path
   return last.replace(/^\d+-/, "")
+}
+
+/** Resizes a photo to at most 1600px on its longest side, as JPEG. */
+async function shrinkImage(file: File): Promise<File> {
+  if (file.size < 1.5 * 1024 * 1024 && ["image/jpeg", "image/png", "image/webp"].includes(file.type)) return file
+  try {
+    const bitmap = await createImageBitmap(file)
+    const scale = Math.min(1, 1600 / Math.max(bitmap.width, bitmap.height))
+    const canvas = document.createElement("canvas")
+    canvas.width = Math.round(bitmap.width * scale)
+    canvas.height = Math.round(bitmap.height * scale)
+    canvas.getContext("2d")!.drawImage(bitmap, 0, 0, canvas.width, canvas.height)
+    const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, "image/jpeg", 0.85))
+    if (!blob) return file
+    return new File([blob], file.name.replace(/\.[^.]+$/, "") + ".jpg", { type: "image/jpeg" })
+  } catch {
+    return file // browser can't decode it; let the size check decide
+  }
 }
 
 function FieldError({ id, message }: { id: string; message?: string }) {
@@ -261,23 +281,22 @@ export function ProductForm({ productType, initial }: { productType: ProductType
     }
   }
 
-  async function uploadImage(file: File) {
+  async function uploadImage(original: File) {
     if (images.length >= MAX_IMAGES) return
     setErrors((e) => ({ ...e, images: undefined }))
-    if (!["image/jpeg", "image/png", "image/webp"].includes(file.type)) {
+    if (!original.type.startsWith("image/")) {
       setErrors((e) => ({ ...e, images: "Use a JPG, PNG or WebP photo." }))
-      return
-    }
-    if (file.size > 4 * 1024 * 1024) {
-      setErrors((e) => ({ ...e, images: "Each photo must be under 4MB." }))
       return
     }
     setUploadingImage(true)
     try {
+      // Phone photos are often 5–10 MB; shrink them here so they upload.
+      const file = await shrinkImage(original)
+      if (file.size > 4 * 1024 * 1024) throw new Error("That photo is too large. Try a smaller one.")
       const form = new FormData()
       form.append("file", file)
       const res = await fetch("/api/upload", { method: "POST", body: form })
-      const data = await res.json()
+      const data = await res.json().catch(() => ({}))
       if (!res.ok) throw new Error(data.error)
       setImages((prev) => [...prev, data.url])
     } catch (err: any) {
@@ -289,14 +308,25 @@ export function ProductForm({ productType, initial }: { productType: ProductType
 
   async function uploadDigital(file: File) {
     setErrors((e) => ({ ...e, file_urls: undefined }))
+    if (file.size > MAX_DIGITAL_FILE_BYTES) {
+      setErrors((e) => ({ ...e, file_urls: "Files can be up to 100 MB. Compress it or split it into parts." }))
+      return
+    }
     setUploadingFile(true)
     try {
-      const form = new FormData()
-      form.append("file", file)
-      const res = await fetch("/api/upload-digital", { method: "POST", body: form })
-      const data = await res.json()
+      // 1) ask for a one-time upload link, 2) send the file straight to private storage
+      const res = await fetch("/api/upload-digital", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: file.name, size: file.size }),
+      })
+      const data = await res.json().catch(() => ({}))
       if (!res.ok) throw new Error(data.error)
-      setFiles((prev) => [...prev, { url: data.url, name: data.originalName ?? file.name }])
+      const { error } = await createClient()
+        .storage.from("digital-files")
+        .uploadToSignedUrl(data.path, data.token, file, { contentType: data.contentType })
+      if (error) throw new Error("The upload stopped. Check your connection and try again.")
+      setFiles((prev) => [...prev, { url: data.url, name: file.name }])
     } catch (err: any) {
       setErrors((e) => ({ ...e, file_urls: err?.message || "That file didn't upload. Please try again." }))
     } finally {
@@ -437,7 +467,7 @@ export function ProductForm({ productType, initial }: { productType: ProductType
                   id="digital-file"
                   type="file"
                   className="sr-only"
-                  accept=".pdf,.zip,.mp4,.mov,.mp3,.epub,.doc,.docx"
+                  accept={DIGITAL_FILE_ACCEPT}
                   onChange={(e) => {
                     const f = e.target.files?.[0]
                     if (f) uploadDigital(f)
@@ -719,7 +749,7 @@ export function ProductForm({ productType, initial }: { productType: ProductType
             <input
               ref={imageInput}
               type="file"
-              accept="image/jpeg,image/png,image/webp"
+              accept="image/*"
               className="sr-only"
               aria-label="Upload a photo"
               onChange={(e) => {
